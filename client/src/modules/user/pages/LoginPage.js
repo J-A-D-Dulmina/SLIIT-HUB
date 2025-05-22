@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import logo from '../../../shared/assets/SLITT HUB logo transparent.png';
+import logo from '../../../shared/assets/SLITT HUB logo.png';
 import '../../../shared/styles/loginpage.css';
 import '../../../shared/styles/main.css';
 
