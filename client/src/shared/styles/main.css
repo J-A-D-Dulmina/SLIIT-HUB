@@ -1,0 +1,16 @@
+@import './variables.css';
+@import './layout.css';
+@import './form.css';
+
+body {
+  font-family: var(--font-family);
+  background: var(--background);
+  margin: 0;
+  padding: 0;
+}
+
+.title {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #222;
+}
