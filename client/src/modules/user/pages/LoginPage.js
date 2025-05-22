@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import logo from '../../../shared/assets/SLITT HUB logo transparent.png';
+import '../../../shared/styles/loginpage.css';
+import '../../../shared/styles/main.css';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
@@ -21,9 +24,15 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="container-center">
-      <form className="card" onSubmit={handleSubmit}>
-        <h2 className="title">SLIIT HUB Login</h2>
+    <div className="login-background">
+      <form className="login-card" onSubmit={handleSubmit}>
+        <div className="login-logo">
+          <img src={logo} alt="SLIIT HUB Logo" />
+        </div>
+        <h2 className="login-title">SLIIT HUB Login</h2>
+        <div className="login-description">
+          SLIIT HUB is your collaborative academic platform for sharing resources, real-time tutoring, and AI-powered learning support. Join the community and empower your learning!
+        </div>
         {error && <div className="error">{error}</div>}
         <input
           className="input"
@@ -39,9 +48,16 @@ const LoginPage = () => {
           value={password}
           onChange={e => setPassword(e.target.value)}
         />
-        <button className="button" type="submit">
-          Login
-        </button>
+        <div className="login-button-row">
+          <button className="button login-button" type="submit">
+            Login
+          </button>
+        </div>
+        <div className="login-links">
+          <a href="/forgot-password" className="login-link">Forgot password?</a>
+          <span className="login-divider">|</span>
+          <a href="/register" className="login-link">Create an account</a>
+        </div>
       </form>
     </div>
   );

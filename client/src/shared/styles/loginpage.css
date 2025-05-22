@@ -1,0 +1,102 @@
+/* loginpage.css - Styles specific to the LoginPage component */
+
+.login-background {
+  min-height: 100vh;
+  background: linear-gradient(120deg, #C5CAE9 0%, #FFFFFF 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: #fff;
+  padding: 2.5rem 2rem 2rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(63, 81, 181, 0.10);
+  min-width: 340px;
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.login-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.login-logo img {
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(63, 81, 181, 0.15);
+  background: #C5CAE9;
+}
+
+.login-title {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: #3F51B5;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.login-description {
+  font-size: 1rem;
+  color: #212121;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+  background: #C5CAE9;
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid #3F51B5;
+}
+
+.login-button-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.login-button {
+  width: 80%;
+  background: #3F51B5;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  padding: 0.7rem 0;
+  transition: background 0.2s;
+}
+
+.login-button:hover {
+  background: #E64A19;
+  color: #fff;
+}
+
+.login-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1.2rem;
+  font-size: 0.98rem;
+}
+
+.login-link {
+  color: #3F51B5;
+  text-decoration: none;
+  margin: 0 0.5rem;
+  transition: color 0.2s;
+}
+
+.login-link:hover {
+  color: #E64A19;
+  text-decoration: underline;
+}
+
+.login-divider {
+  color: #bdbdbd;
+  margin: 0 0.3rem;
+}
