@@ -8,6 +8,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/" element={<LoginPage />} /> {/* This makes / go to login */}
       {/* Add more routes here as you create more pages */}
     </Routes>
   );
