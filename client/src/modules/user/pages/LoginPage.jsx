@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import logo from '../../../shared/assets/SLITT HUB logo.png';
-import '../../../shared/styles/loginpage.css';
-import '../../../shared/styles/main.css';
+import logo from '../../../assets/SLITT HUB logo.png';
+import '../../../styles/loginpage.css';
+import '../../../styles/main.css';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
