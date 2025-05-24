@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import logo from '../../../assets/SLITT HUB logo.png';
 import '../../../styles/loginpage.css';
 import '../../../styles/main.css';
@@ -7,6 +8,7 @@ const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -16,8 +18,7 @@ const LoginPage = () => {
     }
     if (username === 'admin' && password === 'password') {
       setError('');
-      alert('Login successful!');
-      // You can redirect or set auth state here
+      navigate('/dashboard');
     } else {
       setError('Invalid credentials.');
     }
