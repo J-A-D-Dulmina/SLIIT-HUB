@@ -2,9 +2,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px 25px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  background: #fff;
+  color: #222;
+  padding: 16px 32px;
+  border-radius: 0;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.07);
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.top-bar h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  color: #3498db;
+  letter-spacing: 2px;
+}
+
+.top-bar .current-time, .top-bar span {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #222;
 }
 
 .search-container {
@@ -36,13 +54,6 @@
 .top-bar-right {
   display: flex;
   align-items: center;
-}
-
-.current-time {
-  font-size: 14px;
-  font-weight: 500;
-  color: #2c3e50;
-  margin-right: 25px;
 }
 
 .notification-container {

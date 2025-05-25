@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import '../../styles/SideMenu.css';
 import logo from '../../assets/SLITT HUB logo.png';
@@ -10,28 +10,18 @@ import {
   FaRobot, 
   FaCalendarAlt, 
   FaCog, 
-  FaSignOutAlt,
-  FaBars
+  FaSignOutAlt
 } from 'react-icons/fa';
 
-const SideMenu = () => {
-  const [collapsed, setCollapsed] = useState(false);
-  
-  const toggleMenu = () => {
-    setCollapsed(!collapsed);
-  };
-
+const SideMenu = ({ collapsed }) => {
   return (
     <div className={`side-menu ${collapsed ? 'collapsed' : ''}`}>
       <div className="menu-header">
         <div className="logo-container">
-          {!collapsed && <img src={logo} alt="SLIIT HUB Logo" className="logo" />}
+          <img src={logo} alt="SLIIT HUB Logo" className={`logo large${collapsed ? ' collapsed' : ''}`} />
         </div>
-        <button className="toggle-btn" onClick={toggleMenu}>
-          <FaBars />
-        </button>
+        {!collapsed && <div className="app-name">SLIIT HUB</div>}
       </div>
-      
       <div className="user-profile">
         {!collapsed && (
           <>
@@ -44,7 +34,6 @@ const SideMenu = () => {
         )}
         {collapsed && <div className="avatar small">JD</div>}
       </div>
-      
       <nav className="menu-nav">
         <ul>
           <li className="active">
@@ -85,7 +74,6 @@ const SideMenu = () => {
           </li>
         </ul>
       </nav>
-      
       <div className="menu-footer">
         <ul>
           <li>
