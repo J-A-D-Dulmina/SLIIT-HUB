@@ -419,72 +419,89 @@
 
 .video-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  width: 100%;
-  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .action-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: none;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 100px;
-  justify-content: center;
+  border: none;
+  white-space: nowrap;
+  height: 32px;
+  flex: 1;
+  min-width: 0;
 }
 
 .action-btn svg {
-  font-size: 14px;
+  font-size: 0.875rem;
+  flex-shrink: 0;
 }
 
 .edit-btn {
-  background-color: #f0f0f0;
-  color: #333;
+  background: #e2e8f0;
+  color: #475569;
 }
 
 .edit-btn:hover {
-  background-color: #e0e0e0;
-  transform: translateY(-1px);
+  background: #cbd5e1;
+  color: #1e293b;
 }
 
 .publish-btn {
-  background-color: #e3f2fd;
-  color: #1976d2;
+  background: #4a90e2;
+  color: white;
 }
 
 .publish-btn:hover {
-  background-color: #bbdefb;
-  transform: translateY(-1px);
+  background: #357abd;
 }
 
 .delete-btn {
-  background-color: #ffebee;
-  color: #d32f2f;
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .delete-btn:hover {
-  background-color: #ffcdd2;
-  transform: translateY(-1px);
+  background: #fecaca;
+  color: #b91c1c;
 }
 
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .video-actions {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    gap: 0.25rem;
+    padding: 0.25rem;
   }
 
   .action-btn {
-    flex: 1;
-    min-width: 0;
-    padding: 8px 12px;
+    padding: 0.25rem;
+    font-size: 0.75rem;
   }
+}
+
+/* Add hover transform effect */
+.action-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Add active state */
+.action-btn:active {
+  transform: translateY(0);
 }
 
 .lecturer-recommend-btn {
