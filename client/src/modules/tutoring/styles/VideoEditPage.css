@@ -1,0 +1,359 @@
+.video-edit-page {
+  padding: 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  height: 100%;
+}
+
+.page-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.back-button:hover {
+  background: #e2e8f0;
+  color: #1a202c;
+}
+
+.page-header h1 {
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #1a202c;
+  margin: 0;
+}
+
+.video-preview-section {
+  background: white;
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  height: fit-content;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-player-wrapper {
+  position: relative;
+  padding-top: 56.25%; /* 16:9 Aspect Ratio */
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.video-player-wrapper > div {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.video-controls {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 1rem;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+  background: #2563eb;
+}
+
+.summary-section {
+  background: white;
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-section .form-group {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0;
+}
+
+.summary-section textarea {
+  flex: 1;
+  resize: none;
+  height: 100%;
+  min-height: 0;
+}
+
+.edit-content {
+  grid-column: 1 / -1;
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.ai-generate-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-generate-btn.description {
+  background: #3b82f6;
+}
+
+.ai-generate-btn.description:hover {
+  background: #2563eb;
+}
+
+.ai-generate-btn.summary {
+  background: #10b981;
+}
+
+.ai-generate-btn.summary:hover {
+  background: #059669;
+}
+
+.ai-generate-btn.timestamps {
+  background: #f59e0b;
+}
+
+.ai-generate-btn.timestamps:hover {
+  background: #d97706;
+}
+
+.ai-generate-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.form-group input[type="text"],
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: #1a202c;
+  transition: all 0.2s ease;
+}
+
+.form-group input[type="text"]:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input[type="file"] {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px dashed #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.form-group input[type="file"]:hover {
+  border-color: #3b82f6;
+  background: #f1f5f9;
+}
+
+.timestamps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.timestamp-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.timestamp-time {
+  width: 100px !important;
+  flex-shrink: 0;
+}
+
+.timestamp-description {
+  flex-grow: 1;
+}
+
+.remove-timestamp-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.remove-timestamp-btn:hover {
+  background: #fecaca;
+}
+
+.add-timestamp-btn {
+  padding: 0.5rem 1rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+}
+
+.add-timestamp-btn:hover {
+  background: #e2e8f0;
+  color: #1a202c;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.cancel-btn,
+.save-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-btn {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.cancel-btn:hover {
+  background: #e2e8f0;
+  color: #1a202c;
+}
+
+.save-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+}
+
+.save-btn:hover {
+  background: #2563eb;
+}
+
+@media (max-width: 1024px) {
+  .video-edit-page {
+    grid-template-columns: 1fr;
+  }
+
+  .video-preview-section,
+  .summary-section {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .video-edit-page {
+    padding: 1rem;
+  }
+
+  .edit-content {
+    padding: 1.5rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .cancel-btn,
+  .save-btn {
+    width: 100%;
+  }
+
+  .timestamp-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .timestamp-time {
+    width: 100% !important;
+  }
+} 

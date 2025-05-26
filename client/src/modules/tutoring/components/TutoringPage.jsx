@@ -3,8 +3,9 @@ import '../styles/TutoringPage.css';
 import { FaChevronLeft, FaChevronRight, FaEdit, FaTrash, FaUpload, FaEye, FaEyeSlash, FaRobot, FaClock, FaUserGraduate, FaCheck } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
-import VideoEditModal from './VideoEditModal';
+import VideoEditPage from './VideoEditPage';
 import LecturerReviewDialog from './LecturerReviewDialog';
+import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
 
 // Dummy data for videos
 const MY_VIDEOS = [
@@ -59,8 +60,10 @@ const TutoringPage = () => {
   const [videos, setVideos] = useState(MY_VIDEOS);
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditPage, setShowEditPage] = useState(false);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState(null);
 
   useEffect(() => {
@@ -76,23 +79,41 @@ const TutoringPage = () => {
     ));
   };
 
-  const handleVideoDelete = (videoId) => {
-    if (window.confirm('Are you sure you want to delete this video?')) {
-      setVideos(videos.filter(video => video.id !== videoId));
-    }
+  const handleVideoDelete = (video) => {
+    setSelectedVideo(video);
+    setShowDeleteConfirm(true);
   };
 
-  const handlePublishToggle = (videoId) => {
-    setVideos(videos.map(video => 
-      video.id === videoId 
-        ? { ...video, status: video.status === 'published' ? 'unpublished' : 'published' }
-        : video
-    ));
+  const handleConfirmDelete = () => {
+    if (selectedVideo) {
+      const updatedVideos = videos.filter(v => v.id !== selectedVideo.id);
+      setVideos(updatedVideos);
+    }
+    setShowDeleteConfirm(false);
+    setSelectedVideo(null);
+  };
+
+  const handlePublishToggle = (video) => {
+    setSelectedVideo(video);
+    setShowPublishConfirm(true);
+  };
+
+  const handleConfirmPublish = () => {
+    if (selectedVideo) {
+      const updatedVideos = videos.map(v =>
+        v.id === selectedVideo.id
+          ? { ...v, status: v.status === 'published' ? 'draft' : 'published' }
+          : v
+      );
+      setVideos(updatedVideos);
+    }
+    setShowPublishConfirm(false);
+    setSelectedVideo(null);
   };
 
   const handleEditClick = (video) => {
     setSelectedVideo(video);
-    setShowEditModal(true);
+    setShowEditPage(true);
   };
 
   const handleReviewClick = (video) => {
@@ -110,11 +131,16 @@ const TutoringPage = () => {
         ...formData,
         date: new Date().toISOString().split('T')[0],
         reviewStatus: null,
-        reviewLecturer: null
+        reviewLecturer: null,
+        aiFeatures: {
+          summary: false,
+          timestamps: false,
+          lecturerRecommended: false
+        }
       };
       setVideos([...videos, newVideo]);
     }
-    setShowEditModal(false);
+    setShowEditPage(false);
     setSelectedVideo(null);
   };
 
@@ -126,6 +152,19 @@ const TutoringPage = () => {
     setShowReviewDialog(false);
     setSelectedVideo(null);
   };
+
+  if (showEditPage) {
+    return (
+      <VideoEditPage
+        video={selectedVideo}
+        onClose={() => {
+          setShowEditPage(false);
+          setSelectedVideo(null);
+        }}
+        onSave={handleSaveVideo}
+      />
+    );
+  }
 
   return (
     <div className="app-container">
@@ -153,7 +192,7 @@ const TutoringPage = () => {
           <div className="videos-section">
             <div className="section-header">
               <h2>My Videos</h2>
-              <button className="upload-btn" onClick={() => setShowEditModal(true)}>
+              <button className="upload-btn" onClick={() => setShowEditPage(true)}>
                 <FaUpload /> Upload Video
               </button>
             </div>
@@ -224,7 +263,7 @@ const TutoringPage = () => {
                         className="action-btn publish-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handlePublishToggle(video.id);
+                          handlePublishToggle(video);
                         }}
                       >
                         {video.status === 'published' ? <FaEyeSlash /> : <FaEye />}
@@ -234,7 +273,7 @@ const TutoringPage = () => {
                         className="action-btn delete-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleVideoDelete(video.id);
+                          handleVideoDelete(video);
                         }}
                       >
                         <FaTrash /> Delete
@@ -248,17 +287,6 @@ const TutoringPage = () => {
         </main>
       </div>
 
-      {showEditModal && (
-        <VideoEditModal
-          video={selectedVideo}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedVideo(null);
-          }}
-          onSave={handleSaveVideo}
-        />
-      )}
-
       {showReviewDialog && selectedVideo && (
         <LecturerReviewDialog
           video={selectedVideo}
@@ -269,6 +297,34 @@ const TutoringPage = () => {
           onRequestReview={handleRequestReview}
         />
       )}
+
+      <ConfirmationDialog
+        isOpen={showPublishConfirm}
+        onClose={() => {
+          setShowPublishConfirm(false);
+          setSelectedVideo(null);
+        }}
+        onConfirm={handleConfirmPublish}
+        title={selectedVideo?.status === 'published' ? 'Unpublish Video' : 'Publish Video'}
+        message={selectedVideo?.status === 'published' 
+          ? 'Are you sure you want to unpublish this video? It will no longer be visible to students.'
+          : 'Are you sure you want to publish this video? It will be visible to all students.'}
+        confirmText={selectedVideo?.status === 'published' ? 'Unpublish' : 'Publish'}
+        type="warning"
+      />
+
+      <ConfirmationDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setSelectedVideo(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Video"
+        message="Are you sure you want to delete this video? This action cannot be undone."
+        confirmText="Delete"
+        type="danger"
+      />
     </div>
   );
 };
