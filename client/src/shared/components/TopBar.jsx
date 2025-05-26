@@ -50,6 +50,9 @@ const TopBar = ({ currentTime }) => {
   };
 
   const formatTime = (date) => {
+    if (!(date instanceof Date)) {
+      return '';
+    }
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 

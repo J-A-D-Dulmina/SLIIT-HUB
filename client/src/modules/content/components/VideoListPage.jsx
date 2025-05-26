@@ -113,34 +113,29 @@ const VideoListPage = () => {
                   <button className="back-button" onClick={handleBackClick}>
                     <FaChevronLeft /> Back to Modules
                   </button>
-                  <h1>Module {moduleId} - Video Lectures</h1>
+                  <h1>Module {moduleId} - Videos</h1>
                 </div>
 
                 <div className="video-grid">
-                  {videos.map(video => (
-                    <div
-                      key={video.id}
-                      className="video-card"
-                      onClick={() => handleVideoClick(video.id)}
-                    >
+                  {videos.map((video) => (
+                    <div key={video.id} className="video-card" onClick={() => handleVideoClick(video.id)}>
                       <div className="video-thumbnail">
                         <img src={video.thumbnail} alt={video.title} />
                         <div className="play-overlay">
                           <FaPlay />
                         </div>
-                        <div className="duration">
+                        <div className="video-duration">
                           <FaClock /> {video.duration}
                         </div>
                       </div>
                       <div className="video-info">
                         <h3>{video.title}</h3>
-                        <p>{video.description}</p>
                         <div className="video-meta">
                           <span className="publisher">
                             <FaUser /> {video.publisher}
                           </span>
                           <span className="upload-time">
-                            <FaClock /> {video.uploadTime}
+                            <FaCalendarAlt /> {video.uploadTime}
                           </span>
                         </div>
                         <div className="video-features">
@@ -156,7 +151,7 @@ const VideoListPage = () => {
                           )}
                           {video.hasAITimestamps && (
                             <span className="feature ai-timestamps">
-                              <FaTimestamp /> AI Timestamps
+                              <FaClock /> AI Timestamps
                             </span>
                           )}
                         </div>
