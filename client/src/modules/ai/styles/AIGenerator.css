@@ -1,0 +1,89 @@
+.ai-generator {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ai-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary-color-light);
+  color: var(--primary-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.ai-btn:hover:not(:disabled) {
+  background: var(--primary-color);
+  color: white;
+}
+
+.ai-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-btn.remove {
+  background: var(--error-color-light);
+  color: var(--error-color);
+}
+
+.ai-btn.remove:hover {
+  background: var(--error-color);
+  color: white;
+}
+
+.error-message {
+  color: var(--error-color);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* AI Features Display */
+.ai-features {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.feature.ai-summary {
+  background: var(--purple-light);
+  color: var(--purple);
+}
+
+.feature.ai-timestamps {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.feature.ai-description {
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .ai-generator {
+    width: 100%;
+  }
+
+  .ai-btn {
+    width: 100%;
+    justify-content: center;
+  }
+} 

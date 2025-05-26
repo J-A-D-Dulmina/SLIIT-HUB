@@ -74,7 +74,7 @@ const SideMenu = ({ collapsed }) => {
           <li className={pathname === '/tutoring' ? 'active' : ''}>
             <Link to="/tutoring">
               <FaUsers className="icon" />
-              {!collapsed && <span>Tutoring</span>}
+              {!collapsed && <span>My Tutoring</span>}
             </Link>
           </li>
           <li className={pathname === '/ai-tools' ? 'active' : ''}>

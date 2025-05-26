@@ -8,6 +8,7 @@ import ProfilePage from './modules/user/components/ProfilePage.jsx';
 import ModuleListPage from './modules/content/components/ModuleListPage.jsx';
 import VideoListPage from './modules/content/components/VideoListPage.jsx';
 import VideoDetailsPage from './modules/content/components/VideoDetailsPage.jsx';
+import TutoringPage from './modules/tutoring/components/TutoringPage.jsx';
 
 const AppRoutes = () => {
   return (
@@ -21,6 +22,7 @@ const AppRoutes = () => {
       <Route path="/modules/:degreeId/:yearId" element={<ModuleListPage />} />
       <Route path="/videos/:moduleId" element={<VideoListPage />} />
       <Route path="/video/:moduleId/:videoId" element={<VideoDetailsPage />} />
+      <Route path="/tutoring" element={<TutoringPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
