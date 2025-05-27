@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../../styles/ModuleListPage.css';
+import '../../../styles/LandingPage.css';
 import { 
   FaBook, 
   FaChevronRight, 
@@ -12,11 +13,14 @@ import {
   FaMobileAlt,
   FaCloud,
   FaChevronDown,
-  FaChevronUp
+  FaChevronUp,
+  FaPlay,
+  FaLink
 } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import UpcomingMeetings from '../../../shared/components/UpcomingMeetings';
+import moment from 'moment';
 
 const DEGREES = [
   { 
@@ -111,6 +115,34 @@ const MODULES = {
   }
 };
 
+// Add the same meeting data structure as LandingPage
+const MY_SCHEDULED_MEETINGS = [
+  {
+    id: 1,
+    topic: 'Group Project Discussion',
+    start: new Date(new Date().setDate(new Date().getDate() + 1)), // Tomorrow
+    link: 'https://meet.sliit-hub.com/meeting/1',
+  }
+];
+
+// Add the same module details helper
+const getModuleDetails = (meetingId) => {
+  const moduleDetails = {
+    1: { 
+      year: 'Year 2', 
+      semester: 'Semester 2', 
+      module: 'IT2020',
+      coordinator: 'Dr. Jane Wilson'
+    }
+  };
+  return moduleDetails[meetingId] || { 
+    year: 'N/A', 
+    semester: 'N/A', 
+    module: 'N/A',
+    coordinator: 'N/A'
+  };
+};
+
 const ModuleListPage = () => {
   const navigate = useNavigate();
   const [expandedDegrees, setExpandedDegrees] = useState({});
@@ -119,38 +151,79 @@ const ModuleListPage = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [events, setEvents] = useState([]);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [meetingToStart, setMeetingToStart] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
     
-    // Simulate fetching events from API
-    const dummyEvents = [
+    // Add the same events setup as LandingPage
+    const calendarEvents = MY_SCHEDULED_MEETINGS.map(m => ({
+      id: m.id,
+      title: m.topic,
+      start: m.start,
+      end: new Date(m.start.getTime() + 60 * 60000),
+      allDay: false,
+      resource: { isScheduledMeeting: true },
+    }));
+
+    const upcomingMeetings = [
       {
-        id: 1,
-        title: 'Research Methodology Lecture',
-        start: new Date(2025, 4, 25, 10, 0),
-        end: new Date(2025, 4, 25, 12, 0),
+        id: 101,
+        title: 'Research Discussion',
+        start: new Date(new Date().setDate(29)),
+        end: new Date(new Date().setDate(29) + 60 * 60000),
+        allDay: false,
+        resource: { isUpcomingMeeting: true },
       },
       {
-        id: 2,
-        title: 'Group Project Meeting',
-        start: new Date(2025, 4, 26, 14, 0),
-        end: new Date(2025, 4, 26, 16, 0),
-      },
-      {
-        id: 3,
-        title: 'AI Tutorial Session',
-        start: new Date(2025, 4, 27, 9, 0),
-        end: new Date(2025, 4, 27, 11, 0),
+        id: 102,
+        title: 'Group Study Session',
+        start: new Date(new Date().setDate(29) + 3.5 * 60 * 60000),
+        end: new Date(new Date().setDate(29) + 5 * 60 * 60000),
+        allDay: false,
+        resource: { isUpcomingMeeting: true },
       }
     ];
-    
-    setEvents(dummyEvents);
+
+    setEvents([...calendarEvents, ...upcomingMeetings]);
     
     return () => clearInterval(timer);
   }, []);
+
+  // Add the same meeting helper functions as LandingPage
+  const canStartMeeting = (meeting) => {
+    const now = new Date();
+    const start = new Date(meeting.start);
+    const diff = (start - now) / 60000;
+    return diff <= 15 && diff >= -120;
+  };
+
+  const formatMeetingTime = (date) => {
+    return moment(date).format('MMM D, YYYY [at] HH:mm');
+  };
+
+  const handleStartMeeting = (meeting) => {
+    setMeetingToStart(meeting);
+    setShowConfirm(true);
+  };
+
+  const confirmStartMeeting = () => {
+    setShowConfirm(false);
+    alert(`Meeting started: ${meetingToStart.topic}`);
+    setMeetingToStart(null);
+  };
+
+  const cancelStartMeeting = () => {
+    setShowConfirm(false);
+    setMeetingToStart(null);
+  };
+
+  // Get only the next scheduled meeting
+  const nextScheduledMeeting = MY_SCHEDULED_MEETINGS
+    .sort((a, b) => new Date(a.start) - new Date(b.start))[0];
 
   const toggleDegree = (degreeId) => {
     setExpandedDegrees(prev => ({
@@ -284,17 +357,69 @@ const ModuleListPage = () => {
               </div>
             </div>
           </div>
+          
           <div className="sidebar-section">
             <UpcomingMeetings events={events} />
-            <div className="quick-actions">
-              <h3>Quick Actions</h3>
-              <button className="action-btn">Start a Meeting</button>
-              <button className="action-btn">Schedule a Meeting</button>
-              <button className="action-btn">Join Meeting</button>
-              <button className="action-btn">Upload Content</button>
-              <button className="action-btn">Find Tutor</button>
-              <button className="action-btn">View Resources</button>
+            <div className="my-scheduled-meetings">
+              <h3>My Scheduled Meeting</h3>
+              {!nextScheduledMeeting ? (
+                <>
+                  <div className="no-meetings">No scheduled meetings</div>
+                  <button className="action-btn" onClick={() => navigate('/my-meetings')}>Schedule Meeting</button>
+                </>
+              ) : (
+                <>
+                  <div className="meeting-list">
+                    <div className="meeting-item">
+                      <div className="meeting-header">
+                        <div className="meeting-details">
+                          <h4>{nextScheduledMeeting.topic}</h4>
+                          <div className="meeting-meta">
+                            <span>{getModuleDetails(nextScheduledMeeting.id).year}</span>
+                            <span>{getModuleDetails(nextScheduledMeeting.id).semester}</span>
+                            <span>{getModuleDetails(nextScheduledMeeting.id).module}</span>
+                          </div>
+                          <div className="meeting-coordinator">
+                            Coordinator: {getModuleDetails(nextScheduledMeeting.id).coordinator}
+                          </div>
+                          <div className="meeting-time">
+                            {formatMeetingTime(nextScheduledMeeting.start)}
+                          </div>
+                        </div>
+                        <button
+                          className="start-meeting-btn"
+                          disabled={!canStartMeeting(nextScheduledMeeting)}
+                          onClick={() => handleStartMeeting(nextScheduledMeeting)}
+                        >
+                          <FaPlay /> Start
+                        </button>
+                      </div>
+                      <div className="meeting-link">
+                        <FaLink style={{ marginRight: 4 }} />
+                        <a href={nextScheduledMeeting.link} target="_blank" rel="noopener noreferrer">
+                          {nextScheduledMeeting.link}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                  <button className="view-all-meetings-btn" onClick={() => navigate('/my-meetings')}>
+                    View All My Scheduled Meetings
+                  </button>
+                </>
+              )}
             </div>
+            {showConfirm && meetingToStart && (
+              <div className="meeting-confirm-overlay">
+                <div className="meeting-confirm-dialog">
+                  <h4>Start Meeting</h4>
+                  <p>Are you sure you want to start the meeting "{meetingToStart.topic}"?</p>
+                  <div className="meeting-confirm-actions">
+                    <button className="action-btn" onClick={confirmStartMeeting}>Yes, Start</button>
+                    <button className="action-btn" onClick={cancelStartMeeting}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
