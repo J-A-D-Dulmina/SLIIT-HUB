@@ -417,78 +417,93 @@
   }
 }
 
-.video-actions {
+.video-actions-container {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
   margin-top: 1rem;
-  padding: 0.5rem;
+  padding: 0.75rem;
   background: #f8fafc;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
-  flex-wrap: nowrap;
-  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.action-btn {
-  display: flex;
+.video-action-btn {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.625rem 1rem;
   border: none;
   border-radius: 8px;
   color: white;
   font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   flex: 1;
   min-width: 0;
+  white-space: nowrap;
+  text-align: center;
 }
 
-.edit-btn {
-  background: #4f46e5;
+.video-action-btn svg {
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
-.edit-btn:hover {
-  background: #4338ca;
+.edit-video-btn {
+  background-color: #4f46e5 !important;
+  margin: 0;
 }
 
-.publish-btn {
-  background: #10b981;
+.edit-video-btn:hover {
+  background-color: #4338ca !important;
+  transform: translateY(-1px);
 }
 
-.publish-btn:hover {
-  background: #059669;
+.publish-video-btn {
+  background-color: #10b981 !important;
+  margin: 0;
 }
 
+.publish-video-btn:hover {
+  background-color: #059669 !important;
+  transform: translateY(-1px);
+}
+
+.delete-video-btn {
+  background-color: #ef4444 !important;
+  margin: 0;
+}
+
+.delete-video-btn:hover {
+  background-color: #dc2626 !important;
+  transform: translateY(-1px);
+}
+
+/* Remove old styles */
+.video-actions,
+.action-btn,
+.edit-btn,
+.publish-btn,
 .delete-btn {
-  background: #ef4444;
-}
-
-.delete-btn:hover {
-  background: #dc2626;
+  display: none;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .video-actions {
-    gap: 0.25rem;
-    padding: 0.25rem;
+  .video-actions-container {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
   }
 
-  .action-btn {
-    padding: 0.25rem;
-    font-size: 0.75rem;
+  .video-action-btn {
+    width: 100%;
+    padding: 0.75rem;
   }
-}
-
-/* Add hover transform effect */
-.action-btn:hover {
-  transform: translateY(-1px);
-}
-
-/* Add active state */
-.action-btn:active {
-  transform: translateY(0);
 }
 
 .lecturer-recommend-btn {

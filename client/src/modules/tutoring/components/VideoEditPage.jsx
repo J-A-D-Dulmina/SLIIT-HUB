@@ -190,14 +190,14 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                   <div className="summary-actions">
                     <button
                       type="button"
-                      className="action-btn view-btn"
+                      className="summary-action-btn view-summary-btn"
                       onClick={() => setShowFullSummary(true)}
                     >
                       <FaExpand /> Full View
                     </button>
                     <button
                       type="button"
-                      className="action-btn download-btn"
+                      className="summary-action-btn download-summary-btn"
                       onClick={handleDownloadPDF}
                       disabled={!formData.summary}
                     >

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/TutoringPage.css';
-import { FaChevronLeft, FaChevronRight, FaEdit, FaTrash, FaUpload, FaEye, FaEyeSlash, FaRobot, FaClock, FaUserGraduate, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaEdit, FaTrash, FaUpload, FaEye, FaEyeSlash, FaRobot, FaClock, FaUserGraduate, FaCheck, FaTimes, FaGlobe } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import VideoEditPage from './VideoEditPage';
@@ -293,32 +293,31 @@ const TutoringPage = () => {
                         </span>
                       )}
                     </div>
-                    <div className="video-actions">
+                    <div className="video-actions-container">
                       <button 
-                        className="action-btn edit-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditClick(video);
-                        }}
+                        className="video-action-btn edit-video-btn"
+                        onClick={() => handleEditClick(video)}
+                        title="Edit Video"
                       >
                         <FaEdit /> Edit
                       </button>
                       <button 
-                        className="action-btn publish-btn"
+                        className="video-action-btn publish-video-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           handlePublishToggle(video);
                         }}
+                        title="Publish Video"
                       >
-                        {video.status === 'published' ? <FaEyeSlash /> : <FaEye />}
-                        {video.status === 'published' ? 'Unpublish' : 'Publish'}
+                        <FaGlobe /> Publish
                       </button>
                       <button 
-                        className="action-btn delete-btn"
+                        className="video-action-btn delete-video-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleVideoDelete(video);
                         }}
+                        title="Delete Video"
                       >
                         <FaTrash /> Delete
                       </button>
