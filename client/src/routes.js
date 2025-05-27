@@ -14,6 +14,7 @@ import MyMeetingsPage from './modules/meetings/components/MyMeetingsPage.jsx';
 import ResourcesPage from './modules/resources/components/ResourcesPage.jsx';
 import CalendarPage from './modules/calendar/components/CalendarPage.jsx';
 import AIToolPage from './modules/ai/components/AIToolPage.jsx';
+import MeetingPage from './modules/communication/components/MeetingPage.jsx';
 
 const AppRoutes = () => {
   return (
@@ -30,6 +31,7 @@ const AppRoutes = () => {
       <Route path="/tutoring" element={<TutoringPage />} />
       <Route path="/join-meeting" element={<JoinMeetingPage />} />
       <Route path="/my-meetings" element={<MyMeetingsPage />} />
+      <Route path="/meeting/:meetingId" element={<MeetingPage />} />
       <Route path="/resources" element={<ResourcesPage />} />
       <Route path="/calendar" element={<CalendarPage />} />
       <Route path="/ai-tool" element={<AIToolPage />} />
