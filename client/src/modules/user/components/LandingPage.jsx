@@ -71,14 +71,27 @@ const MY_SCHEDULED_MEETINGS = [
     topic: 'Group Project Discussion',
     start: getTomorrowAt(10, 0), // Tomorrow at 10:00
     link: 'https://meet.sliit-hub.com/meeting/1',
-  },
-  {
-    id: 2,
-    topic: 'AI Tutorial',
-    start: getTomorrowAt(14, 0), // Tomorrow at 14:00
-    link: 'https://meet.sliit-hub.com/meeting/2',
-  },
+  }
 ];
+
+// Get module details (this would come from your actual data)
+const getModuleDetails = (meetingId) => {
+  // This is dummy data - replace with actual data from your backend
+  const moduleDetails = {
+    1: { 
+      year: 'Year 2', 
+      semester: 'Semester 2', 
+      module: 'IT2020',
+      coordinator: 'Dr. Jane Wilson'
+    }
+  };
+  return moduleDetails[meetingId] || { 
+    year: 'N/A', 
+    semester: 'N/A', 
+    module: 'N/A',
+    coordinator: 'N/A'
+  };
+};
 
 const LandingPage = () => {
   const [events, setEvents] = useState([]);
@@ -164,8 +177,9 @@ const LandingPage = () => {
     setMeetingToStart(null);
   };
 
-  // Only show the first 2 meetings
-  const scheduledMeetingsToShow = MY_SCHEDULED_MEETINGS.slice(0, 2);
+  // Get only the next scheduled meeting
+  const nextScheduledMeeting = MY_SCHEDULED_MEETINGS
+    .sort((a, b) => new Date(a.start) - new Date(b.start))[0];
 
   return (
     <div className="landing-page">
@@ -242,8 +256,8 @@ const LandingPage = () => {
           <div className="sidebar-section">
             <UpcomingMeetings events={events} />
             <div className="my-scheduled-meetings">
-              <h3>My Scheduled Meetings</h3>
-              {scheduledMeetingsToShow.length === 0 ? (
+              <h3>My Scheduled Meeting</h3>
+              {!nextScheduledMeeting ? (
                 <>
                   <div className="no-meetings">No scheduled meetings</div>
                   <button className="action-btn" onClick={() => navigate('/my-meetings')}>Schedule Meeting</button>
@@ -251,29 +265,41 @@ const LandingPage = () => {
               ) : (
                 <>
                   <div className="meeting-list">
-                    {scheduledMeetingsToShow.map(meeting => (
-                      <div className="meeting-item" key={meeting.id}>
-                        <div className="meeting-header">
-                          <div className="meeting-details">
-                            <h4>{meeting.topic}</h4>
-                            <div className="meeting-time">{formatMeetingTime(meeting.start)}</div>
+                    <div className="meeting-item">
+                      <div className="meeting-header">
+                        <div className="meeting-details">
+                          <h4>{nextScheduledMeeting.topic}</h4>
+                          <div className="meeting-meta">
+                            <span>{getModuleDetails(nextScheduledMeeting.id).year}</span>
+                            <span>{getModuleDetails(nextScheduledMeeting.id).semester}</span>
+                            <span>{getModuleDetails(nextScheduledMeeting.id).module}</span>
                           </div>
-                          <button
-                            className="start-meeting-btn"
-                            disabled={!canStartMeeting(meeting)}
-                            onClick={() => handleStartMeeting(meeting)}
-                          >
-                            <FaPlay /> Start
-                          </button>
+                          <div className="meeting-coordinator">
+                            Coordinator: {getModuleDetails(nextScheduledMeeting.id).coordinator}
+                          </div>
+                          <div className="meeting-time">
+                            {formatMeetingTime(nextScheduledMeeting.start)}
+                          </div>
                         </div>
-                        <div className="meeting-link">
-                          <FaLink style={{ marginRight: 4 }} />
-                          <a href={meeting.link} target="_blank" rel="noopener noreferrer">{meeting.link}</a>
-                        </div>
+                        <button
+                          className="start-meeting-btn"
+                          disabled={!canStartMeeting(nextScheduledMeeting)}
+                          onClick={() => handleStartMeeting(nextScheduledMeeting)}
+                        >
+                          <FaPlay /> Start
+                        </button>
                       </div>
-                    ))}
+                      <div className="meeting-link">
+                        <FaLink style={{ marginRight: 4 }} />
+                        <a href={nextScheduledMeeting.link} target="_blank" rel="noopener noreferrer">
+                          {nextScheduledMeeting.link}
+                        </a>
+                      </div>
+                    </div>
                   </div>
-                  <button className="view-all-meetings-btn" onClick={() => navigate('/my-meetings')}>View All Meetings</button>
+                  <button className="view-all-meetings-btn" onClick={() => navigate('/my-meetings')}>
+                    View All My Scheduled Meetings
+                  </button>
                 </>
               )}
             </div>

@@ -1,78 +1,93 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../../styles/UpcomingMeetings.css';
-import { FaVideo, FaUsers, FaChalkboardTeacher } from 'react-icons/fa';
+import moment from 'moment';
+import { FaLink } from 'react-icons/fa';
 
 const UpcomingMeetings = ({ events }) => {
   const navigate = useNavigate();
-  
-  // Sort events by start time and filter to show only future events
-  const upcomingEvents = events
-    .filter(event => new Date(event.start) > new Date())
-    .sort((a, b) => new Date(a.start) - new Date(b.start))
-    .slice(0, 2); // Show only next 2 events
 
-  const formatEventTime = (date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // Filter only upcoming meetings and get the first one
+  const upcomingMeeting = events
+    .filter(event => event.resource?.isUpcomingMeeting)
+    .sort((a, b) => new Date(a.start) - new Date(b.start))[0];
+
+  // Format meeting time
+  const formatMeetingTime = (date) => {
+    return moment(date).format('MMM D, YYYY [at] HH:mm');
   };
 
-  const formatEventDate = (date) => {
-    const today = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-  };
-
-  const getEventIcon = (title) => {
-    if (title.toLowerCase().includes('lecture')) {
-      return <FaChalkboardTeacher className="event-icon lecture" />;
-    } else if (title.toLowerCase().includes('meeting')) {
-      return <FaUsers className="event-icon meeting" />;
-    } else {
-      return <FaVideo className="event-icon tutorial" />;
-    }
-  };
-
-  const handleViewAll = () => {
-    navigate('/join-meeting');
+  // Get module details (this would come from your actual data)
+  const getModuleDetails = (meetingId) => {
+    // This is dummy data - replace with actual data from your backend
+    const moduleDetails = {
+      101: { 
+        year: 'Year 1', 
+        semester: 'Semester 1', 
+        module: 'IT1010',
+        coordinator: 'Dr. John Smith'
+      },
+      102: { 
+        year: 'Year 2', 
+        semester: 'Semester 2', 
+        module: 'IT2020',
+        coordinator: 'Prof. Sarah Johnson'
+      },
+    };
+    return moduleDetails[meetingId] || { 
+      year: 'N/A', 
+      semester: 'N/A', 
+      module: 'N/A',
+      coordinator: 'N/A'
+    };
   };
 
   return (
-    <div className="upcoming-meetings">
-      <h3>Upcoming Meetings</h3>
-      
-      {upcomingEvents.length > 0 ? (
-        <div className="meeting-list">
-          {upcomingEvents.map(event => (
-            <div key={event.id} className="meeting-item">
-              <div className="meeting-icon">
-                {getEventIcon(event.title)}
-              </div>
-              <div className="meeting-details">
-                <h4>{event.title}</h4>
-                <div className="meeting-time">
-                  <span className="date">{formatEventDate(new Date(event.start))}</span>
-                  <span className="time">{formatEventTime(new Date(event.start))}</span>
-                </div>
-              </div>
-              <button className="join-btn">Join</button>
-            </div>
-          ))}
-        </div>
+    <div className="upcoming-meetings-section">
+      <h3>Upcoming Meeting</h3>
+      {!upcomingMeeting ? (
+        <div className="no-meetings">No upcoming meetings</div>
       ) : (
-        <div className="no-meetings">
-          <p>No upcoming meetings</p>
-        </div>
+        <>
+          <div className="meeting-list">
+            <div className="meeting-item">
+              <div className="meeting-header">
+                <div className="meeting-details">
+                  <h4 className="meeting-title">{upcomingMeeting.title}</h4>
+                  <div className="meeting-meta">
+                    <span>{getModuleDetails(upcomingMeeting.id).year}</span>
+                    <span>{getModuleDetails(upcomingMeeting.id).semester}</span>
+                    <span>{getModuleDetails(upcomingMeeting.id).module}</span>
+                  </div>
+                  <div className="meeting-coordinator">
+                    Coordinator: {getModuleDetails(upcomingMeeting.id).coordinator}
+                  </div>
+                  <div className="meeting-time">
+                    {formatMeetingTime(upcomingMeeting.start)}
+                  </div>
+                </div>
+                <button 
+                  className="join-meeting-btn"
+                  onClick={() => navigate(`/join-meeting/${upcomingMeeting.id}`)}
+                >
+                  Join
+                </button>
+              </div>
+              <div className="meeting-link">
+                <FaLink style={{ marginRight: 4 }} />
+                <a href={`https://meet.sliit-hub.com/meeting/${upcomingMeeting.id}`} target="_blank" rel="noopener noreferrer">
+                  meet.sliit-hub.com/meeting/{upcomingMeeting.id}
+                </a>
+              </div>
+            </div>
+          </div>
+          <button 
+            className="view-all-meetings-btn"
+            onClick={() => navigate('/join-meeting')}
+          >
+            View All Upcoming Meetings
+          </button>
+        </>
       )}
-      
-      <button className="view-all-btn" onClick={handleViewAll}>View All Meetings</button>
     </div>
   );
 };

@@ -58,43 +58,56 @@ const YEARS = [
   { id: 4, name: 'Year 4' }
 ];
 
-// Dummy data for modules
+const SEMESTERS = [
+  { id: 1, name: 'Semester 1' },
+  { id: 2, name: 'Semester 2' }
+];
+
+// Update MODULES structure to include semesters
 const MODULES = {
   bsc: {
-    1: [
-      {
-        id: 'IT1010',
-        name: 'Introduction to Programming',
-        description: 'Fundamental concepts of programming and problem-solving using Python.',
-        credits: 3
-      },
-      {
-        id: 'IT1020',
-        name: 'Database Management Systems',
-        description: 'Introduction to database concepts, SQL, and database design.',
-        credits: 3
-      },
-      {
-        id: 'IT1030',
-        name: 'Web Development',
-        description: 'HTML, CSS, and JavaScript fundamentals for web development.',
-        credits: 3
-      }
-    ],
-    2: [
-      {
-        id: 'IT2010',
-        name: 'Object-Oriented Programming',
-        description: 'Advanced programming concepts using Java.',
-        credits: 3
-      },
-      {
-        id: 'IT2020',
-        name: 'Data Structures and Algorithms',
-        description: 'Implementation and analysis of common data structures and algorithms.',
-        credits: 3
-      }
-    ]
+    1: {
+      1: [ // Year 1, Semester 1
+        {
+          id: 'IT1010',
+          name: 'Introduction to Programming',
+          description: 'Fundamental concepts of programming and problem-solving using Python.',
+          credits: 3
+        },
+        {
+          id: 'IT1020',
+          name: 'Database Management Systems',
+          description: 'Introduction to database concepts, SQL, and database design.',
+          credits: 3
+        }
+      ],
+      2: [ // Year 1, Semester 2
+        {
+          id: 'IT1030',
+          name: 'Web Development',
+          description: 'HTML, CSS, and JavaScript fundamentals for web development.',
+          credits: 3
+        }
+      ]
+    },
+    2: {
+      1: [ // Year 2, Semester 1
+        {
+          id: 'IT2010',
+          name: 'Object-Oriented Programming',
+          description: 'Advanced programming concepts using Java.',
+          credits: 3
+        }
+      ],
+      2: [ // Year 2, Semester 2
+        {
+          id: 'IT2020',
+          name: 'Data Structures and Algorithms',
+          description: 'Implementation and analysis of common data structures and algorithms.',
+          credits: 3
+        }
+      ]
+    }
   }
 };
 
@@ -102,6 +115,7 @@ const ModuleListPage = () => {
   const navigate = useNavigate();
   const [expandedDegrees, setExpandedDegrees] = useState({});
   const [selectedYear, setSelectedYear] = useState({});
+  const [selectedSemester, setSelectedSemester] = useState({});
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [events, setEvents] = useState([]);
@@ -150,14 +164,26 @@ const ModuleListPage = () => {
       ...prev,
       [degreeId]: prev[degreeId] === yearId ? null : yearId
     }));
+    // Clear semester selection when year changes
+    setSelectedSemester(prev => ({
+      ...prev,
+      [degreeId]: null
+    }));
+  };
+
+  const toggleSemester = (degreeId, semesterId) => {
+    setSelectedSemester(prev => ({
+      ...prev,
+      [degreeId]: prev[degreeId] === semesterId ? null : semesterId
+    }));
   };
 
   const handleModuleClick = (moduleId) => {
     navigate(`/videos/${moduleId}`);
   };
 
-  const getModules = (degreeId, yearId) => {
-    return MODULES[degreeId]?.[yearId] || [];
+  const getModules = (degreeId, yearId, semesterId) => {
+    return MODULES[degreeId]?.[yearId]?.[semesterId] || [];
   };
 
   return (
@@ -203,20 +229,35 @@ const ModuleListPage = () => {
                             <div className="degree-content">
                               <div className="year-list">
                                 {YEARS.map(year => (
-                                  <div
-                                    key={year.id}
-                                    className={`year-card ${selectedYear[degree.id] === year.id ? 'selected' : ''}`}
-                                    onClick={() => toggleYear(degree.id, year.id)}
-                                  >
-                                    <h3>{year.name}</h3>
+                                  <div key={year.id}>
+                                    <div
+                                      className={`year-card ${selectedYear[degree.id] === year.id ? 'selected' : ''}`}
+                                      onClick={() => toggleYear(degree.id, year.id)}
+                                    >
+                                      <h3>{year.name}</h3>
+                                    </div>
+                                    
+                                    {selectedYear[degree.id] === year.id && (
+                                      <div className="semester-list">
+                                        {SEMESTERS.map(semester => (
+                                          <div
+                                            key={semester.id}
+                                            className={`semester-card ${selectedSemester[degree.id] === semester.id ? 'selected' : ''}`}
+                                            onClick={() => toggleSemester(degree.id, semester.id)}
+                                          >
+                                            <h4>{semester.name}</h4>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                               </div>
                               
-                              {selectedYear[degree.id] && (
+                              {selectedYear[degree.id] && selectedSemester[degree.id] && (
                                 <div className="module-list">
                                   <div className="module-grid">
-                                    {getModules(degree.id, selectedYear[degree.id]).map(module => (
+                                    {getModules(degree.id, selectedYear[degree.id], selectedSemester[degree.id]).map(module => (
                                       <div
                                         key={module.id}
                                         className="module-card"

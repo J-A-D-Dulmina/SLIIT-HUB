@@ -6,6 +6,10 @@ import TopBar from '../../../shared/components/TopBar';
 import moment from 'moment';
 import '../styles/MyMeetingsPage.css';
 
+const DEGREE_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4'];
+const SEMESTERS = ['Semester 1', 'Semester 2'];
+const MODULES = ['AI', 'Web Development', 'Database Systems', 'Software Engineering', 'Networks', 'Operating Systems'];
+
 const MyMeetingsPage = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -16,6 +20,9 @@ const MyMeetingsPage = () => {
     date: '',
     time: '',
     duration: '60',
+    year: '',
+    semester: '',
+    module: '',
     attendees: '',
     description: ''
   });
@@ -72,6 +79,9 @@ const MyMeetingsPage = () => {
       date: '',
       time: '',
       duration: '60',
+      year: '',
+      semester: '',
+      module: '',
       attendees: '',
       description: ''
     });
@@ -125,10 +135,6 @@ const MyMeetingsPage = () => {
 
         <main className="my-meetings-page">
           <div className="page-header">
-            <button className="back-button" onClick={() => navigate(-1)}>
-              <FaChevronLeft />
-              Back
-            </button>
             <h1>My Meetings</h1>
             <button className="schedule-btn" onClick={() => setShowScheduleForm(true)}>
               <FaPlus /> Schedule New Meeting
@@ -158,6 +164,72 @@ const MyMeetingsPage = () => {
 
                   <div className="form-row">
                     <div className="form-group">
+                      <label htmlFor="year">Degree Year</label>
+                      <select
+                        id="year"
+                        name="year"
+                        value={scheduleFormData.year}
+                        onChange={handleScheduleChange}
+                        required
+                      >
+                        <option value="">Select Year</option>
+                        {DEGREE_YEARS.map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="semester">Semester</label>
+                      <select
+                        id="semester"
+                        name="semester"
+                        value={scheduleFormData.semester}
+                        onChange={handleScheduleChange}
+                        required
+                      >
+                        <option value="">Select Semester</option>
+                        {SEMESTERS.map(semester => (
+                          <option key={semester} value={semester}>{semester}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="module">Module</label>
+                      <select
+                        id="module"
+                        name="module"
+                        value={scheduleFormData.module}
+                        onChange={handleScheduleChange}
+                        required
+                      >
+                        <option value="">Select Module</option>
+                        {MODULES.map(module => (
+                          <option key={module} value={module}>{module}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="duration">Duration (minutes)</label>
+                      <input
+                        type="number"
+                        id="duration"
+                        name="duration"
+                        value={scheduleFormData.duration}
+                        onChange={handleScheduleChange}
+                        required
+                        min="15"
+                        step="15"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
                       <label htmlFor="date">Date</label>
                       <input
                         type="date"
@@ -182,32 +254,16 @@ const MyMeetingsPage = () => {
                     </div>
                   </div>
 
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor="duration">Duration (minutes)</label>
-                      <input
-                        type="number"
-                        id="duration"
-                        name="duration"
-                        value={scheduleFormData.duration}
-                        onChange={handleScheduleChange}
-                        required
-                        min="15"
-                        step="15"
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="attendees">Attendees (comma-separated emails)</label>
-                      <input
-                        type="text"
-                        id="attendees"
-                        name="attendees"
-                        value={scheduleFormData.attendees}
-                        onChange={handleScheduleChange}
-                        placeholder="attendee1@example.com, attendee2@example.com"
-                      />
-                    </div>
+                  <div className="form-group">
+                    <label htmlFor="attendees">Attendees (comma-separated emails)</label>
+                    <input
+                      type="text"
+                      id="attendees"
+                      name="attendees"
+                      value={scheduleFormData.attendees}
+                      onChange={handleScheduleChange}
+                      placeholder="attendee1@example.com, attendee2@example.com"
+                    />
                   </div>
 
                   <div className="form-group">
