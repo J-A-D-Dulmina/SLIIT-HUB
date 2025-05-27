@@ -11,6 +11,7 @@ import VideoDetailsPage from './modules/content/components/VideoDetailsPage.jsx'
 import TutoringPage from './modules/tutoring/components/TutoringPage.jsx';
 import JoinMeetingPage from './modules/meetings/components/JoinMeetingPage.jsx';
 import MyMeetingsPage from './modules/meetings/components/MyMeetingsPage.jsx';
+import ResourcesPage from './modules/resources/components/ResourcesPage.jsx';
 
 const AppRoutes = () => {
   return (
@@ -27,6 +28,7 @@ const AppRoutes = () => {
       <Route path="/tutoring" element={<TutoringPage />} />
       <Route path="/join-meeting" element={<JoinMeetingPage />} />
       <Route path="/my-meetings" element={<MyMeetingsPage />} />
+      <Route path="/resources" element={<ResourcesPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
