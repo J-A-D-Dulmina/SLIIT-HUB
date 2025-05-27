@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../styles/TutoringPage.css';
 import { FaChevronLeft, FaChevronRight, FaEdit, FaTrash, FaUpload, FaEye, FaEyeSlash, FaRobot, FaClock, FaUserGraduate, FaCheck, FaTimes, FaGlobe } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
@@ -57,6 +58,7 @@ const MY_VIDEOS = [
 ];
 
 const TutoringPage = () => {
+  const navigate = useNavigate();
   const [videos, setVideos] = useState(MY_VIDEOS);
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -197,6 +199,12 @@ const TutoringPage = () => {
     setSelectedVideo(null);
   };
 
+  const handleVideoClick = (video) => {
+    if (video.status === 'published') {
+      navigate(`/video/${video.module}/${video.id}`);
+    }
+  };
+
   if (showEditPage) {
     return (
       <VideoEditPage
@@ -243,7 +251,11 @@ const TutoringPage = () => {
 
             <div className="video-list">
               {videos.map(video => (
-                <div key={video.id} className="video-item">
+                <div 
+                  key={video.id} 
+                  className={`video-item ${video.status === 'published' ? 'clickable' : ''}`}
+                  onClick={() => handleVideoClick(video)}
+                >
                   <div className="video-thumbnail">
                     <img 
                       src={`https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`} 
@@ -296,20 +308,23 @@ const TutoringPage = () => {
                     <div className="video-actions-container">
                       <button 
                         className="video-action-btn edit-video-btn"
-                        onClick={() => handleEditClick(video)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClick(video);
+                        }}
                         title="Edit Video"
                       >
                         <FaEdit /> Edit
                       </button>
                       <button 
-                        className="video-action-btn publish-video-btn"
+                        className={`video-action-btn ${video.status === 'published' ? 'unpublish-video-btn' : 'publish-video-btn'}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handlePublishToggle(video);
                         }}
-                        title="Publish Video"
+                        title={video.status === 'published' ? 'Unpublish Video' : 'Publish Video'}
                       >
-                        <FaGlobe /> Publish
+                        <FaGlobe /> {video.status === 'published' ? 'Unpublish' : 'Publish'}
                       </button>
                       <button 
                         className="video-action-btn delete-video-btn"
