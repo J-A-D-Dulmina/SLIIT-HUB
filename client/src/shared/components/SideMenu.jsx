@@ -118,8 +118,8 @@ const SideMenu = ({ collapsed }) => {
               {!collapsed && <span>My Tutoring</span>}
             </Link>
           </li>
-          <li className={pathname === '/ai-tools' ? 'active' : ''}>
-            <Link to="/ai-tools">
+          <li className={pathname === '/ai-tool' ? 'active' : ''}>
+            <Link to="/ai-tool">
               <FaRobot className="icon" />
               {!collapsed && <span>AI Tools</span>}
             </Link>

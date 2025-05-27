@@ -13,6 +13,7 @@ import JoinMeetingPage from './modules/meetings/components/JoinMeetingPage.jsx';
 import MyMeetingsPage from './modules/meetings/components/MyMeetingsPage.jsx';
 import ResourcesPage from './modules/resources/components/ResourcesPage.jsx';
 import CalendarPage from './modules/calendar/components/CalendarPage.jsx';
+import AIToolPage from './modules/ai/components/AIToolPage.jsx';
 
 const AppRoutes = () => {
   return (
@@ -31,6 +32,7 @@ const AppRoutes = () => {
       <Route path="/my-meetings" element={<MyMeetingsPage />} />
       <Route path="/resources" element={<ResourcesPage />} />
       <Route path="/calendar" element={<CalendarPage />} />
+      <Route path="/ai-tool" element={<AIToolPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
