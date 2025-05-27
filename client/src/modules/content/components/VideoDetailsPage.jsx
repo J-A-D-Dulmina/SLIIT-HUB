@@ -21,7 +21,9 @@ import {
   FaPause,
   FaVolumeMute,
   FaVolumeUp,
-  FaEye
+  FaEye,
+  FaReply,
+  FaEllipsisV
 } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
@@ -67,6 +69,23 @@ const VIDEO_DETAILS = {
           content: 'Great explanation! The examples really helped me understand the concepts.',
           isPinned: false,
           timestamp: '2024-03-15 02:15 PM'
+        },
+        {
+          id: 3,
+          user: 'Alex Chen',
+          role: 'Student',
+          content: 'I have a question about the data types section. Could someone explain the difference between lists and tuples in more detail?',
+          isPinned: false,
+          timestamp: '2024-03-15 03:45 PM',
+          replies: [
+            {
+              id: 1,
+              user: 'Emma Wilson',
+              role: 'Student',
+              content: 'Lists are mutable (can be changed) while tuples are immutable (cannot be changed). Lists use square brackets [] and tuples use parentheses (). For example: my_list = [1, 2, 3] can be modified, but my_tuple = (1, 2, 3) cannot.',
+              timestamp: '2024-03-15 04:20 PM'
+            }
+          ]
         }
       ]
     }
@@ -83,6 +102,9 @@ const VideoDetailsPage = () => {
   const [activeTab, setActiveTab] = useState('summary');
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
+  const [newComment, setNewComment] = useState('');
+  const [replyTo, setReplyTo] = useState(null);
+  const [showCommentForm, setShowCommentForm] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -98,6 +120,72 @@ const VideoDetailsPage = () => {
   const handleBackClick = () => {
     navigate(`/videos/${moduleId}`);
   };
+
+  const handleAddComment = (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+
+    const comment = {
+      id: Date.now(),
+      user: 'Current Student', // This would come from your auth system
+      role: 'Student',
+      content: newComment,
+      isPinned: false,
+      timestamp: new Date().toLocaleString(),
+      replies: []
+    };
+
+    setVideo(prev => ({
+      ...prev,
+      comments: [...prev.comments, comment]
+    }));
+    setNewComment('');
+    setShowCommentForm(false);
+  };
+
+  const handleReply = (commentId, replyContent) => {
+    if (!replyContent.trim()) return;
+
+    const reply = {
+      id: Date.now(),
+      user: 'Current Student', // This would come from your auth system
+      role: 'Student',
+      content: replyContent,
+      timestamp: new Date().toLocaleString()
+    };
+
+    setVideo(prev => ({
+      ...prev,
+      comments: prev.comments.map(comment => 
+        comment.id === commentId
+          ? { ...comment, replies: [...(comment.replies || []), reply] }
+          : comment
+      )
+    }));
+    setReplyTo(null);
+  };
+
+  const CommentForm = ({ onSubmit, initialValue = '', placeholder = 'Add a comment...' }) => (
+    <form onSubmit={onSubmit} className="comment-form">
+      <textarea
+        value={initialValue}
+        onChange={(e) => setNewComment(e.target.value)}
+        placeholder={placeholder}
+        rows={3}
+      />
+      <div className="comment-form-actions">
+        <button type="button" className="cancel-btn" onClick={() => {
+          setShowCommentForm(false);
+          setReplyTo(null);
+        }}>
+          Cancel
+        </button>
+        <button type="submit" className="submit-btn">
+          {replyTo ? 'Reply' : 'Comment'}
+        </button>
+      </div>
+    </form>
+  );
 
   if (!video) {
     return <div>Loading...</div>;
@@ -237,7 +325,20 @@ const VideoDetailsPage = () => {
             </div>
           </div>
 
-          <h3>Comments</h3>
+          <div className="comments-header">
+            <h3>Comments</h3>
+            <button 
+              className="add-comment-btn"
+              onClick={() => setShowCommentForm(true)}
+            >
+              <FaComment /> Add Comment
+            </button>
+          </div>
+
+          {showCommentForm && !replyTo && (
+            <CommentForm onSubmit={handleAddComment} />
+          )}
+
           <div className="comment-list">
             {video.comments.map((comment, index) => (
               <div key={index} className={`comment ${comment.isPinned ? 'pinned' : ''}`}>
@@ -252,6 +353,40 @@ const VideoDetailsPage = () => {
                   <span className="timestamp">{comment.timestamp}</span>
                 </div>
                 <p className="content">{comment.content}</p>
+                
+                {comment.role !== 'Lecturer' && (
+                  <button 
+                    className="reply-btn"
+                    onClick={() => setReplyTo(comment.id)}
+                  >
+                    <FaReply /> Reply
+                  </button>
+                )}
+
+                {replyTo === comment.id && (
+                  <CommentForm 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleReply(comment.id, newComment);
+                    }}
+                    placeholder="Write a reply..."
+                  />
+                )}
+
+                {comment.replies && comment.replies.length > 0 && (
+                  <div className="replies">
+                    {comment.replies.map((reply, replyIndex) => (
+                      <div key={replyIndex} className="reply">
+                        <div className="reply-header">
+                          <span className="user">{reply.user}</span>
+                          <span className="role">{reply.role}</span>
+                          <span className="timestamp">{reply.timestamp}</span>
+                        </div>
+                        <p className="content">{reply.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
