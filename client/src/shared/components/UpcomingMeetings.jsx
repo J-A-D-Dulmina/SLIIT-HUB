@@ -1,13 +1,16 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../../styles/UpcomingMeetings.css';
 import { FaVideo, FaUsers, FaChalkboardTeacher } from 'react-icons/fa';
 
 const UpcomingMeetings = ({ events }) => {
+  const navigate = useNavigate();
+  
   // Sort events by start time and filter to show only future events
   const upcomingEvents = events
     .filter(event => new Date(event.start) > new Date())
     .sort((a, b) => new Date(a.start) - new Date(b.start))
-    .slice(0, 3); // Show only next 3 events
+    .slice(0, 2); // Show only next 2 events
 
   const formatEventTime = (date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -35,6 +38,10 @@ const UpcomingMeetings = ({ events }) => {
     } else {
       return <FaVideo className="event-icon tutorial" />;
     }
+  };
+
+  const handleViewAll = () => {
+    navigate('/join-meeting');
   };
 
   return (
@@ -65,7 +72,7 @@ const UpcomingMeetings = ({ events }) => {
         </div>
       )}
       
-      <button className="view-all-btn">View All Meetings</button>
+      <button className="view-all-btn" onClick={handleViewAll}>View All Meetings</button>
     </div>
   );
 };

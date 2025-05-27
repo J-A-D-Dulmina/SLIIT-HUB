@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaChevronLeft, FaChevronRight, FaRobot, FaClock, FaEdit, FaPlay, FaPause } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaRobot, FaClock, FaEdit, FaExpand, FaDownload } from 'react-icons/fa';
 import ReactPlayer from 'react-player';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
@@ -8,11 +8,12 @@ import '../styles/VideoEditPage.css';
 const VideoEditPage = ({ video, onClose, onSave }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [playing, setPlaying] = useState(false);
   const [formData, setFormData] = useState({
     title: video?.title || '',
     description: video?.description || '',
     module: video?.module || '',
+    degree: video?.degree || '',
+    year: video?.year || '',
     status: video?.status || 'unpublished',
     summary: video?.summary || '',
     timestamps: video?.timestamps || []
@@ -22,6 +23,12 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     summary: false,
     timestamps: false
   });
+  const [generationProgress, setGenerationProgress] = useState({
+    description: '',
+    summary: '',
+    timestamps: ''
+  });
+  const [showFullSummary, setShowFullSummary] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -69,9 +76,17 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
 
   const generateAIContent = async (type) => {
     setIsGenerating(prev => ({ ...prev, [type]: true }));
+    setGenerationProgress(prev => ({ ...prev, [type]: 'Analyzing video content...' }));
+    
     try {
-      // Simulate AI generation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Simulate AI generation steps
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setGenerationProgress(prev => ({ ...prev, [type]: 'Processing video content...' }));
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setGenerationProgress(prev => ({ ...prev, [type]: 'Generating content...' }));
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       switch (type) {
         case 'description':
@@ -101,7 +116,29 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
       console.error(`Error generating ${type}:`, error);
     } finally {
       setIsGenerating(prev => ({ ...prev, [type]: false }));
+      setGenerationProgress(prev => ({ ...prev, [type]: '' }));
     }
+  };
+
+  const handleDownloadPDF = () => {
+    // Create a PDF document
+    const doc = {
+      title: video?.title || 'Video Summary',
+      content: formData.summary,
+      module: formData.module,
+      date: new Date().toLocaleDateString()
+    };
+
+    // Convert to PDF and download
+    const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${video?.title || 'video'}-summary.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   };
 
   return (
@@ -133,27 +170,41 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                 url={video?.url || ''}
                 width="100%"
                 height="100%"
-                playing={playing}
                 controls={true}
-                onPlay={() => setPlaying(true)}
-                onPause={() => setPlaying(false)}
+                config={{
+                  file: {
+                    attributes: {
+                      controlsList: 'nodownload'
+                    }
+                  }
+                }}
               />
-            </div>
-            <div className="video-controls">
-              <button 
-                className="control-btn"
-                onClick={() => setPlaying(!playing)}
-              >
-                {playing ? <FaPause /> : <FaPlay />}
-                {playing ? 'Pause' : 'Play'}
-              </button>
             </div>
           </div>
 
           <div className="summary-section">
             <div className="form-group">
               <div className="form-group-header">
-                <label htmlFor="summary">Summary</label>
+                <div className="summary-header-left">
+                  <label htmlFor="summary">Summary</label>
+                  <div className="summary-actions">
+                    <button
+                      type="button"
+                      className="action-btn view-btn"
+                      onClick={() => setShowFullSummary(true)}
+                    >
+                      <FaExpand /> Full View
+                    </button>
+                    <button
+                      type="button"
+                      className="action-btn download-btn"
+                      onClick={handleDownloadPDF}
+                      disabled={!formData.summary}
+                    >
+                      <FaDownload /> PDF
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="button"
                   className="ai-generate-btn summary"
@@ -163,6 +214,12 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                   <FaRobot /> {isGenerating.summary ? 'Generating...' : 'Generate with AI'}
                 </button>
               </div>
+              {isGenerating.summary && (
+                <div className="generation-progress">
+                  <div className="progress-spinner"></div>
+                  <span>{generationProgress.summary}</span>
+                </div>
+              )}
               <textarea
                 id="summary"
                 name="summary"
@@ -173,6 +230,34 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
               />
             </div>
           </div>
+
+          {showFullSummary && (
+            <div className="full-summary-modal">
+              <div className="full-summary-content">
+                <div className="full-summary-header">
+                  <h2>Summary - {video?.title || 'New Video'}</h2>
+                  <button 
+                    className="close-btn"
+                    onClick={() => setShowFullSummary(false)}
+                  >
+                    <FaChevronLeft /> Back
+                  </button>
+                </div>
+                <div className="full-summary-body">
+                  {formData.summary || 'No summary available'}
+                </div>
+                <div className="full-summary-footer">
+                  <button
+                    className="download-btn"
+                    onClick={handleDownloadPDF}
+                    disabled={!formData.summary}
+                  >
+                    <FaDownload /> Download PDF
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="edit-content">
             <form onSubmit={handleSubmit}>
@@ -214,18 +299,49 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
 
               <div className="form-group">
                 <label htmlFor="module">Module</label>
-                <select
-                  id="module"
-                  name="module"
-                  value={formData.module}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Select Module</option>
-                  <option value="IT1010">IT1010 - Introduction to Programming</option>
-                  <option value="IT1020">IT1020 - Data Structures</option>
-                  <option value="IT1030">IT1030 - Database Systems</option>
-                </select>
+                <div className="module-selection">
+                  <select
+                    id="degree"
+                    name="degree"
+                    value={formData.degree}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select Degree</option>
+                    <option value="BSc">BSc in Information Technology</option>
+                    <option value="BEng">BEng in Software Engineering</option>
+                    <option value="BScCS">BSc in Computer Science</option>
+                  </select>
+
+                  <select
+                    id="year"
+                    name="year"
+                    value={formData.year}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select Year</option>
+                    <option value="1">Year 1</option>
+                    <option value="2">Year 2</option>
+                    <option value="3">Year 3</option>
+                    <option value="4">Year 4</option>
+                  </select>
+
+                  <select
+                    id="module"
+                    name="module"
+                    value={formData.module}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select Module</option>
+                    <option value="IT1010">IT1010 - Introduction to Programming</option>
+                    <option value="IT1020">IT1020 - Data Structures</option>
+                    <option value="IT1030">IT1030 - Database Systems</option>
+                    <option value="IT1040">IT1040 - Web Development</option>
+                    <option value="IT1050">IT1050 - Software Engineering</option>
+                  </select>
+                </div>
               </div>
 
               <div className="form-group">

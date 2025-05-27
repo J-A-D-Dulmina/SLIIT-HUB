@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import '../../styles/TopBar.css';
-import { FaBell, FaSearch, FaEnvelope } from 'react-icons/fa';
+import { FaBell, FaSearch, FaEnvelope, FaSave } from 'react-icons/fa';
 
 const TopBar = ({ currentTime }) => {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSavedVideos, setShowSavedVideos] = useState(false);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -37,6 +38,12 @@ const TopBar = ({ currentTime }) => {
 
   const toggleNotifications = () => {
     setShowNotifications(!showNotifications);
+    setShowSavedVideos(false);
+  };
+
+  const toggleSavedVideos = () => {
+    setShowSavedVideos(!showSavedVideos);
+    setShowNotifications(false);
   };
 
   const markAsRead = (id) => {
@@ -57,6 +64,11 @@ const TopBar = ({ currentTime }) => {
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const [savedVideos, setSavedVideos] = useState([
+    { id: 1, title: 'Saved Video 1', time: '2 days ago' },
+    { id: 2, title: 'Saved Video 2', time: '1 week ago' },
+  ]);
 
   return (
     <div className="top-bar">
@@ -114,9 +126,34 @@ const TopBar = ({ currentTime }) => {
             </div>
           )}
         </div>
-        
-        <div className="messages-btn">
-          <FaEnvelope />
+
+        <div className="saved-videos-container">
+          <button className="saved-videos-btn" onClick={toggleSavedVideos}>
+            <FaSave />
+          </button>
+
+          {showSavedVideos && (
+            <div className="saved-videos-dropdown">
+              <div className="saved-videos-header">
+                <h3>Saved Videos</h3>
+              </div>
+              
+              <div className="saved-videos-list">
+                {savedVideos.length > 0 ? (
+                  savedVideos.map(video => (
+                    <div key={video.id} className="saved-video-item">
+                      <div className="saved-video-content">
+                        <p>{video.title}</p>
+                        <span className="saved-video-time">{video.time}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-saved-videos">No saved videos</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

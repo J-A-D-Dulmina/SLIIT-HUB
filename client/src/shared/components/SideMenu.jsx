@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import '../../styles/SideMenu.css';
 import logo from '../../assets/SLITT HUB logo.png';
@@ -12,12 +12,25 @@ import {
   FaCog, 
   FaSignOutAlt,
   FaUser,
-  FaGraduationCap
+  FaGraduationCap,
+  FaChevronDown,
+  FaChevronRight,
+  FaSignInAlt,
+  FaList
 } from 'react-icons/fa';
 
 const SideMenu = ({ collapsed }) => {
   const location = useLocation();
   const { pathname } = location;
+  const [showMeetingSubmenu, setShowMeetingSubmenu] = useState(true);
+
+  const toggleMeetingSubmenu = () => {
+    setShowMeetingSubmenu(!showMeetingSubmenu);
+  };
+
+  const isJoinMeetingActive = pathname === '/join-meeting';
+  const isMyMeetingsActive = pathname === '/my-meetings';
+  const isMeetingSectionActive = isJoinMeetingActive || isMyMeetingsActive;
 
   return (
     <div className={`side-menu ${collapsed ? 'collapsed' : ''}`}>
@@ -59,11 +72,39 @@ const SideMenu = ({ collapsed }) => {
               {!collapsed && <span>Units</span>}
             </Link>
           </li>
-          <li className={pathname === '/meetings' ? 'active' : ''}>
-            <Link to="/meetings">
-              <FaVideo className="icon" />
-              {!collapsed && <span>Meetings</span>}
-            </Link>
+          <li className={`menu-item-with-submenu ${isMeetingSectionActive ? 'active' : ''}`}>
+            <div 
+              className="menu-item-header" 
+              onClick={toggleMeetingSubmenu}
+            >
+              <div className="menu-item-content">
+                <FaVideo className="icon" />
+                {!collapsed && <span>Meetings</span>}
+              </div>
+              {!collapsed && (
+                <span className={`submenu-arrow ${showMeetingSubmenu ? 'open' : ''}`}>
+                  {showMeetingSubmenu ? <FaChevronDown /> : <FaChevronRight />}
+                </span>
+              )}
+            </div>
+            {!collapsed && showMeetingSubmenu && (
+              <div className="submenu">
+                <ul>
+                  <li className={isJoinMeetingActive ? 'active' : ''}>
+                    <Link to="/join-meeting">
+                      <FaSignInAlt className="icon" />
+                      <span>Join Meeting</span>
+                    </Link>
+                  </li>
+                  <li className={isMyMeetingsActive ? 'active' : ''}>
+                    <Link to="/my-meetings">
+                      <FaList className="icon" />
+                      <span>My Meetings</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            )}
           </li>
           <li className={pathname === '/resources' ? 'active' : ''}>
             <Link to="/resources">

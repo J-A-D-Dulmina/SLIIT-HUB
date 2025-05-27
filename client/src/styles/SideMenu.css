@@ -195,3 +195,151 @@
 .side-menu.collapsed .app-name {
   display: none;
 }
+
+.menu-item-with-submenu {
+  position: relative;
+}
+
+.menu-item-with-submenu .menu-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  border-radius: 6px;
+  margin: 8px 0;
+  color: #2c3e50;
+}
+
+.menu-item-with-submenu .menu-item-header:hover {
+  background: #3498db;
+  color: #fff;
+}
+
+.menu-item-with-submenu .menu-item-header:hover .icon,
+.menu-item-with-submenu .menu-item-header:hover .submenu-arrow {
+  color: #fff;
+}
+
+/* Parent menu item active state */
+.menu-item-with-submenu.active > .menu-item-header {
+  background: #3498db;
+  color: #fff;
+}
+
+.menu-item-with-submenu.active > .menu-item-header .icon,
+.menu-item-with-submenu.active > .menu-item-header .submenu-arrow {
+  color: #fff;
+}
+
+.menu-item-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-item-content .icon {
+  font-size: 1.2rem;
+  color: inherit;
+}
+
+.submenu-arrow {
+  display: flex;
+  align-items: center;
+  transition: transform 0.3s ease;
+  color: inherit;
+}
+
+.submenu-arrow.open {
+  transform: rotate(90deg);
+}
+
+/* Submenu styles */
+.submenu {
+  background: #f8fafc;
+  border-radius: 6px;
+  margin: 4px 0;
+  overflow: hidden;
+}
+
+.submenu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.submenu li {
+  padding: 0;
+  margin: 0;
+}
+
+.submenu li a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px 10px 52px;
+  color: #2c3e50;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.submenu li a:hover {
+  background: #3498db;
+  color: #fff;
+}
+
+.submenu li a:hover .icon {
+  color: #fff;
+}
+
+/* Only highlight the active submenu item */
+.submenu li.active a {
+  background: #3498db;
+  color: #fff;
+}
+
+.submenu li.active a .icon {
+  color: #fff;
+}
+
+/* Remove active state from non-selected submenu items */
+.submenu li:not(.active) a {
+  background: transparent;
+  color: #2c3e50;
+}
+
+.submenu li:not(.active) a .icon {
+  color: #2c3e50;
+}
+
+.submenu li a .icon {
+  font-size: 1.2rem;
+}
+
+/* Collapsed state styles */
+.side-menu.collapsed .menu-item-with-submenu .menu-item-header {
+  padding: 10px;
+  justify-content: center;
+}
+
+.side-menu.collapsed .submenu {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  width: 200px;
+  background: #f8fafc;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  border: 1px solid #e5e7eb;
+}
+
+.side-menu.collapsed .menu-item-with-submenu:hover .submenu {
+  display: block;
+}
+
+.side-menu.collapsed .submenu li a {
+  padding: 10px 20px;
+}

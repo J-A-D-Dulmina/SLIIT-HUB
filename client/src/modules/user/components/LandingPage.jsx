@@ -6,7 +6,8 @@ import '../../../styles/LandingPage.css';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import UpcomingMeetings from '../../../shared/components/UpcomingMeetings';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPlay, FaLink } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 const localizer = momentLocalizer(moment);
 
@@ -41,48 +42,89 @@ const ANNOUNCEMENTS = [
   }
 ];
 
+// Helper to get tomorrow's date at a specific hour
+const getTomorrowAt = (hour, minute = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(hour, minute, 0, 0);
+  return d;
+};
+
+// Helper to get a specific date at a specific hour
+const getDateAt = (date, hour, minute = 0) => {
+  const d = new Date(date);
+  d.setHours(hour, minute, 0, 0);
+  return d;
+};
+
+// Get 29th of current month
+const get29thDate = () => {
+  const date = new Date();
+  date.setDate(29);
+  return date;
+};
+
+// Dummy scheduled meetings data (all for tomorrow)
+const MY_SCHEDULED_MEETINGS = [
+  {
+    id: 1,
+    topic: 'Group Project Discussion',
+    start: getTomorrowAt(10, 0), // Tomorrow at 10:00
+    link: 'https://meet.sliit-hub.com/meeting/1',
+  },
+  {
+    id: 2,
+    topic: 'AI Tutorial',
+    start: getTomorrowAt(14, 0), // Tomorrow at 14:00
+    link: 'https://meet.sliit-hub.com/meeting/2',
+  },
+];
+
 const LandingPage = () => {
   const [events, setEvents] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [meetingToStart, setMeetingToStart] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Simulate fetching events from API
-    const dummyEvents = [
+    // Add scheduled meetings (your own meetings) as blue events
+    const calendarEvents = MY_SCHEDULED_MEETINGS.map(m => ({
+      id: m.id,
+      title: m.topic,
+      start: m.start,
+      end: new Date(m.start.getTime() + 60 * 60000), // 1 hour duration
+      allDay: false,
+      resource: { isScheduledMeeting: true },
+    }));
+
+    // Add only two upcoming meetings on the 29th
+    const upcomingMeetings = [
       {
-        id: 1,
-        title: 'Research Methodology Lecture',
-        start: new Date(2025, 4, 25, 10, 0),
-        end: new Date(2025, 4, 25, 12, 0),
+        id: 101,
+        title: 'Research Discussion',
+        start: getDateAt(get29thDate(), 10, 30), // 29th at 10:30
+        end: new Date(getDateAt(get29thDate(), 10, 30).getTime() + 60 * 60000),
+        allDay: false,
+        resource: { isUpcomingMeeting: true },
       },
       {
-        id: 2,
-        title: 'Group Project Meeting',
-        start: new Date(2025, 4, 26, 14, 0),
-        end: new Date(2025, 4, 26, 16, 0),
-      },
-      {
-        id: 3,
-        title: 'AI Tutorial Session',
-        start: new Date(2025, 4, 27, 9, 0),
-        end: new Date(2025, 4, 27, 11, 0),
-      },
-      {
-        id: 4,
-        title: 'Database Assignment Deadline',
-        start: new Date(2025, 4, 28, 23, 59),
-        end: new Date(2025, 4, 28, 23, 59),
-      },
+        id: 102,
+        title: 'Group Study Session',
+        start: getDateAt(get29thDate(), 14, 0), // 29th at 14:00
+        end: new Date(getDateAt(get29thDate(), 14, 0).getTime() + 90 * 60000),
+        allDay: false,
+        resource: { isUpcomingMeeting: true },
+      }
     ];
-    
-    setEvents(dummyEvents);
-    
+
+    setEvents([...calendarEvents, ...upcomingMeetings]);
     // Update current time every minute
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
-    
     return () => clearInterval(timer);
   }, []);
 
@@ -91,6 +133,39 @@ const LandingPage = () => {
   };
 
   const displayedAnnouncements = showAllAnnouncements ? ANNOUNCEMENTS : ANNOUNCEMENTS.slice(0, 5);
+
+  // Helper to check if meeting can be started (within 15 min before start)
+  const canStartMeeting = (meeting) => {
+    const now = new Date();
+    const start = new Date(meeting.start);
+    const diff = (start - now) / 60000; // minutes
+    return diff <= 15 && diff >= -120; // allow up to 2 hours after start
+  };
+
+  // Format date/time
+  const formatMeetingTime = (date) => {
+    return moment(date).format('MMM D, YYYY [at] HH:mm');
+  };
+
+  // Confirm start meeting
+  const handleStartMeeting = (meeting) => {
+    setMeetingToStart(meeting);
+    setShowConfirm(true);
+  };
+
+  const confirmStartMeeting = () => {
+    setShowConfirm(false);
+    alert(`Meeting started: ${meetingToStart.topic}`);
+    setMeetingToStart(null);
+  };
+
+  const cancelStartMeeting = () => {
+    setShowConfirm(false);
+    setMeetingToStart(null);
+  };
+
+  // Only show the first 2 meetings
+  const scheduledMeetingsToShow = MY_SCHEDULED_MEETINGS.slice(0, 2);
 
   return (
     <div className="landing-page">
@@ -120,6 +195,32 @@ const LandingPage = () => {
                   endAccessor="end"
                   style={{ height: 500 }}
                   onSelectEvent={handleSelectEvent}
+                  eventPropGetter={(event) => {
+                    if (event.resource?.isScheduledMeeting) {
+                      // Your own scheduled meetings in blue
+                      return {
+                        className: 'scheduled-meeting',
+                        style: {
+                          backgroundColor: '#3498db',
+                          color: '#fff',
+                          borderRadius: 6,
+                          border: 'none'
+                        }
+                      };
+                    } else if (event.resource?.isUpcomingMeeting) {
+                      // Others' upcoming meetings in green
+                      return {
+                        className: 'upcoming-meeting',
+                        style: {
+                          backgroundColor: '#2ecc71',
+                          color: '#fff',
+                          borderRadius: 6,
+                          border: 'none'
+                        }
+                      };
+                    }
+                    return {};
+                  }}
                 />
               </div>
               <div className="announcements">
@@ -140,15 +241,54 @@ const LandingPage = () => {
           </div>
           <div className="sidebar-section">
             <UpcomingMeetings events={events} />
-            <div className="quick-actions">
-              <h3>Quick Actions</h3>
-              <button className="action-btn">Start a Meeting</button>
-              <button className="action-btn">Schedule a Meeting</button>
-              <button className="action-btn">Join Meeting</button>
-              <button className="action-btn">Upload Content</button>
-              <button className="action-btn">Find Tutor</button>
-              <button className="action-btn">View Resources</button>
+            <div className="my-scheduled-meetings">
+              <h3>My Scheduled Meetings</h3>
+              {scheduledMeetingsToShow.length === 0 ? (
+                <>
+                  <div className="no-meetings">No scheduled meetings</div>
+                  <button className="action-btn" onClick={() => navigate('/my-meetings')}>Schedule Meeting</button>
+                </>
+              ) : (
+                <>
+                  <div className="meeting-list">
+                    {scheduledMeetingsToShow.map(meeting => (
+                      <div className="meeting-item" key={meeting.id}>
+                        <div className="meeting-header">
+                          <div className="meeting-details">
+                            <h4>{meeting.topic}</h4>
+                            <div className="meeting-time">{formatMeetingTime(meeting.start)}</div>
+                          </div>
+                          <button
+                            className="start-meeting-btn"
+                            disabled={!canStartMeeting(meeting)}
+                            onClick={() => handleStartMeeting(meeting)}
+                          >
+                            <FaPlay /> Start
+                          </button>
+                        </div>
+                        <div className="meeting-link">
+                          <FaLink style={{ marginRight: 4 }} />
+                          <a href={meeting.link} target="_blank" rel="noopener noreferrer">{meeting.link}</a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="view-all-meetings-btn" onClick={() => navigate('/my-meetings')}>View All Meetings</button>
+                </>
+              )}
             </div>
+            {showConfirm && meetingToStart && (
+              <div className="meeting-confirm-overlay">
+                <div className="meeting-confirm-dialog">
+                  <h4>Start Meeting</h4>
+                  <p>Are you sure you want to start the meeting "{meetingToStart.topic}"?</p>
+                  <div className="meeting-confirm-actions">
+                    <button className="action-btn" onClick={confirmStartMeeting}>Yes, Start</button>
+                    <button className="action-btn" onClick={cancelStartMeeting}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

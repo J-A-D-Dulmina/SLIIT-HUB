@@ -61,32 +61,42 @@
   margin-right: 15px;
 }
 
-.notification-btn, .messages-btn {
+.notification-btn,
+.messages-btn,
+.saved-videos-btn {
   background: none;
   border: none;
-  color: #2c3e50;
-  font-size: 18px;
+  font-size: 1.2rem;
+  color: #007bff;
   cursor: pointer;
-  padding: 8px;
-  position: relative;
+  padding: 0.75rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.notification-btn:hover,
+.saved-videos-btn:hover {
+  background-color: #e0f1ff;
+  color: #0056b3;
+}
+
 .notification-badge {
   position: absolute;
-  top: 0;
-  right: 0;
-  background-color: #e74c3c;
+  top: 5px;
+  right: 5px;
+  background-color: #f56565;
   color: white;
-  font-size: 10px;
-  width: 16px;
-  height: 16px;
+  font-size: 0.65rem;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: bold;
 }
 
 .notification-dropdown {
@@ -168,4 +178,98 @@
   text-align: center;
   color: #7f8c8d;
   font-size: 14px;
+}
+
+.top-bar-right > div {
+  position: relative;
+}
+
+.saved-videos-container {
+  position: relative;
+}
+
+.saved-videos-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #555;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.saved-videos-btn:hover {
+  background-color: #eee;
+}
+
+.saved-videos-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 300px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-top: 10px;
+  z-index: 100;
+}
+
+.saved-videos-header {
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.saved-videos-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.saved-videos-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.saved-video-item {
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.saved-video-item:last-child {
+  border-bottom: none;
+}
+
+.saved-video-item:hover {
+  background-color: #f8f8f8;
+}
+
+.saved-video-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.saved-video-time {
+  display: block;
+  font-size: 0.75rem;
+  color: #777;
+  margin-top: 4px;
+}
+
+.no-saved-videos {
+  padding: 1rem;
+  text-align: center;
+  color: #777;
+}
+
+@media (max-width: 768px) {
+  .saved-videos-dropdown {
+    right: 0;
+    left: auto;
+    width: 250px;
+  }
 }

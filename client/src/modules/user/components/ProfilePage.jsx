@@ -3,6 +3,7 @@ import { FaUser, FaEnvelope, FaPhone, FaEdit, FaLock, FaChevronLeft, FaChevronRi
 import '../../../styles/ProfilePage.css';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
+import profileImage from '../../../assets/main_deshan-img.png';
 
 const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -10,12 +11,12 @@ const ProfilePage = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [formData, setFormData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+94 77 123 4567',
+    name: 'deshan dulmina',
+    email: 'deshandlmina@gmail.com',
+    phone: '0713618282',
     department: 'Computer Science',
     role: 'Student',
-    profileImage: 'https://via.placeholder.com/150'
+    profileImage: profileImage
   });
 
   const [passwordData, setPasswordData] = useState({

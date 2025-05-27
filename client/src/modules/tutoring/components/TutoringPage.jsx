@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/TutoringPage.css';
-import { FaChevronLeft, FaChevronRight, FaEdit, FaTrash, FaUpload, FaEye, FaEyeSlash, FaRobot, FaClock, FaUserGraduate, FaCheck } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaEdit, FaTrash, FaUpload, FaEye, FaEyeSlash, FaRobot, FaClock, FaUserGraduate, FaCheck, FaTimes } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import VideoEditPage from './VideoEditPage';
@@ -64,7 +64,16 @@ const TutoringPage = () => {
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState(null);
+  const [uploadFormData, setUploadFormData] = useState({
+    title: '',
+    description: '',
+    module: '',
+    degree: '',
+    year: '',
+    videoFile: null
+  });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -114,6 +123,41 @@ const TutoringPage = () => {
   const handleEditClick = (video) => {
     setSelectedVideo(video);
     setShowEditPage(true);
+  };
+
+  const handleUploadSubmit = (e) => {
+    e.preventDefault();
+    const newVideo = {
+      id: videos.length + 1,
+      ...uploadFormData,
+      date: new Date().toISOString().split('T')[0],
+      status: 'unpublished',
+      reviewStatus: null,
+      reviewLecturer: null,
+      aiFeatures: {
+        summary: false,
+        timestamps: false,
+        lecturerRecommended: false
+      }
+    };
+    setVideos([...videos, newVideo]);
+    setShowUploadDialog(false);
+    setUploadFormData({
+      title: '',
+      description: '',
+      module: '',
+      degree: '',
+      year: '',
+      videoFile: null
+    });
+  };
+
+  const handleUploadChange = (e) => {
+    const { name, value, files } = e.target;
+    setUploadFormData(prev => ({
+      ...prev,
+      [name]: files ? files[0] : value
+    }));
   };
 
   const handleReviewClick = (video) => {
@@ -192,7 +236,7 @@ const TutoringPage = () => {
           <div className="videos-section">
             <div className="section-header">
               <h2>My Videos</h2>
-              <button className="upload-btn" onClick={() => setShowEditPage(true)}>
+              <button className="upload-btn" onClick={() => setShowUploadDialog(true)}>
                 <FaUpload /> Upload Video
               </button>
             </div>
@@ -325,6 +369,111 @@ const TutoringPage = () => {
         confirmText="Delete"
         type="danger"
       />
+
+      {showUploadDialog && (
+        <div className="tutoring-review-dialog">
+          <div className="tutoring-review-content">
+            <div className="tutoring-review-header">
+              <h2>Upload New Video</h2>
+              <button className="tutoring-review-close" onClick={() => setShowUploadDialog(false)}>
+                <FaTimes />
+              </button>
+            </div>
+
+            <form className="tutoring-review-form" onSubmit={handleUploadSubmit}>
+              <div className="tutoring-review-field">
+                <label htmlFor="title">Title</label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={uploadFormData.title}
+                  onChange={handleUploadChange}
+                  required
+                  placeholder="Enter video title"
+                />
+              </div>
+
+              <div className="tutoring-review-field">
+                <label htmlFor="description">Description</label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={uploadFormData.description}
+                  onChange={handleUploadChange}
+                  required
+                  placeholder="Enter video description"
+                />
+              </div>
+
+              <div className="tutoring-review-field">
+                <label>Module Selection</label>
+                <div className="module-selection">
+                  <select
+                    name="degree"
+                    value={uploadFormData.degree}
+                    onChange={handleUploadChange}
+                    required
+                  >
+                    <option value="">Select Degree</option>
+                    <option value="BSc">BSc in Information Technology</option>
+                    <option value="BEng">BEng in Software Engineering</option>
+                    <option value="BScCS">BSc in Computer Science</option>
+                  </select>
+
+                  <select
+                    name="year"
+                    value={uploadFormData.year}
+                    onChange={handleUploadChange}
+                    required
+                  >
+                    <option value="">Select Year</option>
+                    <option value="1">Year 1</option>
+                    <option value="2">Year 2</option>
+                    <option value="3">Year 3</option>
+                    <option value="4">Year 4</option>
+                  </select>
+
+                  <select
+                    name="module"
+                    value={uploadFormData.module}
+                    onChange={handleUploadChange}
+                    required
+                  >
+                    <option value="">Select Module</option>
+                    <option value="IT1010">IT1010 - Introduction to Programming</option>
+                    <option value="IT1020">IT1020 - Data Structures</option>
+                    <option value="IT1030">IT1030 - Database Systems</option>
+                    <option value="IT1040">IT1040 - Web Development</option>
+                    <option value="IT1050">IT1050 - Software Engineering</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="tutoring-review-field">
+                <label htmlFor="videoFile">Video File</label>
+                <input
+                  type="file"
+                  id="videoFile"
+                  name="videoFile"
+                  onChange={handleUploadChange}
+                  accept="video/*"
+                  required
+                />
+              </div>
+
+              <div className="tutoring-review-actions">
+                <button type="button" className="tutoring-review-cancel" onClick={() => setShowUploadDialog(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="tutoring-review-submit">
+                  Upload Video
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
