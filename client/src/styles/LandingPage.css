@@ -2,7 +2,7 @@
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background-color: #f5f7fa;
+  background-color: #f8fafc;
   position: relative;
 }
 
@@ -11,48 +11,50 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  margin-left: 0;
+  transition: margin-left 0.2s ease;
+}
+
+.side-menu.collapsed ~ .main-content {
+  margin-left: 0;
 }
 
 .content-container {
   display: flex;
   flex: 1;
   padding: 20px;
+  gap: 20px;
   overflow: auto;
+  height: calc(100vh - 64px);
 }
 
 .main-column {
-  flex: 3 1 0;
+  flex: 3;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  width: 0;
-  padding-right: 15px;
-  
-
 }
 
 .main-card {
-  width: 100%;
-  height: calc(100vh - 120px);
   background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  box-sizing: border-box;
-  padding: 0 24px 0 24px;
+  height: 100%;
 }
 
 .calendar-section {
-  width: 100%;
-  box-sizing: border-box;
-  background: none;
-  box-shadow: none;
-  border-radius: 0;
-  margin: 0;
-  padding: 20px 0 20px 0;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.calendar-section h3 {
+  color: #1e293b;
+  margin-bottom: 20px;
+  font-weight: 600;
+  font-size: 1.25rem;
 }
 
 .sidebar-section {
@@ -61,167 +63,175 @@
   flex-direction: column;
   gap: 20px;
   min-width: 300px;
-}
-
-.calendar-section h3, 
-.quick-actions h3 {
-  color: #2c3e50;
-  margin-bottom: 15px;
-  font-weight: 600;
-  font-size: 18px;
+  max-width: 400px;
 }
 
 /* Calendar customization */
 .rbc-calendar {
   font-family: 'Inter', sans-serif;
+  height: 500px !important;
 }
 
-/* Style for your own scheduled meetings */
 .rbc-event.scheduled-meeting {
-  background-color: #3498db !important;
-  border-color: #2980b9 !important;
+  background-color: #3b82f6 !important;
+  border-color: #2563eb !important;
   font-weight: 500;
 }
 
 .rbc-event.scheduled-meeting:hover {
-  background-color: #2980b9 !important;
+  background-color: #2563eb !important;
 }
 
-/* Style for others' upcoming meetings */
 .rbc-event.upcoming-meeting {
-  background-color: #2ecc71 !important;
-  border-color: #27ae60 !important;
+  background-color: #10b981 !important;
+  border-color: #059669 !important;
   font-weight: 500;
 }
 
 .rbc-event.upcoming-meeting:hover {
-  background-color: #27ae60 !important;
+  background-color: #059669 !important;
 }
 
 .rbc-today {
-  background-color: rgba(52, 152, 219, 0.1);
-}
-
-/* Quick Actions */
-.quick-actions {
-  background-color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  padding: 20px;
-}
-
-.action-btn {
-  display: block;
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 10px;
-  background-color: #3498db !important;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.action-btn:hover {
-  background-color: #2980b9 !important;
-}
-
-.action-btn:last-child {
-  margin-bottom: 0;
+  background-color: rgba(59, 130, 246, 0.1);
 }
 
 /* Announcements */
 .announcements {
-  width: 100%;
-  box-sizing: border-box;
-  background: none;
-  box-shadow: none;
-  border-radius: 0;
-  margin: 0;
-  padding: 20px 0 20px 0;
+  padding: 24px;
 }
 
 .announcements h3 {
-  color: #2c3e50;
-  margin-bottom: 15px;
+  color: #1e293b;
+  margin-bottom: 20px;
   font-weight: 600;
-  font-size: 18px;
+  font-size: 1.25rem;
 }
 
 .announcement-item {
-  padding: 12px 0;
-  border-bottom: 1px solid #eee;
-  transition: background 0.2s;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  transition: background-color 0.2s ease;
 }
 
 .announcement-item:last-child {
   border-bottom: none;
 }
 
+.announcement-item:hover {
+  background-color: #f8fafc;
+}
+
 .announcement-item h4 {
-  font-size: 16px;
-  margin-bottom: 5px;
-  color: #3498db;
+  font-size: 1rem;
+  margin-bottom: 8px;
+  color: #3b82f6;
+  font-weight: 600;
 }
 
 .announcement-item p {
-  font-size: 14px;
-  color: #7f8c8d;
+  font-size: 0.875rem;
+  color: #64748b;
   margin: 0;
+  line-height: 1.5;
 }
 
 .view-all-announcements-btn {
   display: block;
-  margin: 18px auto 0 auto;
-  background: #eaf6fb;
-  color: #3498db;
+  margin: 20px auto 0;
+  background: #f1f5f9;
+  color: #3b82f6;
   border: none;
-  border-radius: 4px;
-  padding: 8px 24px;
-  font-size: 1rem;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .view-all-announcements-btn:hover {
-  background: #d0eaf7;
-  color: #217dbb;
+  background: #e2e8f0;
+  color: #2563eb;
 }
 
+/* Sidebar Toggle Button */
 .sidebar-toggle-btn-wrapper {
-  position: absolute;
+  position: fixed;
   left: 250px;
-  top: 23px;
-  z-index: 10;
-  transition: left 0.2s, top 0.2s;
+  top: 16px;
+  z-index: 100;
+  transition: left 0.2s ease;
 }
+
 .side-menu.collapsed ~ .main-content .sidebar-toggle-btn-wrapper {
   left: 70px;
 }
+
 .sidebar-toggle-btn {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: #fff;
-  border: 2px solid #e5e7eb;
-  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.07);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
-  color: #3498db;
+  font-size: 1.25rem;
+  color: #64748b;
   cursor: pointer;
+  transition: all 0.2s ease;
   position: relative;
-  left: -22px;
-  transition: background 0.2s, color 0.2s, left 0.2s;
+  left: -20px;
 }
+
 .sidebar-toggle-btn:hover {
-  background: #eaf6fb;
-  color: #217dbb;
+  background: #f1f5f9;
+  color: #3b82f6;
+  border-color: #cbd5e1;
+}
+
+/* Quick Actions */
+.quick-actions {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 24px;
+}
+
+.quick-actions h3 {
+  color: #1e293b;
+  margin-bottom: 20px;
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  background-color: #3b82f6 !important;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background-color: #2563eb !important;
+  transform: translateY(-1px);
+}
+
+.action-btn:last-child {
+  margin-bottom: 0;
 }
 
 /* Strictly scoped styles for My Scheduled Meetings */
@@ -652,31 +662,52 @@
   font-size: 0.8rem;
 }
 
+@media (max-width: 1024px) {
+  .content-container {
+    flex-direction: column;
+  }
+
+  .sidebar-section {
+    max-width: none;
+  }
+
+  .main-column {
+    flex: none;
+  }
+
+  .main-card {
+    height: auto;
+    min-height: 500px;
+  }
+}
+
 @media (max-width: 768px) {
-  .upcoming-meetings-section {
+  .main-content {
+    margin-left: 0;
+  }
+
+  .side-menu.collapsed ~ .main-content {
+    margin-left: 0;
+  }
+
+  .sidebar-toggle-btn-wrapper {
+    left: 16px;
+  }
+
+  .side-menu.collapsed ~ .main-content .sidebar-toggle-btn-wrapper {
+    left: 16px;
+  }
+
+  .content-container {
     padding: 16px;
   }
 
-  .upcoming-meetings-section .meeting-item {
-    padding: 12px;
+  .calendar-section,
+  .announcements {
+    padding: 16px;
   }
 
-  .upcoming-meetings-section .meeting-title {
-    font-size: 0.95rem;
-  }
-
-  .upcoming-meetings-section .meeting-meta {
-    font-size: 0.8rem;
-  }
-
-  .upcoming-meetings-section .meeting-time {
-    font-size: 0.85rem;
-  }
-
-  .upcoming-meetings-section .join-meeting-btn {
-    padding: 4px 10px;
-    font-size: 0.8rem;
-    height: 26px;
-    min-width: 70px;
+  .rbc-calendar {
+    height: 400px !important;
   }
 }

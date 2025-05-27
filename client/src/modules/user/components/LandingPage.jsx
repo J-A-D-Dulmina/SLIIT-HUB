@@ -31,14 +31,6 @@ const ANNOUNCEMENTS = [
   {
     title: 'New Course: Data Science',
     message: 'Enrollments are open for the new Data Science course.'
-  },
-  {
-    title: 'Career Fair',
-    message: 'Join the annual career fair on June 10th for job opportunities.'
-  },
-  {
-    title: 'Feedback Survey',
-    message: 'Please complete the student feedback survey by next Friday.'
   }
 ];
 
@@ -64,19 +56,18 @@ const get29thDate = () => {
   return date;
 };
 
-// Dummy scheduled meetings data (all for tomorrow)
+// Dummy scheduled meetings data
 const MY_SCHEDULED_MEETINGS = [
   {
     id: 1,
     topic: 'Group Project Discussion',
-    start: getTomorrowAt(10, 0), // Tomorrow at 10:00
+    start: getTomorrowAt(10, 0),
     link: 'https://meet.sliit-hub.com/meeting/1',
   }
 ];
 
-// Get module details (this would come from your actual data)
+// Get module details
 const getModuleDetails = (meetingId) => {
-  // This is dummy data - replace with actual data from your backend
   const moduleDetails = {
     1: { 
       year: 'Year 2', 
@@ -103,22 +94,22 @@ const LandingPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Add scheduled meetings (your own meetings) as blue events
+    // Add scheduled meetings
     const calendarEvents = MY_SCHEDULED_MEETINGS.map(m => ({
       id: m.id,
       title: m.topic,
       start: m.start,
-      end: new Date(m.start.getTime() + 60 * 60000), // 1 hour duration
+      end: new Date(m.start.getTime() + 60 * 60000),
       allDay: false,
       resource: { isScheduledMeeting: true },
     }));
 
-    // Add only two upcoming meetings on the 29th
+    // Add upcoming meetings
     const upcomingMeetings = [
       {
         id: 101,
         title: 'Research Discussion',
-        start: getDateAt(get29thDate(), 10, 30), // 29th at 10:30
+        start: getDateAt(get29thDate(), 10, 30),
         end: new Date(getDateAt(get29thDate(), 10, 30).getTime() + 60 * 60000),
         allDay: false,
         resource: { isUpcomingMeeting: true },
@@ -126,7 +117,7 @@ const LandingPage = () => {
       {
         id: 102,
         title: 'Group Study Session',
-        start: getDateAt(get29thDate(), 14, 0), // 29th at 14:00
+        start: getDateAt(get29thDate(), 14, 0),
         end: new Date(getDateAt(get29thDate(), 14, 0).getTime() + 90 * 60000),
         allDay: false,
         resource: { isUpcomingMeeting: true },
@@ -134,7 +125,7 @@ const LandingPage = () => {
     ];
 
     setEvents([...calendarEvents, ...upcomingMeetings]);
-    // Update current time every minute
+
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
@@ -145,22 +136,19 @@ const LandingPage = () => {
     alert(`Event: ${event.title}`);
   };
 
-  const displayedAnnouncements = showAllAnnouncements ? ANNOUNCEMENTS : ANNOUNCEMENTS.slice(0, 5);
+  const displayedAnnouncements = showAllAnnouncements ? ANNOUNCEMENTS : ANNOUNCEMENTS.slice(0, 3);
 
-  // Helper to check if meeting can be started (within 15 min before start)
   const canStartMeeting = (meeting) => {
     const now = new Date();
     const start = new Date(meeting.start);
-    const diff = (start - now) / 60000; // minutes
-    return diff <= 15 && diff >= -120; // allow up to 2 hours after start
+    const diff = (start - now) / 60000;
+    return diff <= 15 && diff >= -120;
   };
 
-  // Format date/time
   const formatMeetingTime = (date) => {
     return moment(date).format('MMM D, YYYY [at] HH:mm');
   };
 
-  // Confirm start meeting
   const handleStartMeeting = (meeting) => {
     setMeetingToStart(meeting);
     setShowConfirm(true);
@@ -177,7 +165,6 @@ const LandingPage = () => {
     setMeetingToStart(null);
   };
 
-  // Get only the next scheduled meeting
   const nextScheduledMeeting = MY_SCHEDULED_MEETINGS
     .sort((a, b) => new Date(a.start) - new Date(b.start))[0];
 
@@ -209,32 +196,9 @@ const LandingPage = () => {
                   endAccessor="end"
                   style={{ height: 500 }}
                   onSelectEvent={handleSelectEvent}
-                  eventPropGetter={(event) => {
-                    if (event.resource?.isScheduledMeeting) {
-                      // Your own scheduled meetings in blue
-                      return {
-                        className: 'scheduled-meeting',
-                        style: {
-                          backgroundColor: '#3498db',
-                          color: '#fff',
-                          borderRadius: 6,
-                          border: 'none'
-                        }
-                      };
-                    } else if (event.resource?.isUpcomingMeeting) {
-                      // Others' upcoming meetings in green
-                      return {
-                        className: 'upcoming-meeting',
-                        style: {
-                          backgroundColor: '#2ecc71',
-                          color: '#fff',
-                          borderRadius: 6,
-                          border: 'none'
-                        }
-                      };
-                    }
-                    return {};
-                  }}
+                  eventPropGetter={(event) => ({
+                    className: event.resource?.isScheduledMeeting ? 'scheduled-meeting' : 'upcoming-meeting'
+                  })}
                 />
               </div>
               <div className="announcements">
@@ -245,8 +209,11 @@ const LandingPage = () => {
                     <p>{a.message}</p>
                   </div>
                 ))}
-                {ANNOUNCEMENTS.length > 5 && (
-                  <button className="view-all-announcements-btn" onClick={() => setShowAllAnnouncements(v => !v)}>
+                {ANNOUNCEMENTS.length > 3 && (
+                  <button 
+                    className="view-all-announcements-btn" 
+                    onClick={() => setShowAllAnnouncements(v => !v)}
+                  >
                     {showAllAnnouncements ? 'Show Less' : 'View All'}
                   </button>
                 )}
@@ -260,7 +227,12 @@ const LandingPage = () => {
               {!nextScheduledMeeting ? (
                 <>
                   <div className="no-meetings">No scheduled meetings</div>
-                  <button className="action-btn" onClick={() => navigate('/my-meetings')}>Schedule Meeting</button>
+                  <button 
+                    className="action-btn" 
+                    onClick={() => navigate('/my-meetings')}
+                  >
+                    Schedule Meeting
+                  </button>
                 </>
               ) : (
                 <>
@@ -290,14 +262,17 @@ const LandingPage = () => {
                         </button>
                       </div>
                       <div className="meeting-link">
-                        <FaLink style={{ marginRight: 4 }} />
+                        <FaLink />
                         <a href={nextScheduledMeeting.link} target="_blank" rel="noopener noreferrer">
                           {nextScheduledMeeting.link}
                         </a>
                       </div>
                     </div>
                   </div>
-                  <button className="view-all-meetings-btn" onClick={() => navigate('/my-meetings')}>
+                  <button 
+                    className="view-all-meetings-btn" 
+                    onClick={() => navigate('/my-meetings')}
+                  >
                     View All My Scheduled Meetings
                   </button>
                 </>
@@ -309,8 +284,12 @@ const LandingPage = () => {
                   <h4>Start Meeting</h4>
                   <p>Are you sure you want to start the meeting "{meetingToStart.topic}"?</p>
                   <div className="meeting-confirm-actions">
-                    <button className="action-btn" onClick={confirmStartMeeting}>Yes, Start</button>
-                    <button className="action-btn" onClick={cancelStartMeeting}>Cancel</button>
+                    <button className="action-btn" onClick={confirmStartMeeting}>
+                      Yes, Start
+                    </button>
+                    <button className="action-btn" onClick={cancelStartMeeting}>
+                      Cancel
+                    </button>
                   </div>
                 </div>
               </div>
