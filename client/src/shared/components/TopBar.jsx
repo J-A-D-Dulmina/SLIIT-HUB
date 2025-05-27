@@ -71,92 +71,96 @@ const TopBar = ({ currentTime }) => {
   ]);
 
   return (
-    <div className="top-bar">
-      <div className="search-container">
-        <div className="search-box">
+    <header className="app-header">
+      <div className="header-search">
+        <div className="search-input-group">
           <FaSearch className="search-icon" />
-          <input type="text" placeholder="Search for resources, tutors, or meetings..." />
+          <input 
+            type="text" 
+            className="search-input"
+            placeholder="Search for resources, tutors, or meetings..." 
+          />
         </div>
       </div>
       
-      <div className="top-bar-right">
-        <div className="current-time">
+      <div className="header-actions">
+        <div className="time-display">
           {formatTime(currentTime)}
         </div>
         
-        <div className="notification-container">
-          <button className="notification-btn" onClick={toggleNotifications}>
+        <div className="notification-wrapper">
+          <button className="icon-button notification-button" onClick={toggleNotifications}>
             <FaBell />
-            {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+            {unreadCount > 0 && <span className="notification-count">{unreadCount}</span>}
           </button>
           
           {showNotifications && (
-            <div className="notification-dropdown">
-              <div className="notification-header">
+            <div className="notification-panel">
+              <div className="panel-header">
                 <h3>Notifications</h3>
                 {unreadCount > 0 && (
-                  <button className="mark-all-read">Mark all as read</button>
+                  <button className="mark-read-button">Mark all as read</button>
                 )}
               </div>
               
-              <div className="notification-list">
+              <div className="notification-items">
                 {notifications.length > 0 ? (
                   notifications.map(notification => (
                     <div 
                       key={notification.id} 
-                      className={`notification-item ${!notification.read ? 'unread' : ''}`}
+                      className={`notification-entry ${!notification.read ? 'unread' : ''}`}
                       onClick={() => markAsRead(notification.id)}
                     >
-                      <div className="notification-icon">
+                      <div className="entry-icon">
                         {notification.type === 'message' && <FaEnvelope />}
                         {notification.type === 'meeting' && <FaBell />}
                         {notification.type === 'system' && <FaBell />}
                         {notification.type === 'deadline' && <FaBell />}
                       </div>
-                      <div className="notification-content">
+                      <div className="entry-content">
                         <p>{notification.content}</p>
-                        <span className="notification-time">{notification.time}</span>
+                        <span className="entry-time">{notification.time}</span>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="no-notifications">No notifications</div>
+                  <div className="empty-notifications">No notifications</div>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        <div className="saved-videos-container">
-          <button className="saved-videos-btn" onClick={toggleSavedVideos}>
+        <div className="saved-videos-wrapper">
+          <button className="icon-button saved-button" onClick={toggleSavedVideos}>
             <FaSave />
           </button>
 
           {showSavedVideos && (
-            <div className="saved-videos-dropdown">
-              <div className="saved-videos-header">
+            <div className="saved-videos-panel">
+              <div className="panel-header">
                 <h3>Saved Videos</h3>
               </div>
               
-              <div className="saved-videos-list">
+              <div className="saved-videos-items">
                 {savedVideos.length > 0 ? (
                   savedVideos.map(video => (
-                    <div key={video.id} className="saved-video-item">
-                      <div className="saved-video-content">
+                    <div key={video.id} className="saved-video-entry">
+                      <div className="entry-content">
                         <p>{video.title}</p>
-                        <span className="saved-video-time">{video.time}</span>
+                        <span className="entry-time">{video.time}</span>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="no-saved-videos">No saved videos</div>
+                  <div className="empty-saved">No saved videos</div>
                 )}
               </div>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </header>
   );
 };
 

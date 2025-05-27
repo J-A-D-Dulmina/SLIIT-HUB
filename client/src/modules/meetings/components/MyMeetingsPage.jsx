@@ -202,6 +202,12 @@ const MyMeetingsPage = () => {
     return 'upcoming'; // Changed from 'ended' to 'upcoming'
   };
 
+  const handleStartMeeting = (meeting) => {
+    // Extract meeting ID from the link
+    const meetingId = meeting.link.split('/').pop();
+    navigate(`/meeting/${meetingId}`);
+  };
+
   const renderMeetingForm = (isEdit = false) => (
     <div className="schedule-form-overlay">
       <div className="schedule-form-card">
@@ -496,7 +502,7 @@ const MyMeetingsPage = () => {
                     </span>
                     <button 
                       className="strt-meeting-btn"
-                      onClick={() => window.open(meeting.link, '_blank')}
+                      onClick={() => handleStartMeeting(meeting)}
                     >
                       <FaPlay /> {status === 'in-progress' ? 'Join Now' : 'Start Meeting'}
                     </button>

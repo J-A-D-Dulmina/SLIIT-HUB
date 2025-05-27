@@ -4,6 +4,13 @@
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
   height: 100%;
+  overflow-y: auto;
+}
+
+.main-content {
+  height: 100vh;
+  overflow-y: auto;
+  position: relative;
 }
 
 .page-header {

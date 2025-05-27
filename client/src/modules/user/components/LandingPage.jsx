@@ -220,7 +220,7 @@ const LandingPage = () => {
               </div>
             </div>
           </div>
-          <div className="sidebar-section">
+          <div className="right-sidebar">
             <UpcomingMeetings events={events} />
             <div className="my-scheduled-meetings">
               <h3>My Scheduled Meeting</h3>

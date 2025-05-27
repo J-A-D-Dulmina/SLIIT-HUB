@@ -281,17 +281,15 @@ const ModuleListPage = () => {
               <div className="module-list-page">
                 <div className="selection-container">
                   <div className="degree-selection">
-                    <h2>Select Your Degree</h2>
+                    <h2>Select Your Degree Program</h2>
                     <div className="degree-list">
                       {DEGREES.map(degree => (
                         <div key={degree.id} className="degree-section">
-                          <div
+                          <div 
                             className={`degree-card ${expandedDegrees[degree.id] ? 'expanded' : ''}`}
                             onClick={() => toggleDegree(degree.id)}
                           >
-                            <div className="degree-icon">
-                              {degree.icon}
-                            </div>
+                            <div className="degree-icon">{degree.icon}</div>
                             <div className="degree-info">
                               <h3>{degree.name}</h3>
                             </div>
@@ -302,32 +300,31 @@ const ModuleListPage = () => {
                             <div className="degree-content">
                               <div className="year-list">
                                 {YEARS.map(year => (
-                                  <div key={year.id}>
-                                    <div
-                                      className={`year-card ${selectedYear[degree.id] === year.id ? 'selected' : ''}`}
-                                      onClick={() => toggleYear(degree.id, year.id)}
-                                    >
-                                      <h3>{year.name}</h3>
-                                    </div>
-                                    
-                                    {selectedYear[degree.id] === year.id && (
-                                      <div className="semester-list">
-                                        {SEMESTERS.map(semester => (
-                                          <div
-                                            key={semester.id}
-                                            className={`semester-card ${selectedSemester[degree.id] === semester.id ? 'selected' : ''}`}
-                                            onClick={() => toggleSemester(degree.id, semester.id)}
-                                          >
-                                            <h4>{semester.name}</h4>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
+                                  <div
+                                    key={year.id}
+                                    className={`year-card ${selectedYear[degree.id] === year.id ? 'selected' : ''}`}
+                                    onClick={() => toggleYear(degree.id, year.id)}
+                                  >
+                                    <h3>{year.name}</h3>
                                   </div>
                                 ))}
                               </div>
                               
-                              {selectedYear[degree.id] && selectedSemester[degree.id] && (
+                              {selectedYear[degree.id] && (
+                                <div className="semester-list">
+                                  {SEMESTERS.map(semester => (
+                                    <div
+                                      key={semester.id}
+                                      className={`semester-card ${selectedSemester[degree.id] === semester.id ? 'selected' : ''}`}
+                                      onClick={() => toggleSemester(degree.id, semester.id)}
+                                    >
+                                      <h4>{semester.name}</h4>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              
+                              {selectedSemester[degree.id] && (
                                 <div className="module-list">
                                   <div className="module-grid">
                                     {getModules(degree.id, selectedYear[degree.id], selectedSemester[degree.id]).map(module => (
@@ -357,15 +354,19 @@ const ModuleListPage = () => {
               </div>
             </div>
           </div>
-          
-          <div className="sidebar-section">
+          <div className="right-sidebar">
             <UpcomingMeetings events={events} />
             <div className="my-scheduled-meetings">
               <h3>My Scheduled Meeting</h3>
               {!nextScheduledMeeting ? (
                 <>
                   <div className="no-meetings">No scheduled meetings</div>
-                  <button className="action-btn" onClick={() => navigate('/my-meetings')}>Schedule Meeting</button>
+                  <button 
+                    className="action-btn" 
+                    onClick={() => navigate('/my-meetings')}
+                  >
+                    Schedule Meeting
+                  </button>
                 </>
               ) : (
                 <>
@@ -395,14 +396,17 @@ const ModuleListPage = () => {
                         </button>
                       </div>
                       <div className="meeting-link">
-                        <FaLink style={{ marginRight: 4 }} />
+                        <FaLink />
                         <a href={nextScheduledMeeting.link} target="_blank" rel="noopener noreferrer">
                           {nextScheduledMeeting.link}
                         </a>
                       </div>
                     </div>
                   </div>
-                  <button className="view-all-meetings-btn" onClick={() => navigate('/my-meetings')}>
+                  <button 
+                    className="view-all-meetings-btn" 
+                    onClick={() => navigate('/my-meetings')}
+                  >
                     View All My Scheduled Meetings
                   </button>
                 </>
@@ -414,8 +418,12 @@ const ModuleListPage = () => {
                   <h4>Start Meeting</h4>
                   <p>Are you sure you want to start the meeting "{meetingToStart.topic}"?</p>
                   <div className="meeting-confirm-actions">
-                    <button className="action-btn" onClick={confirmStartMeeting}>Yes, Start</button>
-                    <button className="action-btn" onClick={cancelStartMeeting}>Cancel</button>
+                    <button className="action-btn" onClick={confirmStartMeeting}>
+                      Yes, Start
+                    </button>
+                    <button className="action-btn" onClick={cancelStartMeeting}>
+                      Cancel
+                    </button>
                   </div>
                 </div>
               </div>

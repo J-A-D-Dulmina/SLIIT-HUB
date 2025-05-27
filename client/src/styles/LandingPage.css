@@ -20,19 +20,26 @@
 }
 
 .content-container {
-  display: flex;
-  flex: 1;
+  position: relative;
   padding: 20px;
-  gap: 20px;
-  overflow: auto;
   height: calc(100vh - 64px);
+  overflow: auto;
 }
 
 .main-column {
-  flex: 3;
-  min-width: 0;
+  margin-right: 370px;
   display: flex;
   flex-direction: column;
+}
+
+.right-sidebar {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .main-card {
@@ -55,15 +62,6 @@
   margin-bottom: 20px;
   font-weight: 600;
   font-size: 1.25rem;
-}
-
-.sidebar-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  min-width: 300px;
-  max-width: 400px;
 }
 
 /* Calendar customization */
@@ -159,8 +157,8 @@
 .sidebar-toggle-btn-wrapper {
   position: fixed;
   left: 250px;
-  top: 16px;
-  z-index: 100;
+  top: 13px;
+  z-index: 200;
   transition: left 0.2s ease;
 }
 
@@ -169,8 +167,8 @@
 }
 
 .sidebar-toggle-btn {
-  width: 40px;
-  height: 40px;
+  width: 35px;
+  height: 35px;
   border-radius: 50%;
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -664,15 +662,17 @@
 
 @media (max-width: 1024px) {
   .content-container {
-    flex-direction: column;
-  }
-
-  .sidebar-section {
-    max-width: none;
+    padding: 16px;
   }
 
   .main-column {
-    flex: none;
+    margin-right: 0;
+  }
+
+  .right-sidebar {
+    position: static;
+    width: 100%;
+    margin-top: 20px;
   }
 
   .main-card {
@@ -692,10 +692,14 @@
 
   .sidebar-toggle-btn-wrapper {
     left: 16px;
+    top: 24px;
+    z-index: 200;
   }
 
   .side-menu.collapsed ~ .main-content .sidebar-toggle-btn-wrapper {
     left: 16px;
+    top: 24px;
+    z-index: 200;
   }
 
   .content-container {

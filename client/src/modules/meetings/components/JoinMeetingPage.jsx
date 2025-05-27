@@ -73,17 +73,17 @@ const JoinMeetingPage = () => {
         semester: 'Semester 2'
       }
     ];
-    
+
     setMeetings(dummyMeetings);
     return () => clearInterval(timer);
   }, []);
 
   const filteredMeetings = meetings.filter(meeting => {
-    const matchesSearch = 
+    const matchesSearch =
       meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.host.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesYear = !selectedYear || meeting.year === selectedYear;
     const matchesSemester = !selectedSemester || meeting.semester === selectedSemester;
     const matchesModule = !selectedModule || meeting.module === selectedModule;
@@ -114,7 +114,7 @@ const JoinMeetingPage = () => {
     const now = new Date();
     const start = new Date(meeting.start);
     const end = new Date(meeting.end);
-    
+
     if (now < start) {
       const diff = (start - now) / 60000; // minutes
       if (diff <= 15) return 'starting-soon';
@@ -130,14 +130,14 @@ const JoinMeetingPage = () => {
       const newList = isCurrentlyParticipating
         ? prev.filter(id => id !== meetingId)
         : [...prev, meetingId];
-      
+
       // Update meeting participants count
-      setMeetings(currentMeetings => 
+      setMeetings(currentMeetings =>
         currentMeetings.map(meeting => {
           if (meeting.id === meetingId) {
             return {
               ...meeting,
-              attendees: isCurrentlyParticipating 
+              attendees: isCurrentlyParticipating
                 ? meeting.attendees.filter(email => email !== 'current-user@example.com')
                 : [...meeting.attendees, 'current-user@example.com']
             };
@@ -145,7 +145,7 @@ const JoinMeetingPage = () => {
           return meeting;
         })
       );
-      
+
       // Save to localStorage
       localStorage.setItem('participatingMeetings', JSON.stringify(newList));
       return newList;
@@ -167,14 +167,14 @@ const JoinMeetingPage = () => {
         </div>
         <TopBar currentTime={currentTime} />
 
-        <main className="join-meeting-page">
-          <div className="page-header">
+        <main className="meeting-dashboard">
+          <div className="dashboard-header">
             <h1>All Meetings</h1>
           </div>
 
-          <div className="search-section">
-            <div className="search-header">
-              <div className="search-box">
+          <div className="search-container">
+            <div className="search-controls">
+              <div className="search-input-wrapper">
                 <FaSearch className="search-icon" />
                 <input
                   type="text"
@@ -183,24 +183,24 @@ const JoinMeetingPage = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <button 
-                className={`filter-toggle-btn ${showFilters ? 'active' : ''}`}
+              <button
+                className={`filter-button ${showFilters ? 'active' : ''}`}
                 onClick={() => setShowFilters(!showFilters)}
               >
                 <FaFilter />
                 Filters
                 {(selectedYear || selectedSemester || selectedModule || selectedStatus) && (
-                  <span className="filter-badge" />
+                  <span className="filter-indicator" />
                 )}
               </button>
             </div>
 
             {showFilters && (
-              <div className="filters-section">
-                <div className="filter-group">
+              <div className="filter-container">
+                <div className="filter-item">
                   <label>Degree Year</label>
-                  <select 
-                    value={selectedYear} 
+                  <select
+                    value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
                   >
                     <option value="">All Years</option>
@@ -210,10 +210,10 @@ const JoinMeetingPage = () => {
                   </select>
                 </div>
 
-                <div className="filter-group">
+                <div className="filter-item">
                   <label>Semester</label>
-                  <select 
-                    value={selectedSemester} 
+                  <select
+                    value={selectedSemester}
                     onChange={(e) => setSelectedSemester(e.target.value)}
                   >
                     <option value="">All Semesters</option>
@@ -223,10 +223,10 @@ const JoinMeetingPage = () => {
                   </select>
                 </div>
 
-                <div className="filter-group">
+                <div className="filter-item">
                   <label>Module</label>
-                  <select 
-                    value={selectedModule} 
+                  <select
+                    value={selectedModule}
                     onChange={(e) => setSelectedModule(e.target.value)}
                   >
                     <option value="">All Modules</option>
@@ -236,10 +236,10 @@ const JoinMeetingPage = () => {
                   </select>
                 </div>
 
-                <div className="filter-group">
+                <div className="filter-item">
                   <label>Status</label>
-                  <select 
-                    value={selectedStatus} 
+                  <select
+                    value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
                   >
                     <option value="">All Status</option>
@@ -250,7 +250,7 @@ const JoinMeetingPage = () => {
                 </div>
 
                 {(selectedYear || selectedSemester || selectedModule || selectedStatus) && (
-                  <button className="clear-filters-btn" onClick={clearFilters}>
+                  <button className="reset-filters" onClick={clearFilters}>
                     <FaTimes /> Clear Filters
                   </button>
                 )}
@@ -258,57 +258,64 @@ const JoinMeetingPage = () => {
             )}
           </div>
 
-          <div className="meetings-list">
+          <div className="meeting-grid">
             {filteredMeetings.length > 0 ? (
               filteredMeetings.map(meeting => {
                 const status = getMeetingStatus(meeting);
                 return (
-                  <div key={meeting.id} className={`meeting-item ${status}`}>
-                    <div className="meeting-main">
-                      <div className="meeting-info">
-                        <h3>{meeting.title}</h3>
-                        <div className="meeting-meta">
-                          <span className="meeting-module">{meeting.module}</span>
-                          <span className="meeting-year">{meeting.year}</span>
-                          <span className="meeting-semester">{meeting.semester}</span>
-                          <span className="meeting-time">
+                  <div key={meeting.id} className={`meeting-card ${status}`}>
+                    <div className="meeting-content">
+                      <div>
+                        <div className="meeting-header">
+                          <h3>{meeting.title}</h3>
+                          <p className="meeting-brief">{meeting.description}</p>        
+                        </div>
+                      </div>
+                      <div>
+                        <div className="meeting-tags">
+                          <span className="tag-module">{meeting.module}</span>
+                          <span className="tag-year">{meeting.year}</span>
+                          <span className="tag-semester">{meeting.semester}</span>
+                          <span className="tag-time">
                             <FaClock /> {formatMeetingTime(meeting.start)}
                           </span>
                         </div>
-                        <p className="meeting-description">{meeting.description}</p>
-                        <div className="meeting-details">
-                          <div className="detail-item">
+                        <div className="meeting-info">
+                          <div className="info-row">
                             <FaUsers />
                             <span>Host: {meeting.host}</span>
                           </div>
-                          <div className="detail-item">
+                          <div className="info-row">
                             <FaUsers />
                             <span>{meeting.attendees.length} {meeting.attendees.length === 1 ? 'participant' : 'participants'}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="meeting-actions">
-                        <span className={`status-badge ${status}`}>
-                          {status === 'starting-soon' && 'Starting Soon'}
-                          {status === 'upcoming' && 'Upcoming'}
-                          {status === 'in-progress' && 'In Progress'}
-                        </span>
-                        <button 
-                          className={`participate-btn ${participatingMeetings.includes(meeting.id) ? 'participating' : ''}`}
-                          onClick={() => handleParticipateToggle(meeting.id)}
-                        >
-                          {participatingMeetings.includes(meeting.id) ? <FaCheckSquare /> : <FaSquare />}
-                          {participatingMeetings.includes(meeting.id) ? 'Participating' : 'Participate'}
-                        </button>
-                        <button 
-                          className="join-btn"
-                          onClick={() => window.open(meeting.link, '_blank')}
-                        >
-                          <FaPlay /> {status === 'in-progress' ? 'Join Now' : 'Join Meeting'}
-                        </button>
+
+                      <div>
+                        <div className="action-panel">
+                          <span className={`status-tag ${status}`}>
+                            {status === 'starting-soon' && 'Starting Soon'}
+                            {status === 'upcoming' && 'Upcoming'}
+                            {status === 'in-progress' && 'In Progress'}
+                          </span>
+                          <button
+                            className={`toggle-participate ${participatingMeetings.includes(meeting.id) ? 'active' : ''}`}
+                            onClick={() => handleParticipateToggle(meeting.id)}
+                          >
+                            {participatingMeetings.includes(meeting.id) ? <FaCheckSquare /> : <FaSquare />}
+                            {participatingMeetings.includes(meeting.id) ? 'Participating' : 'Participate'}
+                          </button>
+                          <button
+                            className="join-meeting"
+                            onClick={() => window.open(meeting.link, '_blank')}
+                          >
+                            <FaPlay /> {status === 'in-progress' ? 'Join Now' : 'Join Meeting'}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="meeting-link">
+                    <div className="meeting-url">
                       <FaLink />
                       <a href={meeting.link} target="_blank" rel="noopener noreferrer">
                         {meeting.link}
@@ -318,9 +325,9 @@ const JoinMeetingPage = () => {
                 );
               })
             ) : (
-              <div className="no-meetings">
+              <div className="empty-state">
                 <p>No meetings found matching your criteria</p>
-                <button className="clear-filters-btn" onClick={clearFilters}>
+                <button className="reset-filters" onClick={clearFilters}>
                   Clear Filters
                 </button>
               </div>

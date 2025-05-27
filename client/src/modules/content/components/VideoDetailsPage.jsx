@@ -326,7 +326,7 @@ const VideoDetailsPage = () => {
           </div>
 
           <div className="comments-header">
-            <h3>Comments</h3>
+          <h3>Comments</h3>
             <button 
               className="add-comment-btn"
               onClick={() => setShowCommentForm(true)}

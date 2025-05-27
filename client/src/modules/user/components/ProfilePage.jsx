@@ -80,176 +80,176 @@ const ProfilePage = () => {
         </div>
         <TopBar currentTime={currentTime} />
         <main className="profile-page">
-          <div className="profile-container">
-            <div className="profile-header">
-              <h2>Profile Information</h2>
-              {!isEditing && (
-                <button 
-                  className="edit-btn"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <FaEdit /> Edit Profile
-                </button>
-              )}
-            </div>
-            <div className="profile-content">
-              <div className="profile-image-section">
-                <img 
-                  src={formData.profileImage} 
-                  alt="Profile" 
-                  className="profile-image"
-                />
-                {isEditing && (
-                  <button className="change-image-btn">
-                    Change Photo
-                  </button>
-                )}
-              </div>
-              {!isEditing ? (
-                <div className="profile-info">
-                  <div className="info-item">
-                    <FaUser />
-                    <div>
-                      <label>Name</label>
-                      <p>{formData.name}</p>
-                    </div>
-                  </div>
-                  <div className="info-item">
-                    <FaEnvelope />
-                    <div>
-                      <label>Email</label>
-                      <p>{formData.email}</p>
-                    </div>
-                  </div>
-                  <div className="info-item">
-                    <FaPhone />
-                    <div>
-                      <label>Phone</label>
-                      <p>{formData.phone}</p>
-                    </div>
-                  </div>
-                  <div className="info-item">
-                    <div>
-                      <label>Department</label>
-                      <p>{formData.department}</p>
-                    </div>
-                  </div>
-                  <div className="info-item">
-                    <div>
-                      <label>Role</label>
-                      <p>{formData.role}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="edit-form">
-                  <div className="form-group">
-                    <label>Name</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Phone</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Department</label>
-                    <input
-                      type="text"
-                      name="department"
-                      value={formData.department}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="form-actions">
-                    <button type="submit" className="save-btn">Save Changes</button>
+              <div className="profile-container">
+                <div className="profile-header">
+                  <h2>Profile Information</h2>
+                  {!isEditing && (
                     <button 
-                      type="button" 
-                      className="cancel-btn"
-                      onClick={() => setIsEditing(false)}
+                      className="edit-btn"
+                      onClick={() => setIsEditing(true)}
                     >
-                      Cancel
+                      <FaEdit /> Edit Profile
                     </button>
+                  )}
+                </div>
+                <div className="profile-content">
+                  <div className="profile-image-section">
+                    <img 
+                      src={formData.profileImage} 
+                      alt="Profile" 
+                      className="profile-image"
+                    />
+                    {isEditing && (
+                      <button className="change-image-btn">
+                        Change Photo
+                      </button>
+                    )}
                   </div>
-                </form>
-              )}
-            </div>
-            <div className="password-section">
-              <button 
-                className="change-password-btn"
-                onClick={() => setShowPasswordForm(true)}
-              >
-                <FaLock /> Change Password
-              </button>
-              {showPasswordForm && (
-                <div className="password-form-overlay">
-                  <div className="password-form-container">
-                    <h3>Change Password</h3>
-                    <form onSubmit={handlePasswordSubmit}>
+                  {!isEditing ? (
+                    <div className="profile-info">
+                      <div className="info-item">
+                        <FaUser />
+                        <div>
+                          <label>Name</label>
+                          <p>{formData.name}</p>
+                        </div>
+                      </div>
+                      <div className="info-item">
+                        <FaEnvelope />
+                        <div>
+                          <label>Email</label>
+                          <p>{formData.email}</p>
+                        </div>
+                      </div>
+                      <div className="info-item">
+                        <FaPhone />
+                        <div>
+                          <label>Phone</label>
+                          <p>{formData.phone}</p>
+                        </div>
+                      </div>
+                      <div className="info-item">
+                        <div>
+                          <label>Department</label>
+                          <p>{formData.department}</p>
+                        </div>
+                      </div>
+                      <div className="info-item">
+                        <div>
+                          <label>Role</label>
+                          <p>{formData.role}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="edit-form">
                       <div className="form-group">
-                        <label>Current Password</label>
+                        <label>Name</label>
                         <input
-                          type="password"
-                          name="currentPassword"
-                          value={passwordData.currentPassword}
-                          onChange={handlePasswordChange}
-                          required
+                          type="text"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
                         />
                       </div>
                       <div className="form-group">
-                        <label>New Password</label>
+                        <label>Email</label>
                         <input
-                          type="password"
-                          name="newPassword"
-                          value={passwordData.newPassword}
-                          onChange={handlePasswordChange}
-                          required
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
                         />
                       </div>
                       <div className="form-group">
-                        <label>Confirm New Password</label>
+                        <label>Phone</label>
                         <input
-                          type="password"
-                          name="confirmPassword"
-                          value={passwordData.confirmPassword}
-                          onChange={handlePasswordChange}
-                          required
+                          type="tel"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Department</label>
+                        <input
+                          type="text"
+                          name="department"
+                          value={formData.department}
+                          onChange={handleInputChange}
                         />
                       </div>
                       <div className="form-actions">
-                        <button type="submit" className="save-btn">Update Password</button>
+                        <button type="submit" className="save-btn">Save Changes</button>
                         <button 
                           type="button" 
                           className="cancel-btn"
-                          onClick={() => setShowPasswordForm(false)}
+                          onClick={() => setIsEditing(false)}
                         >
                           Cancel
                         </button>
                       </div>
                     </form>
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+                <div className="password-section">
+                  <button 
+                    className="change-password-btn"
+                    onClick={() => setShowPasswordForm(true)}
+                  >
+                    <FaLock /> Change Password
+                  </button>
+                  {showPasswordForm && (
+                    <div className="password-form-overlay">
+                      <div className="password-form-container">
+                        <h3>Change Password</h3>
+                        <form onSubmit={handlePasswordSubmit}>
+                          <div className="form-group">
+                            <label>Current Password</label>
+                            <input
+                              type="password"
+                              name="currentPassword"
+                              value={passwordData.currentPassword}
+                              onChange={handlePasswordChange}
+                              required
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>New Password</label>
+                            <input
+                              type="password"
+                              name="newPassword"
+                              value={passwordData.newPassword}
+                              onChange={handlePasswordChange}
+                              required
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>Confirm New Password</label>
+                            <input
+                              type="password"
+                              name="confirmPassword"
+                              value={passwordData.confirmPassword}
+                              onChange={handlePasswordChange}
+                              required
+                            />
+                          </div>
+                          <div className="form-actions">
+                            <button type="submit" className="save-btn">Update Password</button>
+                            <button 
+                              type="button" 
+                              className="cancel-btn"
+                              onClick={() => setShowPasswordForm(false)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
         </main>
       </div>
     </div>
