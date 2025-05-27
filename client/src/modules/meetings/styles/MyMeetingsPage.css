@@ -194,9 +194,9 @@
   background: white;
   border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
-  border: 1px solid #e9ecef;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -204,24 +204,19 @@
 
 .meeting-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .meeting-card.starting-soon {
-  border-left: 4px solid #f1c40f;
+  border-left: 4px solid #f59e0b;
 }
 
 .meeting-card.upcoming {
-  border-left: 4px solid #2ecc71;
+  border-left: 4px solid #10b981;
 }
 
 .meeting-card.in-progress {
   border-left: 4px solid #3498db;
-}
-
-.meeting-card.ended {
-  border-left: 4px solid #95a5a6;
-  opacity: 0.8;
 }
 
 .meeting-header {
@@ -243,32 +238,82 @@
   gap: 0.5rem;
 }
 
+.btn-edit_meeting{
+background-color: red !important;
+}
+
 .action-btn {
   padding: 0.5rem;
   border: none;
   border-radius: 6px;
-  background: none;
-  color: #95a5a6;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
 }
 
-.action-btn:hover {
-  background: #f8f9fa;
+.action-btn.edit {
+  background: #2563eb;
+  color: white;
 }
 
 .action-btn.edit:hover {
-  color: #3498db;
+  background: #1d4ed8;
+}
+
+.action-btn.delete {
+  background: #dc2626 !important;
+  color: white !important;
 }
 
 .action-btn.delete:hover {
-  color: #e74c3c;
+  background: #b91c1c !important;
+}
+
+.action-btn svg {
+  font-size: 1rem;
+}
+
+.meeting-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.meeting-module,
+.meeting-year,
+.meeting-semester {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.meeting-module {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.meeting-year {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.meeting-semester {
+  background: #e0f2fe;
+  color: #0284c7;
 }
 
 .meeting-info {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
+  margin-top: 0.5rem;
 }
 
 .info-item {
@@ -278,7 +323,7 @@
 }
 
 .info-item .icon {
-  color: #95a5a6;
+  color: #64748b;
   font-size: 1rem;
   margin-top: 0.25rem;
 }
@@ -291,14 +336,14 @@
 
 .info-content .label {
   font-size: 0.8rem;
-  color: #95a5a6;
+  color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .info-content .value {
   font-size: 0.9rem;
-  color: #2c3e50;
+  color: #1e293b;
   font-weight: 500;
 }
 
@@ -331,55 +376,141 @@
 }
 
 .status-badge {
-  padding: 0.25rem 0.75rem;
+  padding: 0.35rem 1rem;
   border-radius: 20px;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 500;
   white-space: nowrap;
 }
 
 .status-badge.starting-soon {
-  background: #fef9e7;
-  color: #f39c12;
+  background: #fef3c7;
+  color: #d97706;
 }
 
 .status-badge.upcoming {
-  background: #e8f8f5;
-  color: #27ae60;
+  background: #d1fae5;
+  color: #059669;
 }
 
 .status-badge.in-progress {
-  background: #ebf5fb;
-  color: #2980b9;
+  background: #dbeafe;
+  color: #2563eb;
 }
 
-.status-badge.ended {
-  background: #f4f6f6;
-  color: #7f8c8d;
+.strt-meeting-btn{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: rgb(46, 204, 113);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.strt-meeting-btn:hover {
+  background: #1b7741;
+  transform: translateY(-1px);
 }
 
 .join-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
   background: #3498db;
   color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.join-btn:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.join-btn svg {
+  color: white;
+}
+
+/* Delete Confirmation Dialog Styles */
+.meeting-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.meeting-confirm-dialog {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.meeting-confirm-dialog h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #dc2626;
+  margin: 0 0 1rem 0;
+}
+
+.meeting-confirm-dialog p {
+  margin: 0 0 1rem 0;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.meeting-confirm-dialog .delete-warning {
+  color: #dc2626;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.meeting-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.delete-confirm-btn {
+  padding: 0.75rem 1.5rem;
+  background: #dc2626 !important;
+  color: white !important;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.join-btn:hover:not(.disabled) {
-  background: #2980b9;
+.delete-confirm-btn:hover {
+  background: #b91c1c !important;
   transform: translateY(-1px);
-}
-
-.join-btn.disabled {
-  background: #bdc3c7;
-  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {
