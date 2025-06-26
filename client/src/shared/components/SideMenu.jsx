@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import '../styles/SideMenu.css';
 import logo from '../../assets/SLITT HUB logo.png';
 import { 
@@ -23,6 +23,7 @@ const SideMenu = ({ collapsed }) => {
   const location = useLocation();
   const { pathname } = location;
   const [showMeetingSubmenu, setShowMeetingSubmenu] = useState(true);
+  const navigate = useNavigate();
 
   const toggleMeetingSubmenu = () => {
     setShowMeetingSubmenu(!showMeetingSubmenu);
@@ -31,6 +32,9 @@ const SideMenu = ({ collapsed }) => {
   const isJoinMeetingActive = pathname === '/join-meeting';
   const isMyMeetingsActive = pathname === '/my-meetings';
   const isMeetingSectionActive = isJoinMeetingActive || isMyMeetingsActive;
+
+  // Get user role from localStorage (or context if available)
+  const userRole = localStorage.getItem('role') || 'student';
 
   return (
     <div className={`side-menu ${collapsed ? 'collapsed' : ''}`}>
@@ -72,50 +76,64 @@ const SideMenu = ({ collapsed }) => {
               {!collapsed && <span>Units</span>}
             </Link>
           </li>
-          <li className={`menu-item-with-submenu ${isMeetingSectionActive ? 'active' : ''}`}>
-            <div 
-              className="menu-item-header" 
-              onClick={toggleMeetingSubmenu}
-            >
-              <div className="menu-item-content">
-                <FaVideo className="icon" />
-                {!collapsed && <span>Meetings</span>}
-              </div>
-              {!collapsed && (
-                <span className={`submenu-arrow ${showMeetingSubmenu ? 'open' : ''}`}>
-                  {showMeetingSubmenu ? <FaChevronDown /> : <FaChevronRight />}
-                </span>
-              )}
-            </div>
-            {!collapsed && showMeetingSubmenu && (
-              <div className="submenu">
-                <ul>
-                  <li className={isJoinMeetingActive ? 'active' : ''}>
-                    <Link to="/join-meeting">
-                      <FaSignInAlt className="icon" />
-                      <span>Join Meeting</span>
-                    </Link>
-                  </li>
-                  <li className={isMyMeetingsActive ? 'active' : ''}>
-                    <Link to="/my-meetings">
-                      <FaList className="icon" />
-                      <span>My Meetings</span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-            )}
-          </li>
+          {/* Show Meetings and My Tutoring only for non-lecturers */}
+          {userRole !== 'lecturer' && (
+            <>
+              <li className={`menu-item-with-submenu ${isMeetingSectionActive ? 'active' : ''}`}>
+                <div 
+                  className="menu-item-header" 
+                  onClick={toggleMeetingSubmenu}
+                >
+                  <div className="menu-item-content">
+                    <FaVideo className="icon" />
+                    {!collapsed && <span>Meetings</span>}
+                  </div>
+                  {!collapsed && (
+                    <span className={`submenu-arrow ${showMeetingSubmenu ? 'open' : ''}`}>
+                      {showMeetingSubmenu ? <FaChevronDown /> : <FaChevronRight />}
+                    </span>
+                  )}
+                </div>
+                {!collapsed && showMeetingSubmenu && (
+                  <div className="submenu">
+                    <ul>
+                      <li className={isJoinMeetingActive ? 'active' : ''}>
+                        <Link to="/join-meeting">
+                          <FaSignInAlt className="icon" />
+                          <span>Join Meeting</span>
+                        </Link>
+                      </li>
+                      <li className={isMyMeetingsActive ? 'active' : ''}>
+                        <Link to="/my-meetings">
+                          <FaList className="icon" />
+                          <span>My Meetings</span>
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </li>
+              <li className={pathname === '/tutoring' ? 'active' : ''}>
+                <Link to="/tutoring">
+                  <FaUsers className="icon" />
+                  {!collapsed && <span>My Tutoring</span>}
+                </Link>
+              </li>
+            </>
+          )}
+          {/* Show My Recommendations only for lecturers */}
+          {userRole === 'lecturer' && (
+            <li className={pathname === '/my-recommendations' ? 'active' : ''}>
+              <Link to="/my-recommendations">
+                <FaBook className="icon" />
+                {!collapsed && <span>My Recommendations</span>}
+              </Link>
+            </li>
+          )}
           <li className={pathname === '/resources' ? 'active' : ''}>
             <Link to="/resources">
               <FaBook className="icon" />
               {!collapsed && <span>Resources</span>}
-            </Link>
-          </li>
-          <li className={pathname === '/tutoring' ? 'active' : ''}>
-            <Link to="/tutoring">
-              <FaUsers className="icon" />
-              {!collapsed && <span>My Tutoring</span>}
             </Link>
           </li>
           <li className={pathname === '/ai-tool' ? 'active' : ''}>
@@ -140,11 +158,17 @@ const SideMenu = ({ collapsed }) => {
               {!collapsed && <span>Settings</span>}
             </Link>
           </li>
-          <li className={pathname === '/logout' ? 'active' : ''}>
-            <Link to="/logout">
+          <li>
+            <a
+              href="#logout"
+              onClick={e => {
+                e.preventDefault();
+                navigate('/login');
+              }}
+            >
               <FaSignOutAlt className="icon" />
               {!collapsed && <span>Logout</span>}
-            </Link>
+            </a>
           </li>
         </ul>
       </div>

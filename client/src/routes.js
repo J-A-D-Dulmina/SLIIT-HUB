@@ -15,6 +15,17 @@ import ResourcesPage from './modules/resources/components/ResourcesPage.jsx';
 import CalendarPage from './modules/calendar/components/CalendarPage.jsx';
 import AIToolPage from './modules/ai/components/AIToolPage.jsx';
 import MeetingPage from './modules/communication/components/MeetingPage.jsx';
+import MyRecommendationsPage from './modules/lecturer/components/MyRecommendationsPage.jsx';
+import AdminLoginPage from './modules/admin/components/AdminLoginPage.jsx';
+import AdminLayout from './modules/admin/components/AdminLayout.jsx';
+import AdminDashboardHome from './modules/admin/components/AdminDashboardHome.jsx';
+import AdminVideosPage from './modules/admin/components/AdminVideosPage.jsx';
+import AdminStudentsPage from './modules/admin/components/AdminStudentsPage.jsx';
+import AdminMeetingsPage from './modules/admin/components/AdminMeetingsPage.jsx';
+import AdminDegreesPage from './modules/admin/components/AdminDegreesPage.jsx';
+import AdminLecturersPage from './modules/admin/components/AdminLecturersPage.jsx';
+import AdminAnnouncementsPage from './modules/admin/components/AdminAnnouncementsPage.jsx';
+import AdminAdminsPage from './modules/admin/components/AdminAdminsPage.jsx';
 
 const AppRoutes = () => {
   return (
@@ -35,6 +46,15 @@ const AppRoutes = () => {
       <Route path="/resources" element={<ResourcesPage />} />
       <Route path="/calendar" element={<CalendarPage />} />
       <Route path="/ai-tool" element={<AIToolPage />} />
+      <Route path="/my-recommendations" element={<MyRecommendationsPage />} />
+      <Route path="/admin-dashboard" element={<AdminLayout><AdminDashboardHome /></AdminLayout>} />
+      <Route path="/admin-degrees" element={<AdminLayout><AdminDegreesPage /></AdminLayout>} />
+      <Route path="/admin-lecturers" element={<AdminLayout><AdminLecturersPage /></AdminLayout>} />
+      <Route path="/admin-students" element={<AdminLayout><AdminStudentsPage /></AdminLayout>} />
+      <Route path="/admin-videos" element={<AdminLayout><AdminVideosPage /></AdminLayout>} />
+      <Route path="/admin-announcements" element={<AdminLayout><AdminAnnouncementsPage /></AdminLayout>} />
+      <Route path="/admin-admins" element={<AdminLayout><AdminAdminsPage /></AdminLayout>} />
+      <Route path="/admin-login" element={<AdminLoginPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

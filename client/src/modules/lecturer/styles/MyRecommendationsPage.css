@@ -1,0 +1,15 @@
+.my-recommendations-page { padding: 2rem; max-width: 800px; margin: 0 auto; }
+.recommendation-list { list-style: none; padding: 0; }
+.recommendation-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+.recommendation-card.recommended { border-left: 4px solid #10b981; }
+.recommendation-card.not_recommended { border-left: 4px solid #e2e8f0; }
+.recommendation-card h3 { margin: 0 0 8px 0; font-size: 1.1rem; font-weight: 600; color: #2c3e50; }
+.recommendation-card p { color: #64748b; font-size: 0.95rem; margin: 0 0 8px 0; }
+.rec-actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+.rec-btn { border: none; border-radius: 6px; padding: 6px 14px; font-size: 0.95rem; cursor: pointer; transition: background 0.2s; }
+.rec-btn.recommended { background: #10b981; color: #fff; }
+.rec-btn.not_recommended { background: #e2e8f0; color: #64748b; }
+.rec-btn.remove { background: #dc2626; color: #fff; }
+.rec-btn.remove:hover { background: #b91c1c; }
+.rec-btn.view { background: #eaf6fb; color: #3498db; text-decoration: underline; }
+.rec-btn.view:hover { background: #d0eaf7; } 

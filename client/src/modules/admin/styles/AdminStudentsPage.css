@@ -1,0 +1,11 @@
+.admin-students-page { padding: 2rem; max-width: 900px; margin: 0 auto; }
+.admin-student-list { list-style: none; padding: 0; }
+.admin-student-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+.admin-student-name { font-size: 1.1rem; font-weight: 600; color: #2c3e50; }
+.admin-student-email { color: #64748b; font-size: 0.95rem; }
+.admin-student-actions { display: flex; gap: 10px; margin-top: 8px; }
+.admin-edit-btn, .admin-delete-btn { border: none; border-radius: 6px; padding: 6px 14px; font-size: 0.95rem; cursor: pointer; transition: background 0.2s; }
+.admin-edit-btn { background: #2563eb; color: #fff; }
+.admin-edit-btn:hover { background: #174ea6; }
+.admin-delete-btn { background: #dc2626; color: #fff; }
+.admin-delete-btn:hover { background: #b91c1c; } 
