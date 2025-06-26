@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../../styles/TopBar.css';
+import '../styles/TopBar.css';
 import { FaBell, FaSearch, FaEnvelope, FaSave } from 'react-icons/fa';
 
 const TopBar = ({ currentTime }) => {

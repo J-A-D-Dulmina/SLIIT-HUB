@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../../assets/SLITT HUB logo.png';
-import '../../../styles/loginpage.css';
+import '../styles/loginpage.css';
 import '../../../styles/main.css';
 
 const LoginPage = () => {

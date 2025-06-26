@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import '../../../styles/ForgotPassword.css';
+import '../styles/ForgotPassword.css';
 import logo from '../../../assets/SLITT HUB logo.png';
 
 const ForgotPasswordPage = () => {

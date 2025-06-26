@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import '../../../styles/VideoListPage.css';
+import '../styles/VideoListPage.css';
 import { 
   FaChevronLeft, 
   FaChevronRight,

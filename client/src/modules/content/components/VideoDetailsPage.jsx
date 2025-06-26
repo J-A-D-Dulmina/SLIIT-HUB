@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactPlayer from 'react-player';
-import '../../../styles/VideoDetailsPage.css';
+import '../styles/VideoDetailsPage.css';
 import { 
   FaChevronLeft, 
   FaChevronRight,

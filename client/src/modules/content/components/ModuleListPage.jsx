@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../../../styles/ModuleListPage.css';
-import '../../../styles/LandingPage.css';
+import '../styles/ModuleListPage.css';
 import { 
   FaBook, 
   FaChevronRight, 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaUser, FaEnvelope, FaPhone, FaEdit, FaLock, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import '../../../styles/ProfilePage.css';
+import '../styles/ProfilePage.css';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import profileImage from '../../../assets/main_deshan-img.png';

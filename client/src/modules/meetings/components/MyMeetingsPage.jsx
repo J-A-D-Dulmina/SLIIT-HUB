@@ -437,19 +437,19 @@ const MyMeetingsPage = () => {
             {meetings.map(meeting => {
               const status = getMeetingStatus(meeting);
               return (
-                <div key={meeting.id} className={`meeting-card ${status}`}>
-                  <div className="meeting-header">
-                    <h3>{meeting.title}</h3>
-                    <div className="meeting-actions">
+                <div key={meeting.id} className={`my-meeting-card ${status}`}>
+                  <div className="my-meeting-header">
+                    <h3 className="my-meeting-title">{meeting.title}</h3>
+                    <div className="my-meeting-actions">
                       <button 
-                        className="action-btn edit"
+                        className="my-action-btn my-action-btn-edit"
                         onClick={() => handleEditMeeting(meeting)}
                         title="Edit Meeting"
                       >
                         <FaEdit />
                       </button>
                       <button 
-                        className="action-btn delete"
+                        className="my-action-btn my-action-btn-delete"
                         onClick={() => handleDeleteClick(meeting)}
                         title="Delete Meeting"
                       >
@@ -458,13 +458,13 @@ const MyMeetingsPage = () => {
                     </div>
                   </div>
 
-                  <div className="meeting-meta">
-                    <span className="meeting-module">{meeting.module}</span>
-                    <span className="meeting-year">{meeting.year}</span>
-                    <span className="meeting-semester">{meeting.semester}</span>
+                  <div className="my-meeting-meta">
+                    <span className="my-meeting-module">{meeting.module}</span>
+                    <span className="my-meeting-year">{meeting.year}</span>
+                    <span className="my-meeting-semester">{meeting.semester}</span>
                   </div>
                   
-                  <div className="meeting-info">
+                  <div className="my-meeting-info">
                     <div className="info-item">
                       <FaClock className="icon" />
                       <div className="info-content">
@@ -492,10 +492,10 @@ const MyMeetingsPage = () => {
                     </div>
                   </div>
 
-                  <p className="meeting-description">{meeting.description}</p>
+                  <p className="my-meeting-description">{meeting.description}</p>
 
-                  <div className="meeting-footer">
-                    <span className={`status-badge ${status}`}>
+                  <div className="my-meeting-footer">
+                    <span className={`my-status-badge ${status}`}>
                       {status === 'starting-soon' && 'Starting Soon'}
                       {status === 'upcoming' && 'Upcoming'}
                       {status === 'in-progress' && 'In Progress'}

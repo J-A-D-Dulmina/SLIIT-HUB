@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
-import { FaLink } from 'react-icons/fa';
+import { FaLink, FaPlay } from 'react-icons/fa';
+import '../styles/UpcomingMeetings.css';
 
 const UpcomingMeetings = ({ events }) => {
   const navigate = useNavigate();
@@ -42,52 +43,50 @@ const UpcomingMeetings = ({ events }) => {
   };
 
   return (
-    <div className="upcoming-meetings-section">
+    <div className="upcoming-meetings-card">
       <h3>Upcoming Meeting</h3>
       {!upcomingMeeting ? (
         <div className="no-meetings">No upcoming meetings</div>
       ) : (
-        <>
-          <div className="meeting-list">
-            <div className="meeting-item">
-              <div className="meeting-header">
-                <div className="meeting-details">
-                  <h4 className="meeting-title">{upcomingMeeting.title}</h4>
-                  <div className="meeting-meta">
-                    <span>{getModuleDetails(upcomingMeeting.id).year}</span>
-                    <span>{getModuleDetails(upcomingMeeting.id).semester}</span>
-                    <span>{getModuleDetails(upcomingMeeting.id).module}</span>
-                  </div>
-                  <div className="meeting-coordinator">
-                    Coordinator: {getModuleDetails(upcomingMeeting.id).coordinator}
-                  </div>
-                  <div className="meeting-time">
-                    {formatMeetingTime(upcomingMeeting.start)}
-                  </div>
+        <div className="meeting-list">
+          <div className="meeting-item">
+            <div className="meeting-header">
+              <div className="meeting-details">
+                <h4 className="meeting-title">{upcomingMeeting.title}</h4>
+                <div className="meeting-meta">
+                  <span>{getModuleDetails(upcomingMeeting.id).year}</span>
+                  <span>{getModuleDetails(upcomingMeeting.id).semester}</span>
+                  <span>{getModuleDetails(upcomingMeeting.id).module}</span>
                 </div>
-                <button 
-                  className="join-meeting-btn"
-                  onClick={() => navigate(`/join-meeting/${upcomingMeeting.id}`)}
-                >
-                  Join
-                </button>
+                <div className="meeting-coordinator">
+                  Coordinator: {getModuleDetails(upcomingMeeting.id).coordinator}
+                </div>
+                <div className="meeting-time">
+                  {formatMeetingTime(upcomingMeeting.start)}
+                </div>
               </div>
-              <div className="meeting-link">
-                <FaLink style={{ marginRight: 4 }} />
-                <a href={`https://meet.sliit-hub.com/meeting/${upcomingMeeting.id}`} target="_blank" rel="noopener noreferrer">
-                  meet.sliit-hub.com/meeting/{upcomingMeeting.id}
-                </a>
-              </div>
+              <button 
+                className="upcoming-join-btn"
+                onClick={() => navigate(`/join-meeting/${upcomingMeeting.id}`)}
+              >
+                <FaPlay style={{ marginRight: 6 }} /> Join
+              </button>
+            </div>
+            <div className="meeting-link">
+              <FaLink style={{ marginRight: 4 }} />
+              <a href={`https://meet.sliit-hub.com/meeting/${upcomingMeeting.id}`} target="_blank" rel="noopener noreferrer">
+                meet.sliit-hub.com/meeting/{upcomingMeeting.id}
+              </a>
             </div>
           </div>
-          <button 
-            className="view-all-meetings-btn"
-            onClick={() => navigate('/join-meeting')}
-          >
-            View All Upcoming Meetings
-          </button>
-        </>
+        </div>
       )}
+      <button 
+        className="view-all-btn"
+        onClick={() => navigate('/join-meeting')}
+      >
+        View All Upcoming Meetings
+      </button>
     </div>
   );
 };

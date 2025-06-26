@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import '../../../styles/LandingPage.css';
+import '../styles/LandingPage.css';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import UpcomingMeetings from '../../../shared/components/UpcomingMeetings';
