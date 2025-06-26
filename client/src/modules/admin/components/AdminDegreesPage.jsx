@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import '../styles/AdminDegreesPage.css';
 import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
+import { FaPencilAlt, FaTrash } from 'react-icons/fa';
 
 const initialDegrees = [
   {
@@ -65,6 +66,7 @@ const AdminDegreesPage = () => {
   const [semesterCounts, setSemesterCounts] = useState({}); // {yearIdx: count}
   const [moduleInputs, setModuleInputs] = useState({}); // {yearIdx: {semIdx: {code, name}}}
   const [editingModule, setEditingModule] = useState({}); // {yearIdx, semIdx, modIdx, code, name}
+  const [search, setSearch] = useState('');
 
   // Modal open/close helpers
   const openAddModal = () => {
@@ -222,6 +224,15 @@ const AdminDegreesPage = () => {
     <div className="admin-degrees-page full-width">
       <h2>Degrees Management</h2>
       <div className="degree-table-actions">
+        <div style={{ width: '100%', marginBottom: 8 }}>
+          <input
+            className="degrees-search-bar"
+            type="text"
+            placeholder="Search degrees..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
         <button className="add-btn" onClick={openAddModal}>+ Add Degree</button>
       </div>
       <div className="degree-table-wrapper">
@@ -237,7 +248,14 @@ const AdminDegreesPage = () => {
             </tr>
           </thead>
           <tbody>
-            {degrees.map(degree => (
+            {degrees.filter(degree => {
+              const q = search.toLowerCase();
+              return (
+                degree.name.toLowerCase().includes(q) ||
+                degree.code.toLowerCase().includes(q) ||
+                degree.years.some(y => y.semesters.some(s => s.modules.some(m => m.name.toLowerCase().includes(q) || m.code.toLowerCase().includes(q))))
+              );
+            }).map(degree => (
               <tr key={degree.id} onClick={e => { if (e.target.tagName !== 'BUTTON') handleRowClick(degree); }} className="degree-row">
                 <td>{degree.name}</td>
                 <td>{degree.code}</td>
@@ -245,8 +263,12 @@ const AdminDegreesPage = () => {
                 <td>{getDegreeSemesterCount(degree)}</td>
                 <td>{getDegreeModuleCount(degree)}</td>
                 <td style={{textAlign: 'right'}}>
-                  <button type="button" className="edit-btn" onClick={e => { e.stopPropagation(); openEditModal(degree); }}>Edit</button>
-                  <button type="button" className="delete-btn" onClick={e => { e.stopPropagation(); handleDeleteDegree(degree); }}>Delete</button>
+                  <button type="button" className="degree-edit-btn" onClick={e => { e.stopPropagation(); openEditModal(degree); }} title="Edit">
+                    <FaPencilAlt />
+                  </button>
+                  <button type="button" className="degree-delete-btn" onClick={e => { e.stopPropagation(); handleDeleteDegree(degree); }} title="Delete">
+                    <FaTrash />
+                  </button>
                 </td>
               </tr>
             ))}

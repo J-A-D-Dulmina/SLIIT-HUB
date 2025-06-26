@@ -39,6 +39,51 @@
   color: #fff;
   border-left: 4px solid #eab308;
 }
+.admin-sidebar-top {
+  padding: 1.2rem 1.5rem 0.5rem 1.5rem;
+  background: #2563eb;
+}
+.admin-sidebar-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #fff;
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+.admin-sidebar-bottom {
+  margin-top: auto;
+  padding: 1.2rem 1.5rem 1.5rem 1.5rem;
+  background: #174ea6;
+  border-top: 1px solid #174ea6;
+  display: flex;
+  align-items: center;
+}
+.admin-sidebar-admin-details {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.admin-sidebar-admin-avatar {
+  font-size: 2.1rem;
+  color: #eab308;
+}
+.admin-sidebar-admin-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #fff;
+}
+.admin-sidebar-admin-email {
+  font-size: 0.97rem;
+  color: #eaf6fb;
+  opacity: 0.85;
+}
+.admin-sidebar-divider {
+  height: 1px;
+  background: #174ea6;
+  margin: 0 1.5rem 0.5rem 1.5rem;
+  border: none;
+}
 @media (max-width: 900px) {
   .admin-sidebar {
     position: relative;
@@ -67,5 +112,11 @@
     background: #174ea6;
     border-bottom: 4px solid #eab308;
     border-left: none;
+  }
+  .admin-sidebar-top, .admin-sidebar-bottom {
+    display: none;
+  }
+  .admin-sidebar-divider {
+    display: none;
   }
 } 
