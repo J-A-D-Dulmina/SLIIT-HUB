@@ -4,81 +4,49 @@ import '../styles/Register.css';
 import logo from '../../../assets/SLITT HUB logo.png';
 
 const RegisterPage = () => {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+  const [form, setForm] = useState({
+    name: '',
     email: '',
-    studentId: '',
     password: '',
-    confirmPassword: '',
-    role: 'student'
+    role: 'student',
+    studentId: '',
+    mobile: '',
+    enrolYear: '',
+    degree: '',
   });
-  
-  const [errors, setErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+  const handleChange = e => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-    
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    }
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
-    if (!formData.studentId.trim()) {
-      newErrors.studentId = 'Student ID is required';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    
-    if (validateForm()) {
-      // Simulate API call
-      setTimeout(() => {
-        setSuccessMessage('Registration successful! Please check your email to verify your account.');
-        // Reset form
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          studentId: '',
-          password: '',
-          confirmPassword: '',
-          role: 'student'
-        });
-      }, 1000);
+    setLoading(true);
+    setMessage('');
+    setError('');
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          enrolYear: form.enrolYear ? Number(form.enrolYear) : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage('Registration successful! You can now log in.');
+        setForm({ name: '', email: '', password: '', role: 'student', studentId: '', mobile: '', enrolYear: '', degree: '' });
+      } else {
+        setError(data.message || 'Registration failed');
+      }
+    } catch (err) {
+      setError('Server error');
     }
+    setLoading(false);
   };
 
   return (
@@ -89,77 +57,40 @@ const RegisterPage = () => {
         </div>
         <h2>Create an Account</h2>
         
-        {successMessage && (
-          <div className="success-message">{successMessage}</div>
+        {message && (
+          <div className="success-message">{message}</div>
         )}
         
-        <form onSubmit={handleSubmit}>
+        {error && (
+          <div className="error-message">{error}</div>
+        )}
+        
+        <form onSubmit={handleSubmit} autoComplete="off">
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="firstName">First Name</label>
+              <label htmlFor="name">Name</label>
               <input
                 type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
+                id="name"
+                name="name"
+                value={form.name}
                 onChange={handleChange}
-                placeholder="Enter your first name"
+                placeholder="Enter your name"
               />
-              {errors.firstName && <span className="error">{errors.firstName}</span>}
             </div>
             
             <div className="form-group">
-              <label htmlFor="lastName">Last Name</label>
+              <label htmlFor="email">Email</label>
               <input
-                type="text"
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
+                type="email"
+                id="email"
+                name="email"
+                value={form.email}
                 onChange={handleChange}
-                placeholder="Enter your last name"
+                placeholder="Enter your email"
+                autoComplete="off"
               />
-              {errors.lastName && <span className="error">{errors.lastName}</span>}
             </div>
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Enter your email"
-            />
-            {errors.email && <span className="error">{errors.email}</span>}
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="studentId">Student ID</label>
-            <input
-              type="text"
-              id="studentId"
-              name="studentId"
-              value={formData.studentId}
-              onChange={handleChange}
-              placeholder="Enter your student ID"
-            />
-            {errors.studentId && <span className="error">{errors.studentId}</span>}
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="role">Role</label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-            >
-              <option value="student">Student</option>
-              <option value="tutor">Tutor</option>
-              <option value="lecturer">Lecturer</option>
-            </select>
           </div>
           
           <div className="form-group">
@@ -168,27 +99,71 @@ const RegisterPage = () => {
               type="password"
               id="password"
               name="password"
-              value={formData.password}
+              value={form.password}
               onChange={handleChange}
               placeholder="Enter your password"
+              autoComplete="new-password"
             />
-            {errors.password && <span className="error">{errors.password}</span>}
           </div>
           
           <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+            <label htmlFor="studentId">Student ID</label>
             <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
+              type="text"
+              id="studentId"
+              name="studentId"
+              value={form.studentId}
               onChange={handleChange}
-              placeholder="Confirm your password"
+              placeholder="Enter your student ID"
             />
-            {errors.confirmPassword && <span className="error">{errors.confirmPassword}</span>}
           </div>
           
-          <button type="submit" className="register-btn">Register</button>
+          <div className="form-group">
+            <label htmlFor="degree">Degree</label>
+            <select
+              id="degree"
+              name="degree"
+              value={form.degree}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Select your degree</option>
+              <option value="BSc (Hons) in Information Technology">BSc (Hons) in Information Technology</option>
+              <option value="BSc (Hons) in Computer Science">BSc (Hons) in Computer Science</option>
+              <option value="BSc (Hons) in Software Engineering">BSc (Hons) in Software Engineering</option>
+              <option value="BSc (Hons) in Data Science">BSc (Hons) in Data Science</option>
+              <option value="BSc (Hons) in Cyber Security">BSc (Hons) in Cyber Security</option>
+              <option value="BSc (Hons) in Business Information Systems">BSc (Hons) in Business Information Systems</option>
+            </select>
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="mobile">Mobile</label>
+            <input
+              type="text"
+              id="mobile"
+              name="mobile"
+              value={form.mobile}
+              onChange={handleChange}
+              placeholder="Enter your mobile number"
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="enrolYear">Enrol Year</label>
+            <input
+              type="text"
+              id="enrolYear"
+              name="enrolYear"
+              value={form.enrolYear}
+              onChange={handleChange}
+              placeholder="Enter your enrolment year"
+            />
+          </div>
+          
+          <button type="submit" disabled={loading} className="register-btn">
+            {loading ? 'Registering...' : 'Register'}
+          </button>
         </form>
         
         <div className="links">

@@ -3,24 +3,44 @@ import { useNavigate } from 'react-router-dom';
 import logo from '../../../assets/SLITT HUB logo.png';
 import '../styles/loginpage.css';
 import '../../../styles/main.css';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const LoginPage = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError('Please enter both username and password.');
+    if (!email || !password) {
+      setError('Please enter both email and password.');
       return;
     }
-    if (username === 'admin' && password === 'password') {
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Save user info to localStorage (no token)
+        localStorage.setItem('userType', data.userType);
+        localStorage.setItem('userName', data.name);
+        if (data.userType === 'student') {
+          localStorage.setItem('studentId', data.studentId);
+        } else if (data.userType === 'lecturer') {
+          localStorage.setItem('lecturerId', data.lecturerId);
+        }
       setError('');
       navigate('/dashboard');
     } else {
-      setError('Invalid credentials.');
+        setError(data.message || 'Invalid credentials.');
+      }
+    } catch (err) {
+      setError('Server error.');
     }
   };
 
@@ -37,18 +57,40 @@ const LoginPage = () => {
         {error && <div className="error">{error}</div>}
         <input
           className="input"
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
         />
+        <div style={{ position: 'relative' }}>
         <input
           className="input"
-          type="password"
+            type={showPassword ? 'text' : 'password'}
           placeholder="Password"
           value={password}
           onChange={e => setPassword(e.target.value)}
+            style={{ paddingRight: 40 }}
         />
+          <button
+            type="button"
+            onClick={() => setShowPassword(v => !v)}
+            style={{
+              position: 'absolute',
+              right: 12,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#64748b',
+              fontSize: 18
+            }}
+            tabIndex={-1}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? <FaEyeSlash /> : <FaEye />}
+          </button>
+        </div>
         <div className="login-button-row">
           <button className="button login-button" type="submit">
             Login

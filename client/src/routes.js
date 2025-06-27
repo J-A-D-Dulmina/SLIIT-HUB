@@ -26,14 +26,20 @@ import AdminDegreesPage from './modules/admin/components/AdminDegreesPage.jsx';
 import AdminLecturersPage from './modules/admin/components/AdminLecturersPage.jsx';
 import AdminAnnouncementsPage from './modules/admin/components/AdminAnnouncementsPage.jsx';
 import AdminAdminsPage from './modules/admin/components/AdminAdminsPage.jsx';
+import ProtectedRoute from './shared/components/ProtectedRoute.jsx';
 
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/admin-login" element={<AdminLoginPage />} />
+      <Route path="*" element={
+        <ProtectedRoute>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<LandingPage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/units" element={<ModuleListPage />} />
       <Route path="/modules/:degreeId/:yearId" element={<ModuleListPage />} />
@@ -54,8 +60,10 @@ const AppRoutes = () => {
       <Route path="/admin-videos" element={<AdminLayout><AdminVideosPage /></AdminLayout>} />
       <Route path="/admin-announcements" element={<AdminLayout><AdminAnnouncementsPage /></AdminLayout>} />
       <Route path="/admin-admins" element={<AdminLayout><AdminAdminsPage /></AdminLayout>} />
-      <Route path="/admin-login" element={<AdminLoginPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </ProtectedRoute>
+      } />
     </Routes>
   );
 };
