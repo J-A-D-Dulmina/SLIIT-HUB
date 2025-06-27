@@ -23,18 +23,52 @@ const SideMenu = ({ collapsed }) => {
   const location = useLocation();
   const { pathname } = location;
   const [showMeetingSubmenu, setShowMeetingSubmenu] = useState(true);
+  const [user, setUser] = useState({});
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch user details from backend
+    fetch('/api/protected', { credentials: 'include' })
+      .then(res => res.ok ? res.json() : Promise.reject(res))
+      .then(data => {
+        setUser(data.user || {});
+        setLoading(false);
+      })
+      .catch(() => {
+        setUser({});
+        setLoading(false);
+      });
+  }, []);
 
   const toggleMeetingSubmenu = () => {
     setShowMeetingSubmenu(!showMeetingSubmenu);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+      localStorage.clear();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      localStorage.clear();
+      navigate('/login');
+    }
   };
 
   const isJoinMeetingActive = pathname === '/join-meeting';
   const isMyMeetingsActive = pathname === '/my-meetings';
   const isMeetingSectionActive = isJoinMeetingActive || isMyMeetingsActive;
 
-  // Get user role from localStorage (or context if available)
-  const userRole = localStorage.getItem('role') || 'student';
+  // Get user role from fetched data or localStorage as fallback
+  const userRole = user.userType || localStorage.getItem('userType') || 'student';
+
+  // Generate initials from user name
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
   return (
     <div className={`side-menu ${collapsed ? 'collapsed' : ''}`}>
@@ -47,14 +81,16 @@ const SideMenu = ({ collapsed }) => {
       <div className="user-profile">
         {!collapsed && (
           <>
-            <div className="avatar">JD</div>
+            <div className="avatar">{getInitials(user.name)}</div>
             <div className="user-info">
-              <h4>J A D Dulmina</h4>
-              <p>Student ID: 2433442</p>
+              <h4>{user.name || 'Loading...'}</h4>
+              <p>{user.userType === 'student' ? `Student ID: ${user.studentId}` : 
+                  user.userType === 'lecturer' ? `Lecturer ID: ${user.lecturerId}` : 
+                  'Loading...'}</p>
             </div>
           </>
         )}
-        {collapsed && <div className="avatar small">JD</div>}
+        {collapsed && <div className="avatar small">{getInitials(user.name)}</div>}
       </div>
       <nav className="menu-nav">
         <ul>
@@ -163,7 +199,7 @@ const SideMenu = ({ collapsed }) => {
               href="#logout"
               onClick={e => {
                 e.preventDefault();
-                navigate('/login');
+                handleLogout();
               }}
             >
               <FaSignOutAlt className="icon" />
