@@ -7,7 +7,7 @@ const videoSchema = new mongoose.Schema({
     unique: true 
   }, // Combination of studentId and videoId
   title: { type: String, required: true },
-  description: { type: String, required: true },
+  description: { type: String },
   module: { type: String, required: true },
   degree: { type: String, required: true },
   year: { type: String, required: true },
@@ -29,6 +29,11 @@ const videoSchema = new mongoose.Schema({
   },
   reviewLecturer: { type: mongoose.Schema.Types.ObjectId, ref: 'Lecturer' },
   reviewComments: { type: String },
+  summary: { type: String }, // AI-generated summary
+  timestamps: [{
+    time: { type: String },
+    description: { type: String }
+  }], // AI-generated timestamps
   aiFeatures: {
     summary: { type: Boolean, default: false },
     timestamps: { type: Boolean, default: false },

@@ -397,62 +397,83 @@
   font-size: 0.875rem;
 }
 
-.timestamps-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.timestamps-section {
+  margin-top: 1.5rem;
 }
 
-.timestamp-item {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.timestamp-time {
-  width: 80px;
-  flex-shrink: 0;
-}
-
-.timestamp-description {
-  flex: 1;
-}
-
-.remove-timestamp-btn {
-  width: 32px;
-  height: 32px;
-  background: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  font-size: 1.25rem;
-  cursor: pointer;
+.timestamps-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.remove-timestamp-btn:hover {
-  background: #dc2626;
-  transform: scale(1.1);
+  justify-content: space-between;
 }
 
 .add-timestamp-btn {
-  align-self: flex-start;
-  padding: 0.5rem 1rem;
-  background: #10b981;
-  color: white;
+  background: #007bff;
+  color: #fff;
   border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  padding: 0.2rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.add-timestamp-btn:hover {
-  background: #059669;
+.timestamps-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+}
+
+.timestamp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+  min-height: 32px;
+}
+
+.timestamp-time {
+  width: 60px;
+  font-size: 0.95rem;
+  padding: 0.2rem 0.4rem;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f9f9f9;
+}
+
+.timestamp-desc {
+  flex: 1;
+  font-size: 0.95rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f9f9f9;
+}
+
+.edit-timestamp-btn,
+.delete-timestamp-btn {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.edit-timestamp-btn[disabled] {
+  color: #bbb;
+  cursor: default;
+}
+
+.edit-timestamp-btn:hover:not([disabled]) {
+  color: #007bff;
+}
+
+.delete-timestamp-btn:hover {
+  color: #dc3545;
 }
 
 .form-actions {

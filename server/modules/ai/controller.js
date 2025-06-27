@@ -27,12 +27,12 @@ class AIController {
       
       // List all files in the directory
       const files = fs.readdirSync(uploadsDir);
-      console.log(`📂 Available files: ${files.join(', ')}`);
+      console.log('Available files: ' + files.join(', '));
       
       // If we have only one video file, use it regardless of ID
       if (files.length === 1) {
         const filePath = path.join(uploadsDir, files[0]);
-        console.log(`✅ Using single available video file: ${filePath}`);
+        console.log('Using single available video file: ' + filePath);
         return filePath;
       }
       
@@ -40,7 +40,7 @@ class AIController {
       for (const file of files) {
         if (file.includes(videoId) || file.includes('videoFile')) {
           const filePath = path.join(uploadsDir, file);
-          console.log(`✅ Found matching video file: ${filePath}`);
+          console.log('Found matching video file: ' + filePath);
           return filePath;
         }
       }
@@ -48,7 +48,7 @@ class AIController {
       // If no match found, use the first video file available
       if (files.length > 0) {
         const filePath = path.join(uploadsDir, files[0]);
-        console.log(`⚠️  No exact match found, using first available file: ${filePath}`);
+        console.log('No exact match found, using first available file: ' + filePath);
         return filePath;
       }
       
@@ -62,46 +62,46 @@ class AIController {
   // Get video file from server uploads directory
   async getVideoFile(videoId, videoTitle = '') {
     try {
-      console.log(`🔍 Looking for video file with ID: ${videoId}, Title: ${videoTitle}`);
+      console.log('Looking for video file with ID: ' + videoId + ', Title: ' + videoTitle);
       
       // Use absolute path to server uploads directory
       const serverRoot = path.resolve(__dirname, '../../');
       const uploadsDir = path.join(serverRoot, 'uploads', 'videos');
-      console.log(`📁 Server root: ${serverRoot}`);
-      console.log(`📁 Uploads directory: ${uploadsDir}`);
+      console.log('Server root: ' + serverRoot);
+      console.log('Uploads directory: ' + uploadsDir);
       
       // Check if uploads directory exists
       if (!fs.existsSync(uploadsDir)) {
-        throw new Error(`Uploads directory does not exist: ${uploadsDir}`);
+        throw new Error('Uploads directory does not exist: ' + uploadsDir);
       }
       
       // List all files in the directory for debugging
       const files = fs.readdirSync(uploadsDir);
-      console.log(`📂 Files in uploads directory: ${files.join(', ')}`);
+      console.log('Files in uploads directory: ' + files.join(', '));
       
       // Try different naming patterns
       const patterns = [
-        `videoFile-${videoId}.mp4`,
-        `${videoId}.mp4`,
-        `${videoTitle}.mp4`,
-        `video-${videoId}.mp4`
+        'videoFile-' + videoId + '.mp4',
+        videoId + '.mp4',
+        videoTitle + '.mp4',
+        'video-' + videoId + '.mp4'
       ];
       
-      console.log(`🔍 Trying patterns: ${patterns.join(', ')}`);
+      console.log('Trying patterns: ' + patterns.join(', '));
       
       for (const pattern of patterns) {
         const filePath = path.join(uploadsDir, pattern);
-        console.log(`📍 Checking: ${filePath}`);
+        console.log('Checking: ' + filePath);
         if (fs.existsSync(filePath)) {
-          console.log(`✅ Found video file: ${filePath}`);
+          console.log('Found video file: ' + filePath);
           const stats = fs.statSync(filePath);
-          console.log(`📦 File size: ${stats.size} bytes`);
+          console.log('File size: ' + stats.size + ' bytes');
           return filePath;
         }
       }
       
       // If no exact match found, try to map the ID to an available file
-      console.log(`⚠️  No exact match found for ID: ${videoId}, trying to map to available files...`);
+      console.log('No exact match found for ID: ' + videoId + ', trying to map to available files...');
       return await this.mapVideoIdToFile(videoId);
       
     } catch (error) {
@@ -113,30 +113,30 @@ class AIController {
   // Generate AI Summary
   async generateSummary(req, res) {
     try {
-      console.log('🔍 Server generateSummary called');
-      console.log('📥 Request body:', req.body);
-      console.log('📥 Request headers:', req.headers);
+      console.log('Server generateSummary called');
+      console.log('Request body:', req.body);
+      console.log('Request headers:', req.headers);
       
       const { videoId, videoTitle } = req.body;
       
-      console.log('🔍 Extracted parameters:', { videoId, videoTitle });
+      console.log('Extracted parameters:', { videoId, videoTitle });
       
       if (!videoId) {
-        console.error('❌ No videoId provided in request body');
+        console.error('No videoId provided in request body');
         return res.status(400).json({ error: 'Video ID is required' });
       }
 
-      console.log(`🔍 Generating AI summary for video: ${videoId}`);
-      console.log(`📍 Python service URL: ${PYTHON_SERVICE_URL}`);
+      console.log('Generating AI summary for video: ' + videoId);
+      console.log('Python service URL: ' + PYTHON_SERVICE_URL);
       
       // First check if Python service is running
       try {
         const healthResponse = await axios.get(`${PYTHON_SERVICE_URL}/health`, {
           timeout: 5000
         });
-        console.log('✅ Python AI service is running');
+        console.log('Python AI service is running');
       } catch (healthError) {
-        console.error('❌ Python AI service is not running:', healthError.message);
+        console.error('Python AI service is not running:', healthError.message);
         return res.status(503).json({ 
           error: 'AI service is not available',
           details: 'Please make sure the Python AI service is running on port 5001'
@@ -145,15 +145,15 @@ class AIController {
       
       // Get video file path
       const videoFilePath = await this.getVideoFile(videoId, videoTitle);
-      console.log(`📁 Video file path: ${videoFilePath}`);
+      console.log('Video file path: ' + videoFilePath);
       
       // Check if file exists and is readable
       if (!fs.existsSync(videoFilePath)) {
-        throw new Error(`Video file not found at path: ${videoFilePath}`);
+        throw new Error('Video file not found at path: ' + videoFilePath);
       }
       
       const stats = fs.statSync(videoFilePath);
-      console.log(`📦 Video file size: ${stats.size} bytes`);
+      console.log('Video file size: ' + stats.size + ' bytes');
       
       // Create form data for Python service
       const formData = new FormData();
@@ -161,7 +161,7 @@ class AIController {
       formData.append('title', videoTitle || '');
       formData.append('type', 'summary');
       
-      console.log('🚀 Sending request to Python service...');
+      console.log('Sending request to Python service...');
       
       // Send to Python service
       const response = await axios.post(`${PYTHON_SERVICE_URL}/process-video`, formData, {
@@ -171,8 +171,8 @@ class AIController {
         timeout: 300000, // 5 minutes timeout
       });
       
-      console.log('✅ AI summary generated successfully');
-      console.log('📄 Response data:', response.data);
+      console.log('AI summary generated successfully');
+      console.log('Response data:', response.data);
       
       // Check if the Python service returned an error in the response
       if (response.data.error) {
@@ -190,8 +190,8 @@ class AIController {
       });
       
     } catch (error) {
-      console.error('❌ Error generating AI summary:', error.message);
-      console.error('❌ Full error:', error);
+      console.error('Error generating AI summary:', error.message);
+      console.error('Full error:', error);
       
       // Provide more specific error messages
       let errorMessage = 'Failed to generate AI summary';
@@ -204,7 +204,7 @@ class AIController {
         errorMessage = 'Cannot connect to AI service';
         errorDetails = 'Please check if the Python AI service is running';
       } else if (error.response) {
-        errorMessage = `AI service error: ${error.response.status}`;
+        errorMessage = 'AI service error: ' + error.response.status;
         errorDetails = error.response.data?.error || error.message;
       }
       
@@ -224,7 +224,7 @@ class AIController {
         return res.status(400).json({ error: 'Video ID is required' });
       }
 
-      console.log(`🔍 Generating AI description for video: ${videoId}`);
+      console.log('Generating AI description for video: ' + videoId);
       
       // Get video file path
       const videoFilePath = await this.getVideoFile(videoId, videoTitle);
@@ -242,7 +242,7 @@ class AIController {
         timeout: 120000, // 2 minutes timeout
       });
       
-      console.log('✅ AI description generated successfully');
+      console.log('AI description generated successfully');
       res.json({ 
         success: true, 
         description: response.data.description,
@@ -250,7 +250,7 @@ class AIController {
       });
       
     } catch (error) {
-      console.error('❌ Error generating AI description:', error.message);
+      console.error('Error generating AI description:', error.message);
       res.status(500).json({ 
         error: 'Failed to generate AI description',
         details: error.message 
@@ -267,7 +267,7 @@ class AIController {
         return res.status(400).json({ error: 'Video ID is required' });
       }
 
-      console.log(`🔍 Generating AI timestamps for video: ${videoId}`);
+      console.log('Generating AI timestamps for video: ' + videoId);
       
       // Get video file path
       const videoFilePath = await this.getVideoFile(videoId, videoTitle);
@@ -290,7 +290,7 @@ class AIController {
         timeout: 300000, // 5 minutes timeout
       });
       
-      console.log('✅ AI timestamps generated successfully');
+      console.log('AI timestamps generated successfully');
       res.json({ 
         success: true, 
         timestamps: response.data.timestamps,
@@ -298,7 +298,7 @@ class AIController {
       });
       
     } catch (error) {
-      console.error('❌ Error generating AI timestamps:', error.message);
+      console.error('Error generating AI timestamps:', error.message);
       res.status(500).json({ 
         error: 'Failed to generate AI timestamps',
         details: error.message 
@@ -315,7 +315,7 @@ class AIController {
         return res.status(400).json({ error: 'Video ID is required' });
       }
 
-      console.log(`🔍 Detecting scenes for video: ${videoId}`);
+      console.log('Detecting scenes for video: ' + videoId);
       
       // Get video file path
       const videoFilePath = await this.getVideoFile(videoId);
@@ -335,7 +335,7 @@ class AIController {
         timeout: 180000, // 3 minutes timeout
       });
       
-      console.log('✅ Scene detection completed successfully');
+      console.log('Scene detection completed successfully');
       res.json({ 
         success: true, 
         ...response.data,
@@ -343,7 +343,7 @@ class AIController {
       });
       
     } catch (error) {
-      console.error('❌ Error detecting scenes:', error.message);
+      console.error('Error detecting scenes:', error.message);
       res.status(500).json({ 
         error: 'Failed to detect scenes',
         details: error.message 
@@ -360,7 +360,7 @@ class AIController {
         return res.status(400).json({ error: 'Video ID is required' });
       }
 
-      console.log(`🔍 Processing video with AI: ${videoId}`);
+      console.log('Processing video with AI: ' + videoId);
       
       // Get video file path
       const videoFilePath = await this.getVideoFile(videoId, videoTitle);
@@ -383,7 +383,7 @@ class AIController {
         timeout: 600000, // 10 minutes timeout
       });
       
-      console.log('✅ Full AI processing completed successfully');
+      console.log('Full AI processing completed successfully');
       res.json({ 
         success: true, 
         ...response.data,
@@ -391,7 +391,7 @@ class AIController {
       });
       
     } catch (error) {
-      console.error('❌ Error processing video with AI:', error.message);
+      console.error('Error processing video with AI:', error.message);
       res.status(500).json({ 
         error: 'Failed to process video with AI',
         details: error.message 
@@ -408,7 +408,7 @@ class AIController {
         return res.status(400).json({ error: 'Video ID is required' });
       }
 
-      console.log(`🔍 Testing video file access for: ${videoId}`);
+      console.log('Testing video file access for: ' + videoId);
       
       const videoFilePath = await this.getVideoFile(videoId);
       const stats = fs.statSync(videoFilePath);
@@ -421,7 +421,7 @@ class AIController {
       });
       
     } catch (error) {
-      console.error('❌ Error testing video access:', error.message);
+      console.error('Error testing video access:', error.message);
       res.status(404).json({ 
         error: 'Video file not found',
         details: error.message 
@@ -438,7 +438,7 @@ class AIController {
         return res.status(400).json({ error: 'Video ID is required' });
       }
 
-      console.log(`🔍 Running comprehensive test for video: ${videoId}`);
+      console.log('Running comprehensive test for video: ' + videoId);
       
       const testResults = {
         videoId,
@@ -521,7 +521,7 @@ class AIController {
       res.json(testResults);
       
     } catch (error) {
-      console.error('❌ Error in comprehensive test:', error.message);
+      console.error('Error in comprehensive test:', error.message);
       res.status(500).json({ 
         error: 'Comprehensive test failed',
         details: error.message 
@@ -543,7 +543,7 @@ class AIController {
       });
       
     } catch (error) {
-      console.error('❌ AI service health check failed:', error.message);
+      console.error('AI service health check failed:', error.message);
       res.status(503).json({ 
         error: 'AI service is not available',
         details: error.message 

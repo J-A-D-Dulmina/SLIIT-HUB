@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { FaChevronLeft, FaChevronRight, FaRobot, FaClock, FaEdit, FaExpand, FaDownload } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaRobot, FaClock, FaEdit, FaExpand, FaDownload, FaTrash } from 'react-icons/fa';
 import ReactPlayer from 'react-player';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import { useAIModel } from '../../ai/hooks/useAIModel';
 import '../styles/VideoEditPage.css';
+import Toast from '../../../shared/components/Toast';
+import '../../../shared/styles/Toast.css';
 
 const VideoEditPage = ({ video, onClose, onSave }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -31,6 +33,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     timestamps: ''
   });
   const [showFullSummary, setShowFullSummary] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // AI model hook
   const { 
@@ -49,9 +52,52 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    // Fetch the latest video data from the backend by ID
+    const fetchLatestVideo = async () => {
+      if (!video?.id) return;
+      const res = await fetch(`/api/tutoring/videos/${video.id}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        const latest = data.video;
+        if (latest) {
+          setFormData({
+            title: latest.title || '',
+            description: latest.description || '',
+            module: latest.module || '',
+            degree: latest.degree || '',
+            year: latest.year || '',
+            status: latest.status || 'unpublished',
+            summary: latest.summary || '',
+            timestamps: latest.timestamps || [],
+            semester: latest.semester || ''
+          });
+          return;
+        }
+      }
+      // fallback to prop
+      setFormData({
+        title: video?.title || '',
+        description: video?.description || '',
+        module: video?.module || '',
+        degree: video?.degree || '',
+        year: video?.year || '',
+        status: video?.status || 'unpublished',
+        summary: video?.summary || '',
+        timestamps: video?.timestamps || [],
+        semester: video?.semester || ''
+      });
+    };
+    fetchLatestVideo();
+  }, [video]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
+    const result = await onSave(formData);
+    if (result === true) {
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    }
   };
 
   const handleChange = (e) => {
@@ -436,9 +482,12 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                     required
                   >
                     <option value="">Select Degree</option>
-                    <option value="BSc">BSc in Information Technology</option>
-                    <option value="BEng">BEng in Software Engineering</option>
-                    <option value="BScCS">BSc in Computer Science</option>
+                    <option value="BSc (Hons) in Information Technology">BSc (Hons) in Information Technology</option>
+                    <option value="BSc (Hons) in Computer Science">BSc (Hons) in Computer Science</option>
+                    <option value="BSc (Hons) in Software Engineering">BSc (Hons) in Software Engineering</option>
+                    <option value="BSc (Hons) in Data Science">BSc (Hons) in Data Science</option>
+                    <option value="BSc (Hons) in Cyber Security">BSc (Hons) in Cyber Security</option>
+                    <option value="BSc (Hons) in Business Information Systems">BSc (Hons) in Business Information Systems</option>
                   </select>
 
                   <select
@@ -484,58 +533,67 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <div className="form-group-header">
-                  <label>Timestamps</label>
+              <div className="timestamps-section">
+                <div className="timestamps-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <label style={{ marginRight: 8 }}>Timestamps</label>
+                    <button type="button" className="add-timestamp-btn" onClick={addTimestamp} style={{ marginRight: 8 }}>
+                      + Add
+                    </button>
+                  </div>
                   <button
                     type="button"
                     className="ai-generate-btn timestamps"
                     onClick={() => generateAIContent('timestamps')}
                     disabled={isGenerating.timestamps}
                   >
-                    <FaClock /> {isGenerating.timestamps ? 'Generating...' : 'Generate with AI'}
+                    <FaRobot /> {isGenerating.timestamps ? 'Generating...' : 'Generate with AI'}
                   </button>
                 </div>
                 {isGenerating.timestamps && (
                   <div className="generation-progress">
                     <div className="progress-spinner"></div>
-                    <span>{generationProgress.timestamps}</span>
+                    <span>{generationProgress.timestamps || 'Processing video with AI...'}</span>
                   </div>
                 )}
-                <div className="timestamps-list">
-                  {formData.timestamps.map((timestamp, index) => (
-                    <div key={index} className="timestamp-item">
+                <ul className="timestamps-list">
+                  {formData.timestamps.map((ts, idx) => (
+                    <li key={idx} className="timestamp-row">
                       <input
                         type="text"
-                        value={timestamp.time}
-                        onChange={(e) => handleTimestampChange(index, 'time', e.target.value)}
-                        placeholder="00:00"
                         className="timestamp-time"
+                        value={ts.time}
+                        onChange={e => handleTimestampChange(idx, 'time', e.target.value)}
+                        placeholder="00:00"
+                        maxLength={6}
                       />
                       <input
                         type="text"
-                        value={timestamp.description}
-                        onChange={(e) => handleTimestampChange(index, 'description', e.target.value)}
+                        className="timestamp-desc"
+                        value={ts.description}
+                        onChange={e => handleTimestampChange(idx, 'description', e.target.value)}
                         placeholder="Description"
-                        className="timestamp-description"
                       />
                       <button
                         type="button"
-                        className="remove-timestamp-btn"
-                        onClick={() => removeTimestamp(index)}
+                        className="edit-timestamp-btn"
+                        title="Edit"
+                        tabIndex={-1}
+                        disabled
                       >
-                        ×
+                        <FaEdit />
                       </button>
-                    </div>
+                      <button
+                        type="button"
+                        className="delete-timestamp-btn"
+                        onClick={() => removeTimestamp(idx)}
+                        title="Delete"
+                      >
+                        <FaTrash />
+                      </button>
+                    </li>
                   ))}
-                  <button
-                    type="button"
-                    className="add-timestamp-btn"
-                    onClick={addTimestamp}
-                  >
-                    Add Timestamp
-                  </button>
-                </div>
+                </ul>
               </div>
 
               <div className="form-actions">
@@ -548,6 +606,9 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
               </div>
             </form>
           </div>
+
+          {/* Show save success toast */}
+          <Toast message={saveSuccess ? 'Video saved successfully!' : ''} onClose={() => setSaveSuccess(false)} />
         </main>
       </div>
     </div>

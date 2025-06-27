@@ -20,6 +20,9 @@ router.post('/upload', uploadVideo);
 // Get student's videos
 router.get('/videos', getStudentVideos);
 
+// Get a single video by ID
+router.get('/videos/:videoId', require('./controller').getVideoById);
+
 // Stream video file
 router.get('/video/:videoId', streamVideo);
 

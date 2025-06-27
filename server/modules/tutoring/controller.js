@@ -48,10 +48,22 @@ exports.uploadVideo = async (req, res) => {
     }
 
     try {
-      const { title, description, module, degree, year, semester } = req.body;
+      const { title, description, module, degree, year, semester, summary, timestamps } = req.body;
       
-      if (!title || !description || !module || !degree || !year || !semester) {
-        return res.status(400).json({ message: 'All fields are required' });
+      if (!title) {
+        return res.status(400).json({ message: 'Title is required.' });
+      }
+      if (!module) {
+        return res.status(400).json({ message: 'Module is required.' });
+      }
+      if (!degree) {
+        return res.status(400).json({ message: 'Degree is required.' });
+      }
+      if (!year) {
+        return res.status(400).json({ message: 'Year is required.' });
+      }
+      if (!semester) {
+        return res.status(400).json({ message: 'Semester is required.' });
       }
 
       // Generate unique ID combining student ID and timestamp
@@ -103,6 +115,11 @@ exports.uploadVideo = async (req, res) => {
         fileSize: req.file.size,
         uploadedBy: req.user.id
       });
+
+      // Always update summary if provided
+      if (summary !== undefined) video.summary = summary;
+      // Always update timestamps if provided (allow clearing)
+      if (timestamps !== undefined) video.timestamps = timestamps;
 
       await video.save();
       
@@ -157,7 +174,9 @@ exports.getStudentVideos = async (req, res) => {
         uploadDate: video.uploadDate,
         publishDate: video.publishDate,
         videoFile: video.videoFile,
-        thumbnail: video.thumbnail
+        thumbnail: video.thumbnail,
+        summary: video.summary,
+        timestamps: video.timestamps
       }))
     });
   } catch (error) {
@@ -169,7 +188,7 @@ exports.getStudentVideos = async (req, res) => {
 exports.updateVideo = async (req, res) => {
   try {
     const { videoId } = req.params;
-    const { title, description, module, degree, year, semester } = req.body;
+    const { title, description, module, degree, year, semester, summary, timestamps } = req.body;
     
     const video = await Video.findOne({ _id: videoId, uploadedBy: req.user.id });
     
@@ -183,6 +202,10 @@ exports.updateVideo = async (req, res) => {
     video.degree = degree || video.degree;
     video.year = year || video.year;
     video.semester = semester || video.semester;
+    // Always update summary if provided
+    if (summary !== undefined) video.summary = summary;
+    // Always update timestamps if provided (allow clearing)
+    if (timestamps !== undefined) video.timestamps = timestamps;
 
     await video.save();
     
@@ -198,7 +221,9 @@ exports.updateVideo = async (req, res) => {
         year: video.year,
         semester: video.semester,
         status: video.status,
-        videoFile: video.videoFile
+        videoFile: video.videoFile,
+        summary: video.summary,
+        timestamps: video.timestamps
       }
     });
   } catch (error) {
@@ -220,6 +245,10 @@ exports.deleteVideo = async (req, res) => {
     // Delete video file
     if (video.videoFile && fs.existsSync(video.videoFile)) {
       fs.unlinkSync(video.videoFile);
+    }
+    // Delete thumbnail file
+    if (video.thumbnail && fs.existsSync(video.thumbnail)) {
+      fs.unlinkSync(video.thumbnail);
     }
 
     await Video.findByIdAndDelete(videoId);
@@ -320,6 +349,43 @@ exports.serveThumbnail = async (req, res) => {
     }
 
     res.sendFile(path.resolve(video.thumbnail));
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get a single video by ID
+exports.getVideoById = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const video = await Video.findOne({ _id: videoId, uploadedBy: req.user.id });
+    if (!video) {
+      return res.status(404).json({ message: 'Video not found' });
+    }
+    res.json({
+      video: {
+        id: video._id,
+        uniqueId: video.uniqueId,
+        title: video.title,
+        description: video.description,
+        module: video.module,
+        degree: video.degree,
+        year: video.year,
+        semester: video.semester,
+        status: video.status,
+        reviewStatus: video.reviewStatus,
+        reviewLecturer: video.reviewLecturer,
+        aiFeatures: video.aiFeatures,
+        views: video.views,
+        uploadDate: video.uploadDate,
+        publishDate: video.publishDate,
+        videoFile: video.videoFile,
+        thumbnail: video.thumbnail,
+        timestamps: video.timestamps,
+        summary: video.summary
+        
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

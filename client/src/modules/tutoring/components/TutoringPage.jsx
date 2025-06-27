@@ -8,6 +8,8 @@ import LoadingSpinner from '../../../shared/components/LoadingSpinner';
 import VideoEditPage from './VideoEditPage';
 import LecturerReviewDialog from './LecturerReviewDialog';
 import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
+import Toast from '../../../shared/components/Toast';
+import '../../../shared/styles/Toast.css';
 
 const TutoringPage = () => {
   const navigate = useNavigate();
@@ -35,6 +37,8 @@ const TutoringPage = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState('');
   const [uploadError, setUploadError] = useState('');
+  const [deleteMessage, setDeleteMessage] = useState('');
+  const [moduleError, setModuleError] = useState('');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -78,10 +82,26 @@ const TutoringPage = () => {
     setShowDeleteConfirm(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedVideo) {
-      const updatedVideos = videos.filter(v => v.id !== selectedVideo.id);
-      setVideos(updatedVideos);
+      try {
+        const res = await fetch(`/api/tutoring/videos/${selectedVideo.id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        if (res.ok) {
+          // Remove from local state
+          const updatedVideos = videos.filter(v => v.id !== selectedVideo.id);
+          setVideos(updatedVideos);
+          setDeleteMessage('Video deleted successfully!');
+          setTimeout(() => setDeleteMessage(''), 3000);
+        } else {
+          const data = await res.json();
+          alert(data.message || 'Failed to delete video');
+        }
+      } catch (error) {
+        alert('Server error. Please try again.');
+      }
     }
     setShowDeleteConfirm(false);
     setSelectedVideo(null);
@@ -105,8 +125,18 @@ const TutoringPage = () => {
     setSelectedVideo(null);
   };
 
-  const handleEditClick = (video) => {
-    setSelectedVideo(video);
+  const fetchVideoById = async (videoId) => {
+    const res = await fetch('/api/tutoring/videos', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      return data.videos.find(v => v.id === videoId);
+    }
+    return null;
+  };
+
+  const handleEditClick = async (video) => {
+    const latestVideo = await fetchVideoById(video.id);
+    setSelectedVideo(latestVideo || video);
     setShowEditPage(true);
   };
 
@@ -115,6 +145,13 @@ const TutoringPage = () => {
     setUploading(true);
     setUploadMessage('');
     setUploadError('');
+    setModuleError('');
+
+    if (!uploadFormData.module) {
+      setModuleError('Please select a module.');
+      setUploading(false);
+      return;
+    }
 
     try {
       const formData = new FormData();
@@ -173,9 +210,28 @@ const TutoringPage = () => {
     setShowReviewDialog(true);
   };
 
-  const handleSaveVideo = (formData) => {
+  const handleSaveVideo = async (formData) => {
     if (selectedVideo) {
-      handleVideoUpdate(selectedVideo.id, formData);
+      try {
+        const res = await fetch(`/api/tutoring/videos/${selectedVideo.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(formData)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          handleVideoUpdate(selectedVideo.id, data.video);
+          return true;
+        } else {
+          const data = await res.json();
+          alert(data.message || 'Failed to update video');
+          return false;
+        }
+      } catch (error) {
+        alert('Server error. Please try again.');
+        return false;
+      }
     } else {
       // Handle new video upload
       const newVideo = {
@@ -191,9 +247,8 @@ const TutoringPage = () => {
         }
       };
       setVideos([...videos, newVideo]);
+      return true;
     }
-    setShowEditPage(false);
-    setSelectedVideo(null);
   };
 
   const handleRequestReview = (reviewData) => {
@@ -480,9 +535,11 @@ const TutoringPage = () => {
               <div className="error-message">{uploadError}</div>
             )}
 
+            {moduleError && <div style={{ color: 'red', marginTop: 4 }}>{moduleError}</div>}
+
             <form className="tutoring-review-form" onSubmit={handleUploadSubmit}>
               <div className="tutoring-review-field">
-                <label htmlFor="title">Title</label>
+                <label htmlFor="title">Title <span style={{color: 'red'}}>*</span></label>
                 <input
                   type="text"
                   id="title"
@@ -501,13 +558,12 @@ const TutoringPage = () => {
                   name="description"
                   value={uploadFormData.description}
                   onChange={handleUploadChange}
-                  required
                   placeholder="Enter video description"
                 />
               </div>
 
               <div className="tutoring-review-field">
-                <label>Module Selection</label>
+                <label>Module Selection <span style={{color: 'red'}}>*</span></label>
                 <div className="module-selection">
                   <select
                     name="degree"
@@ -565,7 +621,7 @@ const TutoringPage = () => {
               </div>
 
               <div className="tutoring-review-field">
-                <label htmlFor="videoFile">Video File</label>
+                <label htmlFor="videoFile">Video File <span style={{color: 'red'}}>*</span></label>
                 <input
                   type="file"
                   id="videoFile"
@@ -589,6 +645,9 @@ const TutoringPage = () => {
           </div>
         </div>
       )}
+
+      {/* Show delete confirmation message as a popup */}
+      <Toast message={deleteMessage} onClose={() => setDeleteMessage('')} />
     </div>
   );
 };

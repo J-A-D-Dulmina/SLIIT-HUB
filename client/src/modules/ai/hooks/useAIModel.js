@@ -2,25 +2,22 @@ import { useState } from 'react';
 
 const SERVER_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+// NOTE: The backend is now always using gpt-3.5-turbo for all AI completions.
+// No need to specify or select model in the frontend.
+
 export const useAIModel = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // All functions below simply call the backend API, which uses gpt-3.5-turbo
   const generateAISummary = async (videoId, videoTitle = '') => {
     setIsLoading(true);
     setError(null);
-    
-    console.log('🔍 Frontend generateAISummary called with:', { videoId, videoTitle });
-    
     try {
       const requestBody = {
         videoId,
         videoTitle
       };
-      
-      console.log('📤 Sending request to:', `${SERVER_URL}/api/ai/generate-summary`);
-      console.log('📤 Request body:', requestBody);
-      
       const response = await fetch(`${SERVER_URL}/api/ai/generate-summary`, {
         method: 'POST',
         headers: {
@@ -28,20 +25,13 @@ export const useAIModel = () => {
         },
         body: JSON.stringify(requestBody),
       });
-      
-      console.log('📥 Response status:', response.status);
-      
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ Server error response:', errorData);
         throw new Error(errorData.error || 'Failed to generate summary');
       }
-      
       const data = await response.json();
-      console.log('✅ Success response:', data);
       return data.summary;
     } catch (err) {
-      console.error('❌ Frontend error:', err);
       setError(err.message);
       throw err;
     } finally {
@@ -52,7 +42,6 @@ export const useAIModel = () => {
   const generateAIDescription = async (videoId, videoTitle = '') => {
     setIsLoading(true);
     setError(null);
-    
     try {
       const response = await fetch(`${SERVER_URL}/api/ai/generate-description`, {
         method: 'POST',
@@ -64,12 +53,10 @@ export const useAIModel = () => {
           videoTitle
         }),
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to generate description');
       }
-      
       const data = await response.json();
       return data.description;
     } catch (err) {
@@ -83,7 +70,6 @@ export const useAIModel = () => {
   const generateAITimestamps = async (videoId, videoTitle = '', useSceneDetection = true) => {
     setIsLoading(true);
     setError(null);
-    
     try {
       const response = await fetch(`${SERVER_URL}/api/ai/generate-timestamps`, {
         method: 'POST',
@@ -96,12 +82,10 @@ export const useAIModel = () => {
           useSceneDetection
         }),
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to generate timestamps');
       }
-      
       const data = await response.json();
       return data.timestamps;
     } catch (err) {
@@ -115,7 +99,6 @@ export const useAIModel = () => {
   const detectScenes = async (videoId, method = 'content', threshold = 27.0, minSceneLength = 1.0) => {
     setIsLoading(true);
     setError(null);
-    
     try {
       const response = await fetch(`${SERVER_URL}/api/ai/detect-scenes`, {
         method: 'POST',
@@ -129,12 +112,10 @@ export const useAIModel = () => {
           minSceneLength
         }),
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to detect scenes');
       }
-      
       const data = await response.json();
       return data;
     } catch (err) {
@@ -148,7 +129,6 @@ export const useAIModel = () => {
   const processVideoWithAI = async (videoId, videoTitle, types = ['summary', 'timestamps', 'description'], useSceneDetection = true) => {
     setIsLoading(true);
     setError(null);
-    
     try {
       const response = await fetch(`${SERVER_URL}/api/ai/process-video`, {
         method: 'POST',
@@ -162,12 +142,10 @@ export const useAIModel = () => {
           useSceneDetection
         }),
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to process video with AI');
       }
-      
       const data = await response.json();
       return data;
     } catch (err) {
@@ -181,12 +159,10 @@ export const useAIModel = () => {
   const testVideoFileAccess = async (videoId) => {
     try {
       const response = await fetch(`${SERVER_URL}/api/ai/test-video/${videoId}`);
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Video file not found');
       }
-      
       const data = await response.json();
       return data;
     } catch (error) {
@@ -197,12 +173,10 @@ export const useAIModel = () => {
   const testAIServiceHealth = async () => {
     try {
       const response = await fetch(`${SERVER_URL}/api/ai/health`);
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'AI service not available');
       }
-      
       const data = await response.json();
       return data;
     } catch (error) {
