@@ -1,87 +1,47 @@
 import { useState } from 'react';
 
-const PYTHON_SERVICE_URL = process.env.REACT_APP_PYTHON_SERVICE_URL || 'http://localhost:5001';
 const SERVER_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 export const useAIModel = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const getVideoFile = async (videoId, videoTitle = '') => {
-    try {
-      // Try to fetch video from the server uploads directory
-      // First try the standard naming pattern: videoFile-{id}.mp4
-      const videoResponse = await fetch(`${SERVER_URL}/uploads/videos/videoFile-${videoId}.mp4`);
-      
-      if (!videoResponse.ok) {
-        // Try alternative naming patterns
-        const patterns = [
-          `${SERVER_URL}/uploads/videos/${videoId}.mp4`,
-          `${SERVER_URL}/uploads/videos/${videoTitle}.mp4`,
-          `${SERVER_URL}/uploads/videos/video-${videoId}.mp4`
-        ];
-        
-        for (const pattern of patterns) {
-          try {
-            const response = await fetch(pattern);
-            if (response.ok) {
-              return await response.blob();
-            }
-          } catch (e) {
-            continue;
-          }
-        }
-        
-        throw new Error(`Video file not found. Tried patterns: videoFile-${videoId}.mp4, ${videoId}.mp4, ${videoTitle}.mp4`);
-      }
-      
-      return await videoResponse.blob();
-    } catch (error) {
-      console.error('Error fetching video file:', error);
-      throw new Error(`Failed to fetch video file from server: ${error.message}`);
-    }
-  };
-
-  const generateAISummary = async (videoId, videoFile = null, videoTitle = '') => {
+  const generateAISummary = async (videoId, videoTitle = '') => {
     setIsLoading(true);
     setError(null);
     
+    console.log('🔍 Frontend generateAISummary called with:', { videoId, videoTitle });
+    
     try {
-      let response;
+      const requestBody = {
+        videoId,
+        videoTitle
+      };
       
-      if (videoFile) {
-        // Process video file directly
-        const formData = new FormData();
-        formData.append('video', videoFile);
-        formData.append('title', videoTitle);
-        formData.append('type', 'summary');
-        
-        response = await fetch(`${PYTHON_SERVICE_URL}/process-video`, {
-          method: 'POST',
-          body: formData,
-        });
-      } else {
-        // Use existing video from server uploads directory
-        const videoBlob = await getVideoFile(videoId, videoTitle);
-        const formData = new FormData();
-        formData.append('video', videoBlob, `video-${videoId}.mp4`);
-        formData.append('title', videoTitle);
-        formData.append('type', 'summary');
-        
-        response = await fetch(`${PYTHON_SERVICE_URL}/process-video`, {
-          method: 'POST',
-          body: formData,
-        });
-      }
+      console.log('📤 Sending request to:', `${SERVER_URL}/api/ai/generate-summary`);
+      console.log('📤 Request body:', requestBody);
+      
+      const response = await fetch(`${SERVER_URL}/api/ai/generate-summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+      
+      console.log('📥 Response status:', response.status);
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ Server error response:', errorData);
         throw new Error(errorData.error || 'Failed to generate summary');
       }
       
       const data = await response.json();
+      console.log('✅ Success response:', data);
       return data.summary;
     } catch (err) {
+      console.error('❌ Frontend error:', err);
       setError(err.message);
       throw err;
     } finally {
@@ -89,35 +49,21 @@ export const useAIModel = () => {
     }
   };
 
-  const generateAIDescription = async (videoId, videoFile = null, videoTitle = '') => {
+  const generateAIDescription = async (videoId, videoTitle = '') => {
     setIsLoading(true);
     setError(null);
     
     try {
-      let response;
-      
-      if (videoFile) {
-        // Process video file directly
-        const formData = new FormData();
-        formData.append('video', videoFile);
-        formData.append('title', videoTitle);
-        
-        response = await fetch(`${PYTHON_SERVICE_URL}/generate-description`, {
-          method: 'POST',
-          body: formData,
-        });
-      } else {
-        // Use existing video from server uploads directory
-        const videoBlob = await getVideoFile(videoId, videoTitle);
-        const formData = new FormData();
-        formData.append('video', videoBlob, `video-${videoId}.mp4`);
-        formData.append('title', videoTitle);
-        
-        response = await fetch(`${PYTHON_SERVICE_URL}/generate-description`, {
-          method: 'POST',
-          body: formData,
-        });
-      }
+      const response = await fetch(`${SERVER_URL}/api/ai/generate-description`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoId,
+          videoTitle
+        }),
+      });
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -134,45 +80,22 @@ export const useAIModel = () => {
     }
   };
 
-  const generateAITimestamps = async (videoId, videoFile = null, videoTitle = '', useSceneDetection = true) => {
+  const generateAITimestamps = async (videoId, videoTitle = '', useSceneDetection = true) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      let response;
-      
-      if (videoFile) {
-        // Process video file directly
-        const formData = new FormData();
-        formData.append('video', videoFile);
-        formData.append('title', videoTitle);
-        formData.append('type', useSceneDetection ? 'all' : 'timestamps');
-        if (useSceneDetection) {
-          formData.append('scene_method', 'content');
-          formData.append('threshold', '27.0');
-        }
-        
-        response = await fetch(`${PYTHON_SERVICE_URL}/process-video`, {
-          method: 'POST',
-          body: formData,
-        });
-      } else {
-        // Use existing video from server uploads directory
-        const videoBlob = await getVideoFile(videoId, videoTitle);
-        const formData = new FormData();
-        formData.append('video', videoBlob, `video-${videoId}.mp4`);
-        formData.append('title', videoTitle);
-        formData.append('type', useSceneDetection ? 'all' : 'timestamps');
-        if (useSceneDetection) {
-          formData.append('scene_method', 'content');
-          formData.append('threshold', '27.0');
-        }
-        
-        response = await fetch(`${PYTHON_SERVICE_URL}/process-video`, {
-          method: 'POST',
-          body: formData,
-        });
-      }
+      const response = await fetch(`${SERVER_URL}/api/ai/generate-timestamps`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoId,
+          videoTitle,
+          useSceneDetection
+        }),
+      });
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -189,39 +112,23 @@ export const useAIModel = () => {
     }
   };
 
-  const detectScenes = async (videoId, videoFile = null, method = 'content', threshold = 27.0, minSceneLength = 1.0) => {
+  const detectScenes = async (videoId, method = 'content', threshold = 27.0, minSceneLength = 1.0) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      let response;
-      
-      if (videoFile) {
-        // Process video file directly
-        const formData = new FormData();
-        formData.append('video', videoFile);
-        formData.append('method', method);
-        formData.append('threshold', threshold.toString());
-        formData.append('min_scene_length', minSceneLength.toString());
-        
-        response = await fetch(`${PYTHON_SERVICE_URL}/detect-scenes`, {
-          method: 'POST',
-          body: formData,
-        });
-      } else {
-        // Use existing video from server uploads directory
-        const videoBlob = await getVideoFile(videoId);
-        const formData = new FormData();
-        formData.append('video', videoBlob, `video-${videoId}.mp4`);
-        formData.append('method', method);
-        formData.append('threshold', threshold.toString());
-        formData.append('min_scene_length', minSceneLength.toString());
-        
-        response = await fetch(`${PYTHON_SERVICE_URL}/detect-scenes`, {
-          method: 'POST',
-          body: formData,
-        });
-      }
+      const response = await fetch(`${SERVER_URL}/api/ai/detect-scenes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoId,
+          method,
+          threshold,
+          minSceneLength
+        }),
+      });
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -238,23 +145,22 @@ export const useAIModel = () => {
     }
   };
 
-  const processVideoWithAI = async (videoFile, videoTitle, types = ['summary', 'timestamps', 'description'], useSceneDetection = true) => {
+  const processVideoWithAI = async (videoId, videoTitle, types = ['summary', 'timestamps', 'description'], useSceneDetection = true) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const formData = new FormData();
-      formData.append('video', videoFile);
-      formData.append('title', videoTitle);
-      formData.append('type', 'all'); // Process everything
-      if (useSceneDetection) {
-        formData.append('scene_method', 'content');
-        formData.append('threshold', '27.0');
-      }
-      
-      const response = await fetch(`${PYTHON_SERVICE_URL}/process-video`, {
+      const response = await fetch(`${SERVER_URL}/api/ai/process-video`, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoId,
+          videoTitle,
+          types,
+          useSceneDetection
+        }),
       });
       
       if (!response.ok) {
@@ -272,45 +178,35 @@ export const useAIModel = () => {
     }
   };
 
-  const combineTimestamps = async (scenes, gptTimestamps, videoTitle) => {
-    setIsLoading(true);
-    setError(null);
-    
+  const testVideoFileAccess = async (videoId) => {
     try {
-      const formData = new FormData();
-      formData.append('scenes', JSON.stringify(scenes));
-      formData.append('gpt_timestamps', JSON.stringify(gptTimestamps));
-      formData.append('video_title', videoTitle);
-      
-      const response = await fetch(`${PYTHON_SERVICE_URL}/combine-timestamps`, {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await fetch(`${SERVER_URL}/api/ai/test-video/${videoId}`);
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to combine timestamps');
+        throw new Error(errorData.error || 'Video file not found');
       }
       
       const data = await response.json();
-      return data.combined_timestamps;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setIsLoading(false);
+      return data;
+    } catch (error) {
+      throw error;
     }
   };
 
-  const testVideoFileAccess = async (videoId) => {
+  const testAIServiceHealth = async () => {
     try {
-      console.log(`Testing video file access for ID: ${videoId}`);
-      const videoBlob = await getVideoFile(videoId);
-      console.log('✅ Video file accessed successfully:', videoBlob.size, 'bytes');
-      return true;
+      const response = await fetch(`${SERVER_URL}/api/ai/health`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'AI service not available');
+      }
+      
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error('❌ Video file access failed:', error.message);
-      return false;
+      throw error;
     }
   };
 
@@ -322,7 +218,7 @@ export const useAIModel = () => {
     generateAITimestamps,
     detectScenes,
     processVideoWithAI,
-    combineTimestamps,
     testVideoFileAccess,
+    testAIServiceHealth,
   };
 }; 

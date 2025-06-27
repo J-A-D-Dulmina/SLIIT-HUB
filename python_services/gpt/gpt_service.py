@@ -75,8 +75,8 @@ class GPTService:
             return description
         except Exception as e:
             logger.error(f"Error generating description: {str(e)}")
-            # Return a basic description if GPT fails
-            return f"Educational video about {video_title}" if video_title else "Educational video content"
+            # Raise the exception instead of returning fallback description
+            raise Exception(f"Failed to generate description: {str(e)}")
     
     def generate_summary(self, transcript, video_title=""):
         """Generate summary using GPT"""
@@ -115,8 +115,8 @@ class GPTService:
             return response.choices[0].message.content.strip()
         except Exception as e:
             logger.error(f"Error generating summary: {str(e)}")
-            # Return a basic summary if GPT fails
-            return f"Summary generation failed: {str(e)}. Please check your OpenAI API key and model access."
+            # Raise the exception instead of returning error message
+            raise Exception(f"Failed to generate summary: {str(e)}")
     
     def generate_timestamps(self, transcript, video_title=""):
         """Generate timestamps using GPT"""
@@ -171,5 +171,5 @@ class GPTService:
             return timestamps
         except Exception as e:
             logger.error(f"Error generating timestamps: {str(e)}")
-            # Return empty timestamps if GPT fails
-            return [] 
+            # Raise the exception instead of returning empty timestamps
+            raise Exception(f"Failed to generate timestamps: {str(e)}") 

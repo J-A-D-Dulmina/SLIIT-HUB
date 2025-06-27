@@ -112,56 +112,52 @@ const VideoListPage = () => {
     
     try {
       let result;
+      const video = videos.find(v => v.id === videoId);
       
       switch (type) {
         case 'description':
-          result = await generateAIDescription(videoId, null, videos.find(v => v.id === videoId)?.title || '');
-          // Update video description in the list
-          setVideos(prev => prev.map(video => 
-            video.id === videoId 
-              ? { ...video, description: result, hasAIDescription: true }
-              : video
+          result = await generateAIDescription(videoId, video?.title || '');
+          setVideos(prev => prev.map(v => 
+            v.id === videoId 
+              ? { ...v, description: result, hasAIDescription: true }
+              : v
           ));
           break;
           
         case 'summary':
-          result = await generateAISummary(videoId, null, videos.find(v => v.id === videoId)?.title || '');
-          // Update video summary in the list
-          setVideos(prev => prev.map(video => 
-            video.id === videoId 
-              ? { ...video, hasAISummary: true }
-              : video
+          result = await generateAISummary(videoId, video?.title || '');
+          setVideos(prev => prev.map(v => 
+            v.id === videoId 
+              ? { ...v, hasAISummary: true }
+              : v
           ));
           break;
           
         case 'timestamps':
-          result = await generateAITimestamps(videoId, null, videos.find(v => v.id === videoId)?.title || '');
-          // Update video timestamps in the list
-          setVideos(prev => prev.map(video => 
-            video.id === videoId 
-              ? { ...video, hasAITimestamps: true }
-              : video
+          result = await generateAITimestamps(videoId, video?.title || '');
+          setVideos(prev => prev.map(v => 
+            v.id === videoId 
+              ? { ...v, hasAITimestamps: true }
+              : v
           ));
           break;
           
         case 'all':
-          result = await processVideoWithAI(null, videos.find(v => v.id === videoId)?.title || '', ['summary', 'timestamps', 'description']);
-          // Update all AI features
-          setVideos(prev => prev.map(video => 
-            video.id === videoId 
+          result = await processVideoWithAI(videoId, video?.title || '', ['summary', 'timestamps', 'description']);
+          setVideos(prev => prev.map(v => 
+            v.id === videoId 
               ? { 
-                  ...video, 
+                  ...v, 
                   hasAISummary: true, 
                   hasAITimestamps: true, 
                   hasAIDescription: true,
-                  description: result.description || video.description
+                  description: result.description || v.description
                 }
-              : video
+              : v
           ));
           break;
       }
       
-      // Show success message
       alert(`${type === 'all' ? 'All AI features' : type} generated successfully!`);
       
     } catch (error) {
