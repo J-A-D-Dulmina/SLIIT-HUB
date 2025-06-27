@@ -23,7 +23,7 @@ import { useAIModel } from '../../ai/hooks/useAIModel';
 const VIDEOS = {
   'IT1010': [
     {
-      id: 1,
+      id: '1750982251814-685619044', // Matches videoFile-1750982251814-685619044.mp4
       title: 'Introduction to Python Programming',
       description: 'Learn the basics of Python programming language and its applications.',
       duration: '45:30',
@@ -38,7 +38,7 @@ const VIDEOS = {
       uploadTime: '10:30 AM'
     },
     {
-      id: 2,
+      id: '1750982251815-123456789', // Example ID for second video
       title: 'Variables and Data Types',
       description: 'Understanding different data types and variable declaration in Python.',
       duration: '38:15',
@@ -53,7 +53,7 @@ const VIDEOS = {
       uploadTime: '2:15 PM'
     },
     {
-      id: 3,
+      id: '1750982251816-987654321', // Example ID for third video
       title: 'Control Structures',
       description: 'Learn about if-else statements, loops, and other control structures.',
       duration: '52:45',

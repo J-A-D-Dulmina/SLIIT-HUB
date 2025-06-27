@@ -10,21 +10,35 @@ export const useAIModel = () => {
   const getVideoFile = async (videoId, videoTitle = '') => {
     try {
       // Try to fetch video from the server uploads directory
+      // First try the standard naming pattern: videoFile-{id}.mp4
       const videoResponse = await fetch(`${SERVER_URL}/uploads/videos/videoFile-${videoId}.mp4`);
       
       if (!videoResponse.ok) {
         // Try alternative naming patterns
-        const alternativeResponse = await fetch(`${SERVER_URL}/uploads/videos/${videoTitle}.mp4`);
-        if (!alternativeResponse.ok) {
-          throw new Error('Video file not found on server');
+        const patterns = [
+          `${SERVER_URL}/uploads/videos/${videoId}.mp4`,
+          `${SERVER_URL}/uploads/videos/${videoTitle}.mp4`,
+          `${SERVER_URL}/uploads/videos/video-${videoId}.mp4`
+        ];
+        
+        for (const pattern of patterns) {
+          try {
+            const response = await fetch(pattern);
+            if (response.ok) {
+              return await response.blob();
+            }
+          } catch (e) {
+            continue;
+          }
         }
-        return await alternativeResponse.blob();
+        
+        throw new Error(`Video file not found. Tried patterns: videoFile-${videoId}.mp4, ${videoId}.mp4, ${videoTitle}.mp4`);
       }
       
       return await videoResponse.blob();
     } catch (error) {
       console.error('Error fetching video file:', error);
-      throw new Error('Failed to fetch video file from server');
+      throw new Error(`Failed to fetch video file from server: ${error.message}`);
     }
   };
 
@@ -288,6 +302,18 @@ export const useAIModel = () => {
     }
   };
 
+  const testVideoFileAccess = async (videoId) => {
+    try {
+      console.log(`Testing video file access for ID: ${videoId}`);
+      const videoBlob = await getVideoFile(videoId);
+      console.log('✅ Video file accessed successfully:', videoBlob.size, 'bytes');
+      return true;
+    } catch (error) {
+      console.error('❌ Video file access failed:', error.message);
+      return false;
+    }
+  };
+
   return {
     isLoading,
     error,
@@ -297,5 +323,6 @@ export const useAIModel = () => {
     detectScenes,
     processVideoWithAI,
     combineTimestamps,
+    testVideoFileAccess,
   };
 }; 
