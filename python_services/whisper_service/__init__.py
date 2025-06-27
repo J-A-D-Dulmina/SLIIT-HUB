@@ -1,0 +1,1 @@
+# OpenAI Whisper integration for audio transcription 

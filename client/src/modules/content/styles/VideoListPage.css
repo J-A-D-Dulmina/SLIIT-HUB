@@ -189,6 +189,73 @@
   color: #757575;
 }
 
+/* AI Generation Buttons */
+.ai-generation-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.ai-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #007bff;
+  background: #007bff;
+  color: white;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+  justify-content: center;
+}
+
+.ai-btn:hover:not(:disabled) {
+  background: #0056b3;
+  border-color: #0056b3;
+  transform: translateY(-1px);
+}
+
+.ai-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ai-btn.generated {
+  background: #28a745;
+  border-color: #28a745;
+}
+
+.ai-btn.generated:hover:not(:disabled) {
+  background: #1e7e34;
+  border-color: #1e7e34;
+}
+
+.ai-btn.all {
+  background: #6f42c1;
+  border-color: #6f42c1;
+  min-width: 100px;
+}
+
+.ai-btn.all:hover:not(:disabled) {
+  background: #5a32a3;
+  border-color: #5a32a3;
+}
+
+/* Feature badges */
+.feature.ai-description {
+  background: #17a2b8;
+  color: white;
+}
+
+/* Responsive design for AI buttons */
 @media (max-width: 768px) {
   .video-grid {
     grid-template-columns: 1fr;
@@ -197,4 +264,36 @@
   .video-thumbnail {
     height: 180px;
   }
+  
+  .ai-generation-buttons {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .ai-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Loading animation for AI buttons */
+.ai-btn:disabled {
+  position: relative;
+}
+
+.ai-btn:disabled::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  border: 2px solid transparent;
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 } 

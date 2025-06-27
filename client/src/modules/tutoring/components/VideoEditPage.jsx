@@ -3,6 +3,7 @@ import { FaChevronLeft, FaChevronRight, FaRobot, FaClock, FaEdit, FaExpand, FaDo
 import ReactPlayer from 'react-player';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
+import { useAIModel } from '../../ai/hooks/useAIModel';
 import '../styles/VideoEditPage.css';
 
 const VideoEditPage = ({ video, onClose, onSave }) => {
@@ -30,6 +31,17 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     timestamps: ''
   });
   const [showFullSummary, setShowFullSummary] = useState(false);
+  const [videoFile, setVideoFile] = useState(null);
+
+  // AI model hook
+  const { 
+    generateAISummary, 
+    generateAITimestamps, 
+    generateAIDescription, 
+    processVideoWithAI,
+    isLoading: aiLoading, 
+    error: aiError 
+  } = useAIModel();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -49,6 +61,13 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleVideoFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setVideoFile(file);
+    }
   };
 
   const handleTimestampChange = (index, field, value) => {
@@ -80,44 +99,104 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     setGenerationProgress(prev => ({ ...prev, [type]: 'Analyzing video content...' }));
     
     try {
-      // Simulate AI generation steps
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setGenerationProgress(prev => ({ ...prev, [type]: 'Processing video content...' }));
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setGenerationProgress(prev => ({ ...prev, [type]: 'Generating content...' }));
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      let result;
       
       switch (type) {
         case 'description':
+          setGenerationProgress(prev => ({ ...prev, [type]: 'Generating short description with AI...' }));
+          result = await generateAIDescription(video?.id, videoFile, formData.title);
           setFormData(prev => ({
             ...prev,
-            description: 'AI generated description for the video...'
+            description: result
           }));
           break;
+          
         case 'summary':
+          setGenerationProgress(prev => ({ ...prev, [type]: 'Transcribing audio with Whisper...' }));
+          setGenerationProgress(prev => ({ ...prev, [type]: 'Generating summary with GPT...' }));
+          result = await generateAISummary(video?.id, videoFile, formData.title);
           setFormData(prev => ({
             ...prev,
-            summary: 'AI generated summary of the video content...'
+            summary: result
           }));
           break;
+          
         case 'timestamps':
+          setGenerationProgress(prev => ({ ...prev, [type]: 'Detecting scenes with PySceneDetect...' }));
+          setGenerationProgress(prev => ({ ...prev, [type]: 'Generating timestamps with GPT...' }));
+          result = await generateAITimestamps(video?.id, videoFile, formData.title);
           setFormData(prev => ({
             ...prev,
-            timestamps: [
-              { time: '00:00', description: 'Introduction' },
-              { time: '02:30', description: 'Main Topic' },
-              { time: '05:45', description: 'Conclusion' }
-            ]
+            timestamps: result
           }));
           break;
       }
     } catch (error) {
       console.error(`Error generating ${type}:`, error);
+      // Show error to user
+      alert(`Error generating ${type}: ${error.message}`);
     } finally {
       setIsGenerating(prev => ({ ...prev, [type]: false }));
       setGenerationProgress(prev => ({ ...prev, [type]: '' }));
+    }
+  };
+
+  const generateAllAIContent = async () => {
+    if (!videoFile && !video?.id) {
+      alert('Please upload a video file first or select an existing video.');
+      return;
+    }
+
+    setIsGenerating({
+      description: true,
+      summary: true,
+      timestamps: true
+    });
+    
+    setGenerationProgress({
+      description: 'Processing video with AI...',
+      summary: 'Processing video with AI...',
+      timestamps: 'Processing video with AI...'
+    });
+
+    try {
+      const result = await processVideoWithAI(videoFile, formData.title, ['summary', 'timestamps', 'description']);
+      
+      if (result.summary) {
+        setFormData(prev => ({
+          ...prev,
+          summary: result.summary
+        }));
+      }
+      
+      if (result.timestamps) {
+        setFormData(prev => ({
+          ...prev,
+          timestamps: result.timestamps
+        }));
+      }
+      
+      if (result.description) {
+        setFormData(prev => ({
+          ...prev,
+          description: result.description
+        }));
+      }
+      
+    } catch (error) {
+      console.error('Error generating all AI content:', error);
+      alert(`Error generating AI content: ${error.message}`);
+    } finally {
+      setIsGenerating({
+        description: false,
+        summary: false,
+        timestamps: false
+      });
+      setGenerationProgress({
+        description: '',
+        summary: '',
+        timestamps: ''
+      });
     }
   };
 
@@ -163,6 +242,35 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
               Back
             </button>
             <h1>{video ? 'Edit Video' : 'Upload New Video'}</h1>
+          </div>
+
+          {/* AI Generation Controls */}
+          <div className="ai-controls-section">
+            <div className="ai-controls-header">
+              <h3>AI Content Generation</h3>
+              <p>Use AI to automatically generate video content using OpenAI Whisper and GPT-4</p>
+            </div>
+            <div className="ai-controls-buttons">
+              <button
+                type="button"
+                className="ai-generate-all-btn"
+                onClick={generateAllAIContent}
+                disabled={isGenerating.summary || isGenerating.description || isGenerating.timestamps}
+              >
+                <FaRobot /> Generate All Content with AI
+              </button>
+            </div>
+            {(isGenerating.summary || isGenerating.description || isGenerating.timestamps) && (
+              <div className="ai-progress-overview">
+                <div className="progress-spinner"></div>
+                <span>Processing video with AI (Whisper + GPT-4)...</span>
+              </div>
+            )}
+            {aiError && (
+              <div className="ai-error-message">
+                <p>Error: {aiError}</p>
+              </div>
+            )}
           </div>
 
           <div className="video-preview-section">
@@ -236,7 +344,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                 name="summary"
                 value={formData.summary}
                 onChange={handleChange}
-                placeholder="Enter video summary"
+                placeholder="Enter video summary or generate with AI using Whisper and GPT-4"
                 rows="12"
               />
             </div>
@@ -297,13 +405,19 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                     <FaRobot /> {isGenerating.description ? 'Generating...' : 'Generate with AI'}
                   </button>
                 </div>
+                {isGenerating.description && (
+                  <div className="generation-progress">
+                    <div className="progress-spinner"></div>
+                    <span>{generationProgress.description}</span>
+                  </div>
+                )}
                 <textarea
                   id="description"
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
                   required
-                  placeholder="Enter video description"
+                  placeholder="Enter video description or generate with AI"
                   rows="4"
                 />
               </div>
@@ -379,6 +493,12 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                     <FaClock /> {isGenerating.timestamps ? 'Generating...' : 'Generate with AI'}
                   </button>
                 </div>
+                {isGenerating.timestamps && (
+                  <div className="generation-progress">
+                    <div className="progress-spinner"></div>
+                    <span>{generationProgress.timestamps}</span>
+                  </div>
+                )}
                 <div className="timestamps-list">
                   {formData.timestamps.map((timestamp, index) => (
                     <div key={index} className="timestamp-item">
@@ -423,8 +543,10 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                     id="videoFile"
                     name="videoFile"
                     accept="video/*"
+                    onChange={handleVideoFileChange}
                     required
                   />
+                  <small>Upload a video file to enable AI content generation</small>
                 </div>
               )}
 

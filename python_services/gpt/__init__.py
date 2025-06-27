@@ -1,0 +1,1 @@
+# GPT-4 integration for content generation 
