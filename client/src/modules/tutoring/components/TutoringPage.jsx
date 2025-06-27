@@ -4,62 +4,16 @@ import '../styles/TutoringPage.css';
 import { FaChevronLeft, FaChevronRight, FaEdit, FaTrash, FaUpload, FaEye, FaEyeSlash, FaRobot, FaClock, FaUserGraduate, FaCheck, FaTimes, FaGlobe } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
+import LoadingSpinner from '../../../shared/components/LoadingSpinner';
 import VideoEditPage from './VideoEditPage';
 import LecturerReviewDialog from './LecturerReviewDialog';
 import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
 
-// Dummy data for videos
-const MY_VIDEOS = [
-  {
-    id: 1,
-    title: 'Introduction to Python Programming',
-    description: 'A comprehensive guide to Python basics for beginners.',
-    status: 'published',
-    module: 'IT1010',
-    date: '2024-03-15',
-    reviewStatus: 'pending',
-    reviewLecturer: 'Dr. John Smith',
-    aiFeatures: {
-      summary: true,
-      timestamps: true,
-      lecturerRecommended: true
-    }
-  },
-  {
-    id: 2,
-    title: 'Data Structures in Python',
-    description: 'Understanding lists, dictionaries, and sets in Python.',
-    status: 'published',
-    module: 'IT1010',
-    date: '2024-03-16',
-    reviewStatus: null,
-    reviewLecturer: null,
-    aiFeatures: {
-      summary: false,
-      timestamps: true,
-      lecturerRecommended: false
-    }
-  },
-  {
-    id: 3,
-    title: 'Object-Oriented Programming',
-    description: 'Learn the fundamentals of OOP in Python.',
-    status: 'unpublished',
-    module: 'IT1010',
-    date: '2024-03-17',
-    reviewStatus: null,
-    reviewLecturer: null,
-    aiFeatures: {
-      summary: false,
-      timestamps: false,
-      lecturerRecommended: false
-    }
-  }
-];
-
 const TutoringPage = () => {
   const navigate = useNavigate();
-  const [videos, setVideos] = useState(MY_VIDEOS);
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showEditPage, setShowEditPage] = useState(false);
@@ -74,8 +28,13 @@ const TutoringPage = () => {
     module: '',
     degree: '',
     year: '',
+    semester: '',
     videoFile: null
   });
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
+  const [uploadError, setUploadError] = useState('');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -83,6 +42,30 @@ const TutoringPage = () => {
     }, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch videos from backend
+  useEffect(() => {
+    fetchStudentVideos();
+  }, []);
+
+  const fetchStudentVideos = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch('/api/tutoring/videos', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setVideos(data.videos);
+      } else {
+        setError('Failed to fetch videos');
+      }
+    } catch (error) {
+      console.error('Error fetching videos:', error);
+      setError('Network error. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleVideoUpdate = (videoId, updates) => {
     setVideos(videos.map(video => 
@@ -127,31 +110,54 @@ const TutoringPage = () => {
     setShowEditPage(true);
   };
 
-  const handleUploadSubmit = (e) => {
+  const handleUploadSubmit = async (e) => {
     e.preventDefault();
-    const newVideo = {
-      id: videos.length + 1,
-      ...uploadFormData,
-      date: new Date().toISOString().split('T')[0],
-      status: 'unpublished',
-      reviewStatus: null,
-      reviewLecturer: null,
-      aiFeatures: {
-        summary: false,
-        timestamps: false,
-        lecturerRecommended: false
+    setUploading(true);
+    setUploadMessage('');
+    setUploadError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('title', uploadFormData.title);
+      formData.append('description', uploadFormData.description);
+      formData.append('module', uploadFormData.module);
+      formData.append('degree', uploadFormData.degree);
+      formData.append('year', uploadFormData.year);
+      formData.append('semester', uploadFormData.semester);
+      formData.append('videoFile', uploadFormData.videoFile);
+
+      const res = await fetch('/api/tutoring/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setUploadMessage('Video uploaded successfully!');
+        setShowUploadDialog(false);
+        setUploadFormData({
+          title: '',
+          description: '',
+          module: '',
+          degree: '',
+          year: '',
+          semester: '',
+          videoFile: null
+        });
+        // Refresh videos list
+        fetchStudentVideos();
+        // Clear message after 3 seconds
+        setTimeout(() => setUploadMessage(''), 3000);
+      } else {
+        setUploadError(data.message || 'Upload failed');
       }
-    };
-    setVideos([...videos, newVideo]);
-    setShowUploadDialog(false);
-    setUploadFormData({
-      title: '',
-      description: '',
-      module: '',
-      degree: '',
-      year: '',
-      videoFile: null
-    });
+    } catch (error) {
+      setUploadError('Server error. Please try again.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleUploadChange = (e) => {
@@ -238,7 +244,7 @@ const TutoringPage = () => {
               <FaChevronLeft />
               Back
             </button>
-            <h1>My Tutoring</h1>
+            <h1>My Tutoring Videos</h1>
           </div>
 
           <div className="videos-section">
@@ -249,98 +255,170 @@ const TutoringPage = () => {
               </button>
             </div>
 
-            <div className="video-list">
-              {videos.map(video => (
-                <div 
-                  key={video.id} 
-                  className={`video-item ${video.status === 'published' ? 'clickable' : ''}`}
-                  onClick={() => handleVideoClick(video)}
-                >
-                  <div className="video-thumbnail">
-                    <img 
-                      src={`https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`} 
-                      alt={video.title}
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/320x180?text=Video+Thumbnail';
-                      }}
-                    />
-                    <span className="duration">10:30</span>
-                    {!video.aiFeatures.lecturerRecommended && (
-                      <button 
-                        className="lecturer-recommend-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReviewClick(video);
-                        }}
-                      >
-                        <FaUserGraduate /> Get Lecturer Review
-                      </button>
-                    )}
+            {loading && (
+              <LoadingSpinner message="Loading videos..." size="medium" />
+            )}
+
+            {error && (
+              <div className="error-state">
+                <p>{error}</p>
+                <button onClick={fetchStudentVideos} className="retry-btn">
+                  Try Again
+                </button>
+              </div>
+            )}
+
+            {!loading && !error && videos.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon">📹</div>
+                <h3>No videos yet</h3>
+                <p>Upload your first video to get started!</p>
+                <button onClick={() => setShowUploadDialog(true)} className="upload-first-btn">
+                  <FaUpload /> Upload Your First Video
+                </button>
+              </div>
+            )}
+
+            {!loading && !error && videos.length > 0 && (
+              <div className="video-list">
+                {videos.map(video => (
+                  <div 
+                    key={video.id} 
+                    className={`video-item ${video.status === 'published' ? 'clickable' : ''}`}
+                    onClick={() => handleVideoClick(video)}
+                  >
+                    <div className="video-thumbnail">
+                      {video.thumbnail ? (
+                        <img 
+                          src={`/api/tutoring/thumbnail/${video.id}`}
+                          alt={video.title}
+                          onError={(e) => {
+                            // If thumbnail fails, show video element
+                            e.target.style.display = 'none';
+                            const videoElement = e.target.parentElement.querySelector('video');
+                            if (videoElement) {
+                              videoElement.style.display = 'block';
+                            } else {
+                              // Show placeholder if no video element
+                              const placeholder = document.createElement('div');
+                              placeholder.className = 'video-placeholder';
+                              placeholder.innerHTML = '<div class="placeholder-icon">📹</div><span>Video</span>';
+                              e.target.parentElement.appendChild(placeholder);
+                            }
+                          }}
+                        />
+                      ) : video.videoFile ? (
+                        <video 
+                          src={`/api/tutoring/video/${video.id}`}
+                          preload="metadata"
+                          muted
+                          onLoadedMetadata={(e) => {
+                            const duration = Math.floor(e.target.duration);
+                            const minutes = Math.floor(duration / 60);
+                            const seconds = duration % 60;
+                            const durationSpan = e.target.parentElement.querySelector('.duration');
+                            if (durationSpan) {
+                              durationSpan.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                            }
+                          }}
+                          onError={() => {
+                            // Show placeholder if video fails
+                            const placeholder = document.createElement('div');
+                            placeholder.className = 'video-placeholder';
+                            placeholder.innerHTML = '<div class="placeholder-icon">📹</div><span>Video</span>';
+                            const videoElement = document.querySelector(`[data-video-id="${video.id}"]`);
+                            if (videoElement) {
+                              videoElement.style.display = 'none';
+                              videoElement.parentElement.appendChild(placeholder);
+                            }
+                          }}
+                          data-video-id={video.id}
+                        />
+                      ) : (
+                        <div className="video-placeholder">
+                          <div className="placeholder-icon">📹</div>
+                          <span>No Video</span>
+                        </div>
+                      )}
+                      <span className="duration">--:--</span>
+                      {!video.aiFeatures?.lecturerRecommended && (
+                        <button 
+                          className="lecturer-recommend-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReviewClick(video);
+                          }}
+                        >
+                          <FaUserGraduate /> Get Lecturer Review
+                        </button>
+                      )}
+                    </div>
+                    <div className="video-content">
+                      <div className="video-info">
+                        <h3>{video.title}</h3>
+                        <p>{video.description}</p>
+                      </div>
+                      <div className="video-meta">
+                        <span className="module">{video.module}</span>
+                        <span className="semester">Semester {video.semester}</span>
+                        <span className={`status ${video.status}`}>
+                          {video.status === 'published' ? 'Published' : 'Unpublished'}
+                        </span>
+                      </div>
+                      <div className="ai-tags">
+                        {video.aiFeatures?.summary && (
+                          <span className="ai-tag summary">
+                            <FaRobot /> AI Summary
+                          </span>
+                        )}
+                        {video.aiFeatures?.timestamps && (
+                          <span className="ai-tag timestamps">
+                            <FaClock /> AI Timestamps
+                          </span>
+                        )}
+                        {video.aiFeatures?.lecturerRecommended && (
+                          <span className="ai-tag lecturer">
+                            <FaUserGraduate /> Lecturer Recommended
+                          </span>
+                        )}
+                      </div>
+                      <div className="video-actions-container">
+                        <button 
+                          className="video-action-btn edit-video-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditClick(video);
+                          }}
+                          title="Edit Video"
+                        >
+                          <FaEdit /> Edit
+                        </button>
+                        <button 
+                          className={`video-action-btn ${video.status === 'published' ? 'unpublish-video-btn' : 'publish-video-btn'}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePublishToggle(video);
+                          }}
+                          title={video.status === 'published' ? 'Unpublish Video' : 'Publish Video'}
+                        >
+                          <FaGlobe /> {video.status === 'published' ? 'Unpublish' : 'Publish'}
+                        </button>
+                        <button 
+                          className="video-action-btn delete-video-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleVideoDelete(video);
+                          }}
+                          title="Delete Video"
+                        >
+                          <FaTrash /> Delete
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="video-content">
-                    <div className="video-info">
-                      <h3>{video.title}</h3>
-                      <p>{video.description}</p>
-                    </div>
-                    <div className="video-meta">
-                      <span className="module">{video.module}</span>
-                      <span className={`status ${video.status}`}>
-                        {video.status === 'published' ? 'Published' : 'Unpublished'}
-                      </span>
-                    </div>
-                    <div className="ai-tags">
-                      {video.aiFeatures.summary && (
-                        <span className="ai-tag summary">
-                          <FaRobot /> AI Summary
-                        </span>
-                      )}
-                      {video.aiFeatures.timestamps && (
-                        <span className="ai-tag timestamps">
-                          <FaClock /> AI Timestamps
-                        </span>
-                      )}
-                      {video.aiFeatures.lecturerRecommended && (
-                        <span className="ai-tag lecturer">
-                          <FaUserGraduate /> Lecturer Recommended
-                        </span>
-                      )}
-                    </div>
-                    <div className="video-actions-container">
-                      <button 
-                        className="video-action-btn edit-video-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditClick(video);
-                        }}
-                        title="Edit Video"
-                      >
-                        <FaEdit /> Edit
-                      </button>
-                      <button 
-                        className={`video-action-btn ${video.status === 'published' ? 'unpublish-video-btn' : 'publish-video-btn'}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePublishToggle(video);
-                        }}
-                        title={video.status === 'published' ? 'Unpublish Video' : 'Publish Video'}
-                      >
-                        <FaGlobe /> {video.status === 'published' ? 'Unpublish' : 'Publish'}
-                      </button>
-                      <button 
-                        className="video-action-btn delete-video-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleVideoDelete(video);
-                        }}
-                        title="Delete Video"
-                      >
-                        <FaTrash /> Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </main>
       </div>
@@ -394,6 +472,14 @@ const TutoringPage = () => {
               </button>
             </div>
 
+            {uploadMessage && (
+              <div className="success-message">{uploadMessage}</div>
+            )}
+            
+            {uploadError && (
+              <div className="error-message">{uploadError}</div>
+            )}
+
             <form className="tutoring-review-form" onSubmit={handleUploadSubmit}>
               <div className="tutoring-review-field">
                 <label htmlFor="title">Title</label>
@@ -430,9 +516,12 @@ const TutoringPage = () => {
                     required
                   >
                     <option value="">Select Degree</option>
-                    <option value="BSc">BSc in Information Technology</option>
-                    <option value="BEng">BEng in Software Engineering</option>
-                    <option value="BScCS">BSc in Computer Science</option>
+                    <option value="BSc (Hons) in Information Technology">BSc (Hons) in Information Technology</option>
+                    <option value="BSc (Hons) in Computer Science">BSc (Hons) in Computer Science</option>
+                    <option value="BSc (Hons) in Software Engineering">BSc (Hons) in Software Engineering</option>
+                    <option value="BSc (Hons) in Data Science">BSc (Hons) in Data Science</option>
+                    <option value="BSc (Hons) in Cyber Security">BSc (Hons) in Cyber Security</option>
+                    <option value="BSc (Hons) in Business Information Systems">BSc (Hons) in Business Information Systems</option>
                   </select>
 
                   <select
@@ -446,6 +535,17 @@ const TutoringPage = () => {
                     <option value="2">Year 2</option>
                     <option value="3">Year 3</option>
                     <option value="4">Year 4</option>
+                  </select>
+
+                  <select
+                    name="semester"
+                    value={uploadFormData.semester}
+                    onChange={handleUploadChange}
+                    required
+                  >
+                    <option value="">Select Semester</option>
+                    <option value="1">Semester 1</option>
+                    <option value="2">Semester 2</option>
                   </select>
 
                   <select
@@ -474,14 +574,15 @@ const TutoringPage = () => {
                   accept="video/*"
                   required
                 />
+                <small>Maximum file size: 500MB. Supported formats: MP4, AVI, MOV, WMV, FLV, WebM</small>
               </div>
 
               <div className="tutoring-review-actions">
                 <button type="button" className="tutoring-review-cancel" onClick={() => setShowUploadDialog(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="tutoring-review-submit">
-                  Upload Video
+                <button type="submit" className="tutoring-review-submit" disabled={uploading}>
+                  {uploading ? 'Uploading...' : 'Upload Video'}
                 </button>
               </div>
             </form>
@@ -492,4 +593,4 @@ const TutoringPage = () => {
   );
 };
 
-export default TutoringPage; 
+export default TutoringPage;

@@ -108,6 +108,26 @@
   transform: translateY(-2px);
 }
 
+.success-message {
+  background-color: #d1fae5;
+  color: #065f46;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border: 1px solid #a7f3d0;
+  font-weight: 500;
+}
+
+.error-message {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border: 1px solid #fca5a5;
+  font-weight: 500;
+}
+
 .video-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -143,7 +163,8 @@
   overflow: hidden;
 }
 
-.video-thumbnail img {
+.video-thumbnail img,
+.video-thumbnail video {
   width: 100%;
   height: 180px;
   object-fit: cover;
@@ -201,6 +222,15 @@
 .module {
   background: #ebf8ff;
   color: #2b6cb0;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.semester {
+  background: #fef3c7;
+  color: #92400e;
   padding: 0.25rem 0.75rem;
   border-radius: 6px;
   font-size: 0.8rem;
@@ -598,4 +628,94 @@
   background: #fff3e0;
   color: #e65100;
   border: 1px solid #ffe0b2;
+}
+
+.video-placeholder {
+  width: 100%;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  color: #64748b;
+}
+
+.video-placeholder .placeholder-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.video-placeholder span {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.loading-state,
+.error-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.error-state p {
+  color: #dc2626;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.retry-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.2s ease;
+}
+
+.retry-btn:hover {
+  background: #b91c1c;
+}
+
+.empty-state .empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 1.5rem;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+}
+
+.empty-state p {
+  color: #6b7280;
+  margin: 0 0 1.5rem 0;
+}
+
+.upload-first-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-first-btn:hover {
+  background: #357abd;
+  transform: translateY(-2px);
 } 

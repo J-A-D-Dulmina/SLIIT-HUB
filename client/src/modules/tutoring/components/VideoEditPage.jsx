@@ -16,7 +16,8 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     year: video?.year || '',
     status: video?.status || 'unpublished',
     summary: video?.summary || '',
-    timestamps: video?.timestamps || []
+    timestamps: video?.timestamps || [],
+    semester: video?.semester || ''
   });
   const [isGenerating, setIsGenerating] = useState({
     description: false,
@@ -166,8 +167,9 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
 
           <div className="video-preview-section">
             <div className="video-player-wrapper">
+              {video?.videoFile ? (
               <ReactPlayer
-                url={video?.url || ''}
+                  url={`/api/tutoring/video/${video.id}`}
                 width="100%"
                 height="100%"
                 controls={true}
@@ -179,6 +181,15 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                   }
                 }}
               />
+              ) : (
+                <div className="video-placeholder">
+                  <div className="placeholder-content">
+                    <div className="placeholder-icon">📹</div>
+                    <p>No video file available</p>
+                    <small>Video preview will appear here when a file is uploaded</small>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -325,6 +336,18 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                     <option value="2">Year 2</option>
                     <option value="3">Year 3</option>
                     <option value="4">Year 4</option>
+                  </select>
+
+                  <select
+                    id="semester"
+                    name="semester"
+                    value={formData.semester}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select Semester</option>
+                    <option value="1">Semester 1</option>
+                    <option value="2">Semester 2</option>
                   </select>
 
                   <select
