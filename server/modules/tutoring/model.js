@@ -16,6 +16,7 @@ const videoSchema = new mongoose.Schema({
   thumbnail: { type: String },
   duration: { type: Number }, // in seconds
   fileSize: { type: Number }, // in bytes
+  studentId: { type: String, required: true },
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   status: { 
     type: String, 
@@ -31,7 +32,7 @@ const videoSchema = new mongoose.Schema({
   reviewComments: { type: String },
   summary: { type: String }, // AI-generated summary
   timestamps: [{
-    time: { type: String },
+    time_start: { type: String },
     description: { type: String }
   }], // AI-generated timestamps
   aiFeatures: {

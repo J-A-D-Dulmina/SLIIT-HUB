@@ -67,17 +67,17 @@ def generate_timestamps(segments, scene_times=None, pause_times=None, min_words=
         if scene_times:
             for t in scene_times:
                 if start <= t < end:
-                    if buffer:
-                        timestamps.append({'time': last_time, 'description': ' '.join(buffer)})
-                        buffer = []
+            if buffer:
+                timestamps.append({'time': last_time, 'description': ' '.join(buffer)})
+                buffer = []
                     last_time = t
                     matched = True
         if pause_times and not matched:
             for t in pause_times:
                 if start <= t < end:
-                    if buffer:
-                        timestamps.append({'time': last_time, 'description': ' '.join(buffer)})
-                        buffer = []
+            if buffer:
+                timestamps.append({'time': last_time, 'description': ' '.join(buffer)})
+                buffer = []
                     last_time = t
         buffer.append(text)
         if len(' '.join(buffer).split()) >= min_words:

@@ -7,12 +7,10 @@ import moment from 'moment';
 import '../styles/MyMeetingsPage.css';
 
 const DEGREES = [
-  'Bachelor of Science in Information Technology',
-  'Bachelor of Software Engineering',
-  'Bachelor of Computer Science',
-  'Bachelor of Network Engineering',
-  'Bachelor of Mobile Computing',
-  'Bachelor of Cloud Computing'
+  'BSc in Information Technology',
+  'BSc in Software Engineering',
+  'BSc in Computer Science',
+  'BSc in Data Science'
 ];
 
 const DEGREE_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4'];
@@ -23,9 +21,12 @@ const MyMeetingsPage = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [meetings, setMeetings] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [scheduleFormData, setScheduleFormData] = useState({
     topic: '',
     date: '',
@@ -42,57 +43,36 @@ const MyMeetingsPage = () => {
   const [meetingToDelete, setMeetingToDelete] = useState(null);
   const navigate = useNavigate();
 
+  // Get user info from localStorage
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
 
-    // Simulate fetching meetings from API
-    const dummyMeetings = [
-      {
-        id: 1,
-        title: 'AI Tutorial Session',
-        start: new Date(2025, 2, 30, 9, 0),
-        end: new Date(2025, 2, 30, 10, 0),
-        attendees: ['alex@example.com', 'emma@example.com'],
-        link: 'https://meet.sliit-hub.com/meeting/3',
-        description: 'Tutorial session on Neural Networks and Deep Learning',
-        module: 'AI',
-        year: 'Year 2',
-        semester: 'Semester 2',
-        host: 'Prof. Alex Chen'
-      },
-      {
-        id: 2,
-        title: 'Research Progress Review',
-        start: new Date(2025, 2, 31, 14, 0),
-        end: new Date(2025, 2, 31, 15, 30),
-        attendees: ['john@example.com', 'sarah@example.com'],
-        link: 'https://meet.sliit-hub.com/meeting/4',
-        description: 'Review of research progress and discussion of next steps',
-        module: 'Software Engineering',
-        year: 'Year 4',
-        semester: 'Semester 1',
-        host: 'Dr. Sarah Johnson'
-      },
-      {
-        id: 3,
-        title: 'Web Development Workshop',
-        start: new Date(2025, 3, 15, 10, 0), // April 15, 2024
-        end: new Date(2025, 3, 15, 12, 0),
-        attendees: ['mike@example.com', 'lisa@example.com', 'john@example.com'],
-        link: 'https://meet.sliit-hub.com/meeting/5',
-        description: 'Hands-on workshop on modern web development practices and frameworks',
-        module: 'Web Development',
-        year: 'Year 3',
-        semester: 'Semester 1',
-        host: 'Dr. Michael Brown'
-      }
-    ];
-    
-    setMeetings(dummyMeetings);
+    fetchMeetings();
     return () => clearInterval(timer);
   }, []);
+
+  const fetchMeetings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/meetings?hostOnly=true', {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch meetings');
+      }
+      const result = await response.json();
+      setMeetings(result.data || []);
+    } catch (error) {
+      setError('Failed to load meetings');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleScheduleChange = (e) => {
     const { name, value } = e.target;
@@ -105,50 +85,106 @@ const MyMeetingsPage = () => {
   const handleEditMeeting = (meeting) => {
     setEditingMeeting(meeting);
     // Format the date and time for the form
-    const meetingDate = moment(meeting.start).format('YYYY-MM-DD');
-    const meetingTime = moment(meeting.start).format('HH:mm');
+    const meetingDate = moment(meeting.startTime).format('YYYY-MM-DD');
+    const meetingTime = moment(meeting.startTime).format('HH:mm');
     
     setScheduleFormData({
       topic: meeting.title,
       date: meetingDate,
       time: meetingTime,
-      duration: moment(meeting.end).diff(moment(meeting.start), 'minutes').toString(),
+      duration: meeting.duration.toString(),
       degree: meeting.degree || '',
       year: meeting.year,
       semester: meeting.semester,
       module: meeting.module,
-      email: meeting.email || '',
+      email: meeting.hostEmail || userInfo.email || '',
       description: meeting.description
     });
     setShowEditForm(true);
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Implement meeting edit logic
-    console.log('Edited Meeting:', { ...scheduleFormData, id: editingMeeting.id });
-    alert('Meeting Updated!');
+    try {
+      const response = await fetch(`/api/meetings/${editingMeeting._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(scheduleFormData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update meeting');
+      }
+
+      alert('Meeting Updated Successfully!');
     setShowEditForm(false);
     setEditingMeeting(null);
-    setScheduleFormData({
-      topic: '',
-      date: '',
-      time: '',
-      duration: '60',
-      degree: '',
-      year: '',
-      semester: '',
-      module: '',
-      email: '',
-      description: ''
-    });
+      resetFormData();
+      fetchMeetings(); // Refresh the meetings list
+    } catch (error) {
+      console.error('Error updating meeting:', error);
+      alert('Failed to update meeting. Please try again.');
+    }
   };
 
-  const handleScheduleSubmit = (e) => {
+  const handleScheduleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Implement meeting scheduling logic
-    console.log('Scheduled Meeting:', scheduleFormData);
-    alert('Meeting Scheduled!');
+    const payload = {
+      title: scheduleFormData.topic,
+      startTime: `${scheduleFormData.date}T${scheduleFormData.time}`,
+      duration: scheduleFormData.duration,
+      degree: scheduleFormData.degree,
+      year: scheduleFormData.year,
+      semester: scheduleFormData.semester,
+      module: scheduleFormData.module,
+      email: scheduleFormData.email,
+      description: scheduleFormData.description
+    };
+    for (const field of ['title', 'startTime', 'duration', 'degree', 'year', 'semester', 'module']) {
+      if (!payload[field] || payload[field] === 'undefined' || payload[field] === 'null') {
+        alert(`Please fill in the ${field} field.`);
+        return;
+      }
+    }
+    if (isNaN(Date.parse(payload.startTime)) || new Date(payload.startTime) <= new Date()) {
+      alert('Meeting start time must be a valid future date and time.');
+      return;
+    }
+    try {
+      const response = await fetch('/api/meetings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          alert('Session expired. Please log in again.');
+          navigate('/login');
+          return;
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create meeting');
+      }
+      
+      // Show success message and close form
+      setShowSuccessMessage(true);
+      setShowScheduleForm(false);
+      resetFormData();
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+      
+      fetchMeetings();
+    } catch (error) {
+      alert(`Failed to schedule meeting: ${error.message}`);
+    }
+  };
+
+  const resetFormData = () => {
     setScheduleFormData({
       topic: '',
       date: '',
@@ -158,10 +194,9 @@ const MyMeetingsPage = () => {
       year: '',
       semester: '',
       module: '',
-      email: '',
+      email: userInfo.email || '',
       description: ''
     });
-    setShowScheduleForm(false);
   };
 
   const handleDeleteClick = (meeting) => {
@@ -169,13 +204,27 @@ const MyMeetingsPage = () => {
     setShowDeleteConfirm(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (meetingToDelete) {
-      // TODO: Implement actual delete logic
-      console.log('Delete meeting:', meetingToDelete.id);
-      setMeetings(prevMeetings => prevMeetings.filter(m => m.id !== meetingToDelete.id));
+      try {
+        const response = await fetch(`/api/meetings/${meetingToDelete._id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete meeting');
+        }
+
+        alert('Meeting deleted successfully!');
+        setMeetings(prevMeetings => prevMeetings.filter(m => m._id !== meetingToDelete._id));
       setShowDeleteConfirm(false);
       setMeetingToDelete(null);
+      } catch (error) {
+        console.error('Error deleting meeting:', error);
+        alert('Failed to delete meeting. Please try again.');
+      }
     }
   };
 
@@ -188,23 +237,9 @@ const MyMeetingsPage = () => {
     return moment(date).format('MMM D, YYYY [at] HH:mm');
   };
 
-  const getMeetingStatus = (meeting) => {
-    const now = new Date();
-    const start = new Date(meeting.start);
-    const end = new Date(meeting.end);
-    
-    if (now < start) {
-      const diff = (start - now) / 60000; // minutes
-      if (diff <= 15) return 'starting-soon';
-      return 'upcoming';
-    }
-    if (now >= start && now <= end) return 'in-progress';
-    return 'upcoming'; // Changed from 'ended' to 'upcoming'
-  };
-
   const handleStartMeeting = (meeting) => {
-    // Extract meeting ID from the link
-    const meetingId = meeting.link.split('/').pop();
+    // Extract meeting ID from the link or use the meeting ID directly
+    const meetingId = meeting._id || meeting.link.split('/').pop();
     navigate(`/meeting/${meetingId}`);
   };
 
@@ -219,6 +254,7 @@ const MyMeetingsPage = () => {
               setShowScheduleForm(false);
               setShowEditForm(false);
               setEditingMeeting(null);
+              resetFormData();
             }}
           >
             ×
@@ -379,6 +415,7 @@ const MyMeetingsPage = () => {
                 setShowScheduleForm(false);
                 setShowEditForm(false);
                 setEditingMeeting(null);
+                resetFormData();
               }}
             >
               Cancel
@@ -391,6 +428,29 @@ const MyMeetingsPage = () => {
       </div>
     </div>
   );
+
+  if (loading) {
+    return (
+      <div className="app-container">
+        <SideMenu collapsed={collapsed} setCollapsed={setCollapsed} />
+        <div className="main-content">
+          <div className="sidebar-toggle-btn-wrapper">
+            <button
+              className="sidebar-toggle-btn"
+              onClick={() => setCollapsed((v) => !v)}
+              aria-label="Toggle sidebar"
+            >
+              {collapsed ? <FaChevronRight /> : <FaChevronLeft />}
+            </button>
+          </div>
+          <TopBar currentTime={currentTime} />
+          <main className="my-meetings-page">
+            <div className="loading">Loading meetings...</div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -408,10 +468,22 @@ const MyMeetingsPage = () => {
         <TopBar currentTime={currentTime} />
 
         <main className="my-meetings-page">
+          {/* Success Message */}
+          {showSuccessMessage && (
+            <div className="success-message-overlay">
+              <div className="success-message-card">
+                <div className="success-icon">✓</div>
+                <h3>Meeting Scheduled Successfully!</h3>
+                <p>Your meeting has been created and is now available in your meetings list.</p>
+              </div>
+            </div>
+          )}
+
           <div className="page-header">
             <h1>My Meetings</h1>
             <button className="schedule-btn" onClick={() => setShowScheduleForm(true)}>
-              <FaPlus /> Schedule New Meeting
+              <FaPlus />
+              Schedule Meeting
             </button>
           </div>
 
@@ -434,10 +506,10 @@ const MyMeetingsPage = () => {
           )}
 
           <div className="meetings-grid">
-            {meetings.map(meeting => {
-              const status = getMeetingStatus(meeting);
+            {meetings.length > 0 ? (
+              meetings.map(meeting => {
               return (
-                <div key={meeting.id} className={`my-meeting-card ${status}`}>
+                  <div key={meeting._id} className={`my-meeting-card ${meeting.status}`}>
                   <div className="my-meeting-header">
                     <h3 className="my-meeting-title">{meeting.title}</h3>
                     <div className="my-meeting-actions">
@@ -469,7 +541,7 @@ const MyMeetingsPage = () => {
                       <FaClock className="icon" />
                       <div className="info-content">
                         <span className="label">Time</span>
-                        <span className="value">{formatMeetingTime(meeting.start)}</span>
+                          <span className="value">{formatMeetingTime(meeting.startTime)}</span>
                       </div>
                     </div>
                     
@@ -477,7 +549,7 @@ const MyMeetingsPage = () => {
                       <FaEnvelope className="icon" />
                       <div className="info-content">
                         <span className="label">Email</span>
-                        <span className="value">{meeting.email || 'Not specified'}</span>
+                          <span className="value">{meeting.hostEmail || 'Not specified'}</span>
                       </div>
                     </div>
 
@@ -485,8 +557,8 @@ const MyMeetingsPage = () => {
                       <FaLink className="icon" />
                       <div className="info-content">
                         <span className="label">Meeting Link</span>
-                        <a href={meeting.link} target="_blank" rel="noopener noreferrer" className="meeting-link">
-                          {meeting.link}
+                          <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer" className="meeting-link">
+                            {meeting.meetingLink}
                         </a>
                       </div>
                     </div>
@@ -495,21 +567,31 @@ const MyMeetingsPage = () => {
                   <p className="my-meeting-description">{meeting.description}</p>
 
                   <div className="my-meeting-footer">
-                    <span className={`my-status-badge ${status}`}>
-                      {status === 'starting-soon' && 'Starting Soon'}
-                      {status === 'upcoming' && 'Upcoming'}
-                      {status === 'in-progress' && 'In Progress'}
+                    <span className={`my-status-badge ${meeting.status}`}>
+                      {meeting.status === 'starting-soon' && 'Starting Soon'}
+                      {meeting.status === 'upcoming' && 'Upcoming'}
+                      {meeting.status === 'in-progress' && 'In Progress'}
+                        {meeting.status === 'ended' && 'Ended'}
                     </span>
                     <button 
                       className="strt-meeting-btn"
                       onClick={() => handleStartMeeting(meeting)}
+                        disabled={meeting.status === 'ended'}
                     >
-                      <FaPlay /> {status === 'in-progress' ? 'Join Now' : 'Start Meeting'}
+                      <FaPlay /> {meeting.status === 'in-progress' ? 'Join Now' : 'Start Meeting'}
                     </button>
                   </div>
                 </div>
               );
-            })}
+              })
+            ) : (
+              <div className="empty-state">
+                <p>No meetings found. Schedule your first meeting!</p>
+                <button className="schedule-btn" onClick={() => setShowScheduleForm(true)}>
+                  <FaPlus /> Schedule New Meeting
+                </button>
+              </div>
+            )}
           </div>
         </main>
       </div>

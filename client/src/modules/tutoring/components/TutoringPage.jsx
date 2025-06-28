@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/TutoringPage.css';
-import { FaChevronLeft, FaChevronRight, FaEdit, FaTrash, FaUpload, FaEye, FaEyeSlash, FaRobot, FaClock, FaUserGraduate, FaCheck, FaTimes, FaGlobe } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaEdit, FaTrash, FaUpload, FaRobot, FaClock, FaUserGraduate, FaTimes, FaGlobe } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import LoadingSpinner from '../../../shared/components/LoadingSpinner';
@@ -91,8 +91,8 @@ const TutoringPage = () => {
         });
         if (res.ok) {
           // Remove from local state
-          const updatedVideos = videos.filter(v => v.id !== selectedVideo.id);
-          setVideos(updatedVideos);
+      const updatedVideos = videos.filter(v => v.id !== selectedVideo.id);
+      setVideos(updatedVideos);
           setDeleteMessage('Video deleted successfully!');
           setTimeout(() => setDeleteMessage(''), 3000);
         } else {

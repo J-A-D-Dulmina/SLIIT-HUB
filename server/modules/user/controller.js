@@ -32,6 +32,7 @@ exports.loginUser = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     });
     res.json({
+      token,
       name: user.name,
       userType,
       ...(userType === 'student' ? { studentId: user.studentId } : { lecturerId: user.lecturerId })

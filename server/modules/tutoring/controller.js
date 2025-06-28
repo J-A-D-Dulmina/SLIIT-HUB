@@ -2,6 +2,7 @@ const Video = require('./model');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const Student = require('../user/model');
 
 // Configure multer for video upload
 const storage = multer.diskStorage({
@@ -102,6 +103,12 @@ exports.uploadVideo = async (req, res) => {
         console.log('Thumbnail generation failed, continuing without thumbnail');
       }
 
+      // Fetch the student's string ID
+      const student = await Student.findById(req.user.id);
+      if (!student) {
+        return res.status(400).json({ message: 'Student not found.' });
+      }
+
       const video = new Video({
         uniqueId,
         title,
@@ -113,13 +120,34 @@ exports.uploadVideo = async (req, res) => {
         videoFile: req.file.path,
         thumbnail: thumbnail,
         fileSize: req.file.size,
-        uploadedBy: req.user.id
+        uploadedBy: req.user.id,
+        studentId: student.studentId
       });
 
       // Always update summary if provided
       if (summary !== undefined) video.summary = summary;
       // Always update timestamps if provided (allow clearing)
-      if (timestamps !== undefined) video.timestamps = timestamps;
+      if (timestamps !== undefined) {
+        // Map 'time' to 'time_start' if needed for each timestamp
+        let fixedTimestamps = [];
+        try {
+          const parsed = typeof timestamps === 'string' ? JSON.parse(timestamps) : timestamps;
+          fixedTimestamps = parsed.map(ts => ({
+            time_start: ts.time_start || ts.time || '',
+            description: ts.description || ''
+          }));
+        } catch (e) {
+          fixedTimestamps = [];
+        }
+        video.timestamps = fixedTimestamps;
+      }
+
+      console.log('Saving video with summary:', video.summary, 'timestamps:', video.timestamps);
+      video.aiFeatures = video.aiFeatures || {};
+      video.aiFeatures.summary = (video.summary || '').trim() !== '';
+      video.aiFeatures.timestamps = Array.isArray(video.timestamps) && video.timestamps.length > 0;
+      console.log('aiFeatures to be saved:', video.aiFeatures);
+      video.markModified('aiFeatures');
 
       await video.save();
       
@@ -137,7 +165,10 @@ exports.uploadVideo = async (req, res) => {
           status: video.status,
           uploadDate: video.uploadDate,
           videoFile: video.videoFile,
-          thumbnail: video.thumbnail
+          thumbnail: video.thumbnail,
+          aiFeatures: video.aiFeatures,
+          summary: video.summary,
+          timestamps: video.timestamps
         }
       });
     } catch (error) {
@@ -157,7 +188,13 @@ exports.getStudentVideos = async (req, res) => {
       .sort({ uploadDate: -1 });
     
     res.json({
-      videos: videos.map(video => ({
+      videos: videos.map(video => {
+        const summary = video.summary || '';
+        const timestamps = Array.isArray(video.timestamps) ? video.timestamps : [];
+        const aiFeatures = video.aiFeatures || {};
+        aiFeatures.summary = summary.trim() !== '';
+        aiFeatures.timestamps = timestamps.length > 0;
+        return {
         id: video._id,
         uniqueId: video.uniqueId,
         title: video.title,
@@ -169,15 +206,19 @@ exports.getStudentVideos = async (req, res) => {
         status: video.status,
         reviewStatus: video.reviewStatus,
         reviewLecturer: video.reviewLecturer,
-        aiFeatures: video.aiFeatures,
+          aiFeatures,
         views: video.views,
         uploadDate: video.uploadDate,
         publishDate: video.publishDate,
         videoFile: video.videoFile,
         thumbnail: video.thumbnail,
-        summary: video.summary,
-        timestamps: video.timestamps
-      }))
+          summary,
+          timestamps: timestamps.map(ts => ({
+            time_start: ts.time_start || ts.time || '',
+            description: ts.description || ''
+          }))
+        };
+      })
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -205,7 +246,27 @@ exports.updateVideo = async (req, res) => {
     // Always update summary if provided
     if (summary !== undefined) video.summary = summary;
     // Always update timestamps if provided (allow clearing)
-    if (timestamps !== undefined) video.timestamps = timestamps;
+    if (timestamps !== undefined) {
+      // Map 'time' to 'time_start' if needed for each timestamp
+      let fixedTimestamps = [];
+      try {
+        const parsed = typeof timestamps === 'string' ? JSON.parse(timestamps) : timestamps;
+        fixedTimestamps = parsed.map(ts => ({
+          time_start: ts.time_start || ts.time || '',
+          description: ts.description || ''
+        }));
+      } catch (e) {
+        fixedTimestamps = [];
+      }
+      video.timestamps = fixedTimestamps;
+    }
+
+    console.log('Saving video with summary:', video.summary, 'timestamps:', video.timestamps);
+    video.aiFeatures = video.aiFeatures || {};
+    video.aiFeatures.summary = (video.summary || '').trim() !== '';
+    video.aiFeatures.timestamps = Array.isArray(video.timestamps) && video.timestamps.length > 0;
+    console.log('aiFeatures to be saved:', video.aiFeatures);
+    video.markModified('aiFeatures');
 
     await video.save();
     
@@ -223,7 +284,8 @@ exports.updateVideo = async (req, res) => {
         status: video.status,
         videoFile: video.videoFile,
         summary: video.summary,
-        timestamps: video.timestamps
+        timestamps: video.timestamps,
+        aiFeatures: video.aiFeatures
       }
     });
   } catch (error) {
@@ -362,6 +424,11 @@ exports.getVideoById = async (req, res) => {
     if (!video) {
       return res.status(404).json({ message: 'Video not found' });
     }
+    const summary = video.summary || '';
+    const timestamps = Array.isArray(video.timestamps) ? video.timestamps : [];
+    const aiFeatures = video.aiFeatures || {};
+    aiFeatures.summary = summary.trim() !== '';
+    aiFeatures.timestamps = timestamps.length > 0;
     res.json({
       video: {
         id: video._id,
@@ -375,15 +442,17 @@ exports.getVideoById = async (req, res) => {
         status: video.status,
         reviewStatus: video.reviewStatus,
         reviewLecturer: video.reviewLecturer,
-        aiFeatures: video.aiFeatures,
+        aiFeatures,
         views: video.views,
         uploadDate: video.uploadDate,
         publishDate: video.publishDate,
         videoFile: video.videoFile,
         thumbnail: video.thumbnail,
-        timestamps: video.timestamps,
-        summary: video.summary
-        
+        summary,
+        timestamps: timestamps.map(ts => ({
+          time_start: ts.time_start || ts.time || '',
+          description: ts.description || ''
+        }))
       }
     });
   } catch (error) {

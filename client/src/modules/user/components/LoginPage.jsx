@@ -26,7 +26,6 @@ const LoginPage = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        // Save user info to localStorage (no token)
         localStorage.setItem('userType', data.userType);
         localStorage.setItem('userName', data.name);
         if (data.userType === 'student') {
@@ -34,9 +33,9 @@ const LoginPage = () => {
         } else if (data.userType === 'lecturer') {
           localStorage.setItem('lecturerId', data.lecturerId);
         }
-      setError('');
-      navigate('/dashboard');
-    } else {
+        setError('');
+        navigate('/dashboard');
+      } else {
         setError(data.message || 'Invalid credentials.');
       }
     } catch (err) {

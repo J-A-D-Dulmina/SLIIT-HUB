@@ -6,6 +6,13 @@ import TopBar from '../../../shared/components/TopBar';
 import moment from 'moment';
 import '../styles/JoinMeetingPage.css';
 
+const DEGREES = [
+  'BSc in Information Technology',
+  'BSc in Software Engineering',
+  'BSc in Computer Science',
+  'BSc in Data Science'
+];
+
 const DEGREE_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4'];
 const SEMESTERS = ['Semester 1', 'Semester 2'];
 const MODULES = ['AI', 'Web Development', 'Database Systems', 'Software Engineering', 'Networks', 'Operating Systems'];
@@ -14,8 +21,11 @@ const JoinMeetingPage = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [meetings, setMeetings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedDegree, setSelectedDegree] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedModule, setSelectedModule] = useState('');
@@ -26,94 +36,42 @@ const JoinMeetingPage = () => {
   });
   const navigate = useNavigate();
 
+  // Get user info and token
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const token = localStorage.getItem('token');
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
 
-    // Simulate fetching meetings from API
-    const dummyMeetings = [
-      {
-        id: 1,
-        title: 'Research Discussion',
-        start: new Date(2024, 2, 29, 10, 30),
-        end: new Date(2024, 2, 29, 11, 30),
-        attendees: ['john@example.com', 'sarah@example.com'],
-        link: 'https://meet.sliit-hub.com/meeting/1',
-        host: 'Dr. Yasas Jayaweera',
-        description: 'Discussion about research progress and next steps',
-        module: 'AI',
-        year: 'Year 4',
-        semester: 'Semester 2'
-      },
-      {
-        id: 2,
-        title: 'Group Study Session',
-        start: new Date(2024, 2, 29, 14, 0),
-        end: new Date(2024, 2, 29, 15, 30),
-        attendees: ['mike@example.com', 'lisa@example.com'],
-        link: 'https://meet.sliit-hub.com/meeting/2',
-        host: 'Mike Johnson',
-        description: 'Group study session for AI and Machine Learning',
-        module: 'Web Development',
-        year: 'Year 3',
-        semester: 'Semester 1'
-      },
-      {
-        id: 3,
-        title: 'AI Tutorial',
-        start: new Date(2024, 2, 30, 9, 0),
-        end: new Date(2024, 2, 30, 10, 0),
-        attendees: ['alex@example.com', 'emma@example.com'],
-        link: 'https://meet.sliit-hub.com/meeting/3',
-        host: 'Prof. Alex Chen',
-        description: 'Tutorial session on Neural Networks and Deep Learning',
-        module: 'AI',
-        year: 'Year 2',
-        semester: 'Semester 2'
-      }
-    ];
-
-    setMeetings(dummyMeetings);
+    fetchMeetings();
     return () => clearInterval(timer);
   }, []);
 
-  const filteredMeetings = meetings.filter(meeting => {
-    const matchesSearch =
-      meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      meeting.host.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      meeting.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesYear = !selectedYear || meeting.year === selectedYear;
-    const matchesSemester = !selectedSemester || meeting.semester === selectedSemester;
-    const matchesModule = !selectedModule || meeting.module === selectedModule;
-    const matchesStatus = !selectedStatus || getMeetingStatus(meeting) === selectedStatus;
-
-    return matchesSearch && matchesYear && matchesSemester && matchesModule && matchesStatus;
-  });
-
-  const clearFilters = () => {
-    setSelectedYear('');
-    setSelectedSemester('');
-    setSelectedModule('');
-    setSelectedStatus('');
-  };
-
-  const formatMeetingTime = (date) => {
-    return moment(date).format('MMM D, YYYY [at] HH:mm');
-  };
-
-  const canStartMeeting = (meeting) => {
-    const now = new Date();
-    const start = new Date(meeting.start);
-    const diff = (start - now) / 60000; // minutes
-    return diff <= 15 && diff >= -120; // allow up to 2 hours after start
+  const fetchMeetings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/meetings', {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch meetings');
+      }
+      const result = await response.json();
+      setMeetings(result.data || []);
+    } catch (error) {
+      setError('Failed to load meetings');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getMeetingStatus = (meeting) => {
     const now = new Date();
-    const start = new Date(meeting.start);
-    const end = new Date(meeting.end);
+    const start = new Date(meeting.startTime);
+    const end = new Date(meeting.endTime);
 
     if (now < start) {
       const diff = (start - now) / 60000; // minutes
@@ -121,36 +79,114 @@ const JoinMeetingPage = () => {
       return 'upcoming';
     }
     if (now >= start && now <= end) return 'in-progress';
-    return 'upcoming';
+    return 'ended';
   };
 
-  const handleParticipateToggle = (meetingId) => {
-    setParticipatingMeetings(prev => {
-      const isCurrentlyParticipating = prev.includes(meetingId);
-      const newList = isCurrentlyParticipating
-        ? prev.filter(id => id !== meetingId)
-        : [...prev, meetingId];
+  const filteredMeetings = meetings.filter(meeting => {
+    const status = getMeetingStatus(meeting);
+    if (status === 'ended' || status === 'completed') return false;
+    const matchesSearch =
+      meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      meeting.hostName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      meeting.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDegree = !selectedDegree || meeting.degree === selectedDegree;
+    const matchesYear = !selectedYear || meeting.year === selectedYear;
+    const matchesSemester = !selectedSemester || meeting.semester === selectedSemester;
+    const matchesModule = !selectedModule || meeting.module === selectedModule;
+    const matchesStatus = !selectedStatus || getMeetingStatus(meeting) === selectedStatus;
+    return matchesSearch && matchesDegree && matchesYear && matchesSemester && matchesModule && matchesStatus;
+  });
 
-      // Update meeting participants count
-      setMeetings(currentMeetings =>
-        currentMeetings.map(meeting => {
-          if (meeting.id === meetingId) {
-            return {
-              ...meeting,
-              attendees: isCurrentlyParticipating
-                ? meeting.attendees.filter(email => email !== 'current-user@example.com')
-                : [...meeting.attendees, 'current-user@example.com']
-            };
+  const clearFilters = () => {
+    setSelectedDegree('');
+    setSelectedYear('');
+    setSelectedSemester('');
+    setSelectedModule('');
+    setSelectedStatus('');
+  };
+
+  const hasActiveFilters = selectedDegree || selectedYear || selectedSemester || selectedModule || selectedStatus;
+
+  const formatMeetingTime = (date) => {
+    return moment(date).format('MMM D, YYYY [at] HH:mm');
+  };
+
+  const canStartMeeting = (meeting) => {
+    const now = new Date();
+    const start = new Date(meeting.startTime);
+    const diff = (start - now) / 60000; // minutes
+    return diff <= 15 && diff >= -120; // allow up to 2 hours after start
+  };
+
+  const handleParticipateToggle = async (meetingId) => {
+    try {
+      const isCurrentlyParticipating = participatingMeetings.includes(meetingId);
+      
+      if (isCurrentlyParticipating) {
+        // Leave meeting
+        const response = await fetch(`/api/meetings/${meetingId}/leave`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
-          return meeting;
-        })
-      );
+        });
 
-      // Save to localStorage
-      localStorage.setItem('participatingMeetings', JSON.stringify(newList));
-      return newList;
-    });
+        if (response.ok) {
+          setParticipatingMeetings(prev => prev.filter(id => id !== meetingId));
+          localStorage.setItem('participatingMeetings', JSON.stringify(participatingMeetings.filter(id => id !== meetingId)));
+        }
+      } else {
+        // Join meeting
+        const response = await fetch(`/api/meetings/${meetingId}/join`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          setParticipatingMeetings(prev => [...prev, meetingId]);
+          localStorage.setItem('participatingMeetings', JSON.stringify([...participatingMeetings, meetingId]));
+        }
+      }
+
+      // Refresh meetings to get updated participant count
+      fetchMeetings();
+    } catch (error) {
+      console.error('Error toggling participation:', error);
+      alert('Failed to update participation status');
+    }
   };
+
+  const handleJoinMeeting = (meeting) => {
+    // Navigate to the meeting page
+    navigate(`/meeting/${meeting._id}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="app-container">
+        <SideMenu collapsed={collapsed} setCollapsed={setCollapsed} />
+        <div className="main-content">
+          <div className="sidebar-toggle-btn-wrapper">
+            <button
+              className="sidebar-toggle-btn"
+              onClick={() => setCollapsed((v) => !v)}
+              aria-label="Toggle sidebar"
+            >
+              {collapsed ? <FaChevronRight /> : <FaChevronLeft />}
+            </button>
+          </div>
+          <TopBar currentTime={currentTime} />
+          <main className="meeting-dashboard">
+            <div className="loading">Loading meetings...</div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -178,25 +214,46 @@ const JoinMeetingPage = () => {
                 <FaSearch className="search-icon" />
                 <input
                   type="text"
-                  placeholder="Search meetings by title, host, or description..."
+                  placeholder="Search meetings..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
+              <div className="filter-controls">
               <button
                 className={`filter-button ${showFilters ? 'active' : ''}`}
                 onClick={() => setShowFilters(!showFilters)}
               >
                 <FaFilter />
                 Filters
-                {(selectedYear || selectedSemester || selectedModule || selectedStatus) && (
-                  <span className="filter-indicator" />
+                </button>
+                {hasActiveFilters && (
+                  <button
+                    className="filter-button clear-filter-btn"
+                    onClick={clearFilters}
+                    type="button"
+                  >
+                    Clear
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
 
             {showFilters && (
               <div className="filter-container">
+                <div className="filter-item">
+                  <label>Degree</label>
+                  <select
+                    value={selectedDegree}
+                    onChange={(e) => setSelectedDegree(e.target.value)}
+                  >
+                    <option value="">All Degrees</option>
+                    {DEGREES.map(degree => (
+                      <option key={degree} value={degree}>{degree}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="filter-item">
                   <label>Degree Year</label>
                   <select
@@ -248,12 +305,6 @@ const JoinMeetingPage = () => {
                     <option value="in-progress">In Progress</option>
                   </select>
                 </div>
-
-                {(selectedYear || selectedSemester || selectedModule || selectedStatus) && (
-                  <button className="reset-filters" onClick={clearFilters}>
-                    <FaTimes /> Clear Filters
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -262,8 +313,11 @@ const JoinMeetingPage = () => {
             {filteredMeetings.length > 0 ? (
               filteredMeetings.map(meeting => {
                 const status = getMeetingStatus(meeting);
+                const isParticipating = participatingMeetings.includes(meeting._id);
+                const participantCount = meeting.participants ? meeting.participants.length : 0;
+                
                 return (
-                  <div key={meeting.id} className={`meeting-card ${status}`}>
+                  <div key={meeting._id} className={`meeting-card ${status}`}>
                     <div className="meeting-content">
                       <div>
                         <div className="meeting-header">
@@ -273,21 +327,22 @@ const JoinMeetingPage = () => {
                       </div>
                       <div>
                         <div className="meeting-tags">
+                          <span className="tag-degree">{meeting.degree}</span>
                           <span className="tag-module">{meeting.module}</span>
                           <span className="tag-year">{meeting.year}</span>
                           <span className="tag-semester">{meeting.semester}</span>
                           <span className="tag-time">
-                            <FaClock /> {formatMeetingTime(meeting.start)}
+                            <FaClock /> {formatMeetingTime(meeting.startTime)}
                           </span>
                         </div>
                         <div className="meeting-info">
                           <div className="info-row">
                             <FaUsers />
-                            <span>Host: {meeting.host}</span>
+                            <span>Host: {meeting.hostName}</span>
                           </div>
                           <div className="info-row">
                             <FaUsers />
-                            <span>{meeting.attendees.length} {meeting.attendees.length === 1 ? 'participant' : 'participants'}</span>
+                            <span>{participantCount} {participantCount === 1 ? 'participant' : 'participants'}</span>
                           </div>
                         </div>
                       </div>
@@ -298,17 +353,20 @@ const JoinMeetingPage = () => {
                             {status === 'starting-soon' && 'Starting Soon'}
                             {status === 'upcoming' && 'Upcoming'}
                             {status === 'in-progress' && 'In Progress'}
+                            {status === 'ended' && 'Ended'}
                           </span>
                           <button
-                            className={`toggle-participate ${participatingMeetings.includes(meeting.id) ? 'active' : ''}`}
-                            onClick={() => handleParticipateToggle(meeting.id)}
+                            className={`toggle-participate ${isParticipating ? 'active' : ''}`}
+                            onClick={() => handleParticipateToggle(meeting._id)}
+                            disabled={status === 'ended'}
                           >
-                            {participatingMeetings.includes(meeting.id) ? <FaCheckSquare /> : <FaSquare />}
-                            {participatingMeetings.includes(meeting.id) ? 'Participating' : 'Participate'}
+                            {isParticipating ? <FaCheckSquare /> : <FaSquare />}
+                            {isParticipating ? 'Participating' : 'Participate'}
                           </button>
                           <button
                             className="join-meeting"
-                            onClick={() => window.open(meeting.link, '_blank')}
+                            onClick={() => handleJoinMeeting(meeting)}
+                            disabled={status === 'ended'}
                           >
                             <FaPlay /> {status === 'in-progress' ? 'Join Now' : 'Join Meeting'}
                           </button>
@@ -317,20 +375,15 @@ const JoinMeetingPage = () => {
                     </div>
                     <div className="meeting-url">
                       <FaLink />
-                      <a href={meeting.link} target="_blank" rel="noopener noreferrer">
-                        {meeting.link}
+                      <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer">
+                        {meeting.meetingLink}
                       </a>
                     </div>
                   </div>
                 );
               })
             ) : (
-              <div className="empty-state">
-                <p>No meetings found matching your criteria</p>
-                <button className="reset-filters" onClick={clearFilters}>
-                  Clear Filters
-                </button>
-              </div>
+              <div className="no-meetings">No meetings found</div>
             )}
           </div>
         </main>

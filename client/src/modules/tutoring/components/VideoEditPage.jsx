@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaChevronLeft, FaChevronRight, FaRobot, FaClock, FaEdit, FaExpand, FaDownload, FaTrash } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaRobot, FaExpand, FaDownload, FaTrash } from 'react-icons/fa';
 import ReactPlayer from 'react-player';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
@@ -7,6 +7,7 @@ import { useAIModel } from '../../ai/hooks/useAIModel';
 import '../styles/VideoEditPage.css';
 import Toast from '../../../shared/components/Toast';
 import '../../../shared/styles/Toast.css';
+import jsPDF from 'jspdf';
 
 const VideoEditPage = ({ video, onClose, onSave }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -41,7 +42,6 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     generateAITimestamps, 
     generateAIDescription, 
     processVideoWithAI,
-    isLoading: aiLoading, 
     error: aiError 
   } = useAIModel();
 
@@ -133,15 +133,17 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
   };
 
   const generateAIContent = async (type) => {
-    console.log('🔍 VideoEditPage generateAIContent called with:', { type, video });
+    // Remove or comment out these debug logs:
+    // VideoEditPage generateAIContent called with: Object
+    // ✅ Using video ID: ...
+    // 📤 Calling generateAITimestamps with: Object
+    // (and any similar console.log statements)
     
     if (!video?.id) {
-      console.error('❌ No video ID found:', video);
-      alert('Please select an existing video to generate AI content.');
+      // Remove or comment out this alert:
+      // alert('Please select an existing video to generate AI content.');
       return;
     }
-
-    console.log('✅ Using video ID:', video.id);
 
     setIsGenerating(prev => ({ ...prev, [type]: true }));
     setGenerationProgress(prev => ({ ...prev, [type]: 'Processing with AI...' }));
@@ -151,7 +153,8 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
       
       switch (type) {
         case 'description':
-          console.log('📤 Calling generateAIDescription with:', { videoId: video.id, title: formData.title });
+          // Remove or comment out this console.log:
+          // console.log('📤 Calling generateAIDescription with:', { videoId: video.id, title: formData.title });
           result = await generateAIDescription(video.id, formData.title);
           setFormData(prev => ({
             ...prev,
@@ -160,7 +163,8 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
           break;
           
         case 'summary':
-          console.log('📤 Calling generateAISummary with:', { videoId: video.id, title: formData.title });
+          // Remove or comment out this console.log:
+          // console.log('📤 Calling generateAISummary with:', { videoId: video.id, title: formData.title });
           result = await generateAISummary(video.id, formData.title);
           setFormData(prev => ({
             ...prev,
@@ -169,16 +173,21 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
           break;
           
         case 'timestamps':
-          console.log('📤 Calling generateAITimestamps with:', { videoId: video.id, title: formData.title });
+          // Remove or comment out this console.log:
+          // console.log('📤 Calling generateAITimestamps with:', { videoId: video.id, title: formData.title });
           result = await generateAITimestamps(video.id, formData.title);
           setFormData(prev => ({
             ...prev,
             timestamps: result
           }));
           break;
+        default:
+          // Optionally, do nothing or handle unexpected cases
+          break;
       }
     } catch (error) {
-      console.error(`Error generating ${type}:`, error);
+      // Remove or comment out this console.error:
+      // console.error(`Error generating ${type}:`, error);
       alert(`Error generating ${type}: ${error.message}`);
     } finally {
       setIsGenerating(prev => ({ ...prev, [type]: false }));
@@ -188,7 +197,8 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
 
   const generateAllAIContent = async () => {
     if (!video?.id) {
-      alert('Please select an existing video to generate AI content.');
+      // Remove or comment out this alert:
+      // alert('Please select an existing video to generate AI content.');
       return;
     }
 
@@ -233,7 +243,8 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
       }
       
     } catch (error) {
-      console.error('Error generating all AI content:', error);
+      // Remove or comment out this console.error:
+      // console.error('Error generating all AI content:', error);
       alert(`Error generating AI content: ${error.message}`);
     } finally {
       setIsGenerating({
@@ -250,25 +261,25 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
   };
 
   const handleDownloadPDF = () => {
-    // Create a PDF document
-    const doc = {
-      title: video?.title || 'Video Summary',
-      content: formData.summary,
-      module: formData.module,
-      date: new Date().toLocaleDateString()
-    };
+    const doc = new jsPDF();
+    const title = video?.title || 'Video Summary';
+    const summary = formData.summary || '';
 
-    // Convert to PDF and download
-    const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${video?.title || 'video'}-summary.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    doc.setFontSize(18);
+    doc.text(title, 10, 20);
+
+    doc.setFontSize(12);
+    doc.text('Summary:', 10, 35);
+    doc.setFontSize(11);
+
+    // Split summary into lines to fit the page
+    const lines = doc.splitTextToSize(summary, 180);
+    doc.text(lines, 10, 45);
+
+    doc.save(`${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-summary.pdf`);
   };
+
+  console.log("Timestamps in formData:", formData.timestamps);
 
   return (
     <div className="app-container">
@@ -538,7 +549,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <label style={{ marginRight: 8 }}>Timestamps</label>
                     <button type="button" className="add-timestamp-btn" onClick={addTimestamp} style={{ marginRight: 8 }}>
-                      + Add
+                    + Add
                     </button>
                   </div>
                   <button
@@ -562,9 +573,8 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                       <input
                         type="text"
                         className="timestamp-time"
-                        value={ts.time}
-                        onChange={e => handleTimestampChange(idx, 'time', e.target.value)}
-                        placeholder="00:00"
+                        value={ts.time_start || ''}
+                        onChange={e => handleTimestampChange(idx, 'time_start', e.target.value)}
                         maxLength={6}
                       />
                       <input
@@ -572,17 +582,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                         className="timestamp-desc"
                         value={ts.description}
                         onChange={e => handleTimestampChange(idx, 'description', e.target.value)}
-                        placeholder="Description"
                       />
-                      <button
-                        type="button"
-                        className="edit-timestamp-btn"
-                        title="Edit"
-                        tabIndex={-1}
-                        disabled
-                      >
-                        <FaEdit />
-                      </button>
                       <button
                         type="button"
                         className="delete-timestamp-btn"
