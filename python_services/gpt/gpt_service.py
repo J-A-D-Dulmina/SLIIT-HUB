@@ -132,7 +132,7 @@ class GPTService:
                         time_str = parts[0].strip().replace('-', '').strip()
                         description = parts[1].strip()
                         timestamps.append({
-                            "time": time_str,
+                            "time_start": time_str,
                             "description": description
                         })
             return timestamps

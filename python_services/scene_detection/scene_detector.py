@@ -24,7 +24,7 @@ class SceneDetector:
             min_scene_length (float): Minimum scene length in seconds (default: 1.0)
         
         Returns:
-            list: List of scene timestamps in format [{"time": "00:00", "description": "Scene 1"}, ...]
+            list: List of scene timestamps in format [{"time_start": "00:00", "description": "Scene 1"}, ...]
         """
         try:
             logger.info(f"Detecting scenes in video: {video_path}")
@@ -50,7 +50,7 @@ class SceneDetector:
                 description = f"Scene {i+1} ({duration:.1f}s)"
                 
                 timestamps.append({
-                    "time": start_timestamp,
+                    "time_start": start_timestamp,
                     "description": description,
                     "start_time": start_time,
                     "end_time": end_time,
@@ -87,7 +87,7 @@ class SceneDetector:
                 description = f"Scene {i+1} ({duration:.1f}s)"
                 
                 timestamps.append({
-                    "time": start_timestamp,
+                    "time_start": start_timestamp,
                     "description": description,
                     "start_time": start_time,
                     "end_time": end_time,
@@ -124,7 +124,7 @@ class SceneDetector:
                 description = f"Scene {i+1} ({duration:.1f}s)"
                 
                 timestamps.append({
-                    "time": start_timestamp,
+                    "time_start": start_timestamp,
                     "description": description,
                     "start_time": start_time,
                     "end_time": end_time,
@@ -209,19 +209,22 @@ class SceneDetector:
                     
                     if closest_scene:
                         combined_timestamps.append({
-                            "time": gpt_ts["time"],
+                            "time_start": gpt_ts["time_start"] if "time_start" in gpt_ts else gpt_ts["time"],
                             "description": gpt_ts["description"],
                             "scene_info": f"Scene {closest_scene['scene_number']}",
                             "duration": closest_scene["duration"]
                         })
                     else:
-                        combined_timestamps.append(gpt_ts)
+                        combined_timestamps.append({
+                            "time_start": gpt_ts["time_start"] if "time_start" in gpt_ts else gpt_ts["time"],
+                            "description": gpt_ts["description"]
+                        })
             
             # If no GPT timestamps, use scene timestamps with generic descriptions
             else:
                 for i, scene_ts in enumerate(scene_timestamps):
                     combined_timestamps.append({
-                        "time": scene_ts["time"],
+                        "time_start": scene_ts["time_start"] if "time_start" in scene_ts else scene_ts["time"],
                         "description": f"Scene {i+1} - {video_title}",
                         "scene_info": f"Scene {i+1}",
                         "duration": scene_ts["duration"]
@@ -236,7 +239,7 @@ class SceneDetector:
     def _find_closest_scene(self, gpt_timestamp, scene_timestamps):
         """Find the closest scene timestamp to a GPT timestamp"""
         try:
-            gpt_time = self._timestamp_to_seconds(gpt_timestamp["time"])
+            gpt_time = self._timestamp_to_seconds(gpt_timestamp["time_start"])
             closest_scene = None
             min_distance = float('inf')
             
