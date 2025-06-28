@@ -15,14 +15,15 @@ import os
 import logging
 import tempfile
 import subprocess
-from werkzeug.utils import secure_filename
 import json
 import time
 from datetime import datetime
 from common.video_processor import VideoProcessor
-from whisper_service.whisper_service import WhisperService
 from gpt.gpt_service import GPTService
 from scene_detection.scene_detector import SceneDetector
+from typing import Any, Dict
+import whisper
+import traceback
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -40,7 +41,6 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 # Initialize services
 video_processor = VideoProcessor()
-whisper_service = WhisperService()
 gpt_service = GPTService()
 scene_detector = SceneDetector()
 
@@ -80,7 +80,9 @@ def transcribe_video():
             
             # Transcribe audio
             logger.info("Transcribing audio with Whisper...")
-            transcript = whisper_service.transcribe_audio(audio_path)
+            model = whisper.load_model('base')
+            transcript_result = model.transcribe(audio_path)
+            transcript = transcript_result["text"]
             
             return jsonify({
                 "transcript": transcript,
@@ -90,10 +92,11 @@ def transcribe_video():
             })
             
         except Exception as e:
-            raise e
+            logger.error("Error transcribing video:\n" + traceback.format_exc())
+            return jsonify({"error": str(e)}), 500
             
     except Exception as e:
-        logger.error(f"Error transcribing video: {str(e)}")
+        logger.error("Error transcribing video:\n" + traceback.format_exc())
         return jsonify({"error": str(e)}), 500
     
     finally:
@@ -134,7 +137,9 @@ def generate_description():
             
             # Transcribe audio
             logger.info("Transcribing audio with Whisper...")
-            transcript = whisper_service.transcribe_audio(audio_path)
+            model = whisper.load_model('base')
+            transcript_result = model.transcribe(audio_path)
+            transcript = transcript_result["text"]
             
             # Generate description
             logger.info("Generating description with GPT...")
@@ -149,10 +154,11 @@ def generate_description():
             })
             
         except Exception as e:
-            raise e
+            logger.error("Error generating description:\n" + traceback.format_exc())
+            return jsonify({"error": str(e)}), 500
             
     except Exception as e:
-        logger.error(f"Error generating description: {str(e)}")
+        logger.error("Error generating description:\n" + traceback.format_exc())
         return jsonify({"error": str(e)}), 500
     
     finally:
@@ -186,7 +192,7 @@ def process_video():
         video_path = video_processor.save_video_file(video_file, app.config['UPLOAD_FOLDER'])
         
         try:
-            result = {
+            result: Dict[str, Any] = {
                 "transcript": None,
                 "summary": None,
                 "description": None,
@@ -205,7 +211,9 @@ def process_video():
                 audio_path = video_processor.extract_audio_from_video(video_path)
                 
                 logger.info("Transcribing audio with Whisper...")
-                result["transcript"] = whisper_service.transcribe_audio(audio_path)
+                model = whisper.load_model('base')
+                transcript_result = model.transcribe(audio_path)
+                result["transcript"] = transcript_result["text"]
                 
                 # Generate summary if requested
                 if process_type in ['summary', 'all']:
@@ -220,15 +228,15 @@ def process_video():
             # Detect scenes for timestamps
             if process_type in ['timestamps', 'scenes', 'all']:
                 logger.info("Detecting scenes with PySceneDetect...")
-                
+                min_scene_length = 1.0
                 if scene_method == 'adaptive':
-                    result["scenes"] = scene_detector.detect_scenes_adaptive(video_path)
+                    result["scenes"] = scene_detector.detect_scenes_adaptive(video_path, min_scene_length=min_scene_length)
                 elif scene_method == 'threshold':
-                    threshold = float(request.form.get('threshold', 12))
-                    result["scenes"] = scene_detector.detect_scenes_threshold(video_path, threshold)
+                    threshold = int(float(request.form.get('threshold', 12)))
+                    result["scenes"] = scene_detector.detect_scenes_threshold(video_path, threshold=threshold, min_scene_length=min_scene_length)
                 else:  # content detection (default)
                     threshold = float(request.form.get('threshold', 27.0))
-                    result["scenes"] = scene_detector.detect_scenes(video_path, threshold)
+                    result["scenes"] = scene_detector.detect_scenes(video_path, threshold=threshold, min_scene_length=min_scene_length)
             
             # Generate GPT timestamps if requested
             gpt_timestamps = None
@@ -255,13 +263,20 @@ def process_video():
                 # Use only GPT timestamps
                 result["timestamps"] = gpt_timestamps
             
+            # After all timestamp generation logic, ensure all timestamps use 'time_start'
+            if result["timestamps"]:
+                for ts in result["timestamps"]:
+                    if 'time' in ts and 'time_start' not in ts:
+                        ts['time_start'] = ts.pop('time')
+            
             return jsonify(result)
             
         except Exception as e:
-            raise e
+            logger.error("Error processing video:\n" + traceback.format_exc())
+            return jsonify({"error": str(e)}), 500
             
     except Exception as e:
-        logger.error(f"Error processing video: {str(e)}")
+        logger.error("Error processing video:\n" + traceback.format_exc())
         return jsonify({"error": str(e)}), 500
     
     finally:
@@ -286,7 +301,7 @@ def detect_scenes():
         
         # Get parameters
         scene_method = request.form.get('method', 'content')
-        threshold = float(request.form.get('threshold', 27.0))
+        threshold = int(float(request.form.get('threshold', 27.0)))
         min_scene_length = float(request.form.get('min_scene_length', 1.0))
         
         # Save video file temporarily
@@ -313,10 +328,11 @@ def detect_scenes():
             })
             
         except Exception as e:
-            raise e
+            logger.error("Error detecting scenes:\n" + traceback.format_exc())
+            return jsonify({"error": str(e)}), 500
             
     except Exception as e:
-        logger.error(f"Error detecting scenes: {str(e)}")
+        logger.error("Error detecting scenes:\n" + traceback.format_exc())
         return jsonify({"error": str(e)}), 500
     
     finally:
@@ -339,7 +355,7 @@ def generate_summary():
         return jsonify({"summary": summary})
         
     except Exception as e:
-        logger.error(f"Error generating summary: {str(e)}")
+        logger.error("Error generating summary:\n" + traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/generate-timestamps', methods=['POST'])
@@ -358,7 +374,7 @@ def generate_timestamps():
         return jsonify({"timestamps": timestamps})
         
     except Exception as e:
-        logger.error(f"Error generating timestamps: {str(e)}")
+        logger.error("Error generating timestamps:\n" + traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/combine-timestamps', methods=['POST'])
@@ -380,7 +396,7 @@ def combine_timestamps():
         return jsonify({"timestamps": combined_timestamps})
         
     except Exception as e:
-        logger.error(f"Error combining timestamps: {str(e)}")
+        logger.error("Error combining timestamps:\n" + traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
