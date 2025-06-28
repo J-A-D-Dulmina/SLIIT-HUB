@@ -79,13 +79,13 @@ const VideoListPage = () => {
   const [generatingAI, setGeneratingAI] = useState({});
 
   // AI model hook
-  const { 
-    generateAISummary, 
-    generateAITimestamps, 
-    generateAIDescription, 
+  const {
+    generateSummary,
+    generateTimestamps,
+    generateDescription,
     processVideoWithAI,
-    isLoading: aiLoading, 
-    error: aiError 
+    isLoading,
+    error
   } = useAIModel();
 
   useEffect(() => {
@@ -116,7 +116,7 @@ const VideoListPage = () => {
       
       switch (type) {
         case 'description':
-          result = await generateAIDescription(videoId, video?.title || '');
+          result = await generateDescription(videoId, { videoTitle: video?.title || '' });
           setVideos(prev => prev.map(v => 
             v.id === videoId 
               ? { ...v, description: result, hasAIDescription: true }
@@ -125,7 +125,7 @@ const VideoListPage = () => {
           break;
           
         case 'summary':
-          result = await generateAISummary(videoId, video?.title || '');
+          result = await generateSummary(videoId, { videoTitle: video?.title || '' });
           setVideos(prev => prev.map(v => 
             v.id === videoId 
               ? { ...v, hasAISummary: true }
@@ -134,7 +134,7 @@ const VideoListPage = () => {
           break;
           
         case 'timestamps':
-          result = await generateAITimestamps(videoId, video?.title || '');
+          result = await generateTimestamps(videoId, { videoTitle: video?.title || '' });
           setVideos(prev => prev.map(v => 
             v.id === videoId 
               ? { ...v, hasAITimestamps: true }
@@ -249,7 +249,7 @@ const VideoListPage = () => {
                           <button
                             className={`ai-btn ${video.hasAIDescription ? 'generated' : ''}`}
                             onClick={() => handleAIGeneration(video.id, 'description')}
-                            disabled={generatingAI[`${video.id}-description`] || aiLoading}
+                            disabled={generatingAI[`${video.id}-description`] || isLoading}
                             title="Generate AI Description"
                           >
                             <FaFileAlt />
@@ -259,7 +259,7 @@ const VideoListPage = () => {
                           <button
                             className={`ai-btn ${video.hasAISummary ? 'generated' : ''}`}
                             onClick={() => handleAIGeneration(video.id, 'summary')}
-                            disabled={generatingAI[`${video.id}-summary`] || aiLoading}
+                            disabled={generatingAI[`${video.id}-summary`] || isLoading}
                             title="Generate AI Summary"
                           >
                             <FaRobot />
@@ -269,7 +269,7 @@ const VideoListPage = () => {
                           <button
                             className={`ai-btn ${video.hasAITimestamps ? 'generated' : ''}`}
                             onClick={() => handleAIGeneration(video.id, 'timestamps')}
-                            disabled={generatingAI[`${video.id}-timestamps`] || aiLoading}
+                            disabled={generatingAI[`${video.id}-timestamps`] || isLoading}
                             title="Generate AI Timestamps"
                           >
                             <FaListUl />
@@ -279,7 +279,7 @@ const VideoListPage = () => {
                           <button
                             className="ai-btn all"
                             onClick={() => handleAIGeneration(video.id, 'all')}
-                            disabled={generatingAI[`${video.id}-all`] || aiLoading}
+                            disabled={generatingAI[`${video.id}-all`] || isLoading}
                             title="Generate All AI Features"
                           >
                             <FaMagic />

@@ -37,12 +37,12 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // AI model hook
-  const { 
-    generateAISummary, 
-    generateAITimestamps, 
-    generateAIDescription, 
+  const {
+    generateSummary,
+    generateTimestamps,
+    generateDescription,
     processVideoWithAI,
-    error: aiError 
+    error: aiError
   } = useAIModel();
 
   useEffect(() => {
@@ -56,7 +56,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     // Fetch the latest video data from the backend by ID
     const fetchLatestVideo = async () => {
       if (!video?.id) return;
-      const res = await fetch(`/api/tutoring/videos/${video.id}`, { credentials: 'include' });
+      const res = await fetch(`http://localhost:5000/api/tutoring/videos/${video.id}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         const latest = data.video;
@@ -136,7 +136,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     // Remove or comment out these debug logs:
     // VideoEditPage generateAIContent called with: Object
     // ✅ Using video ID: ...
-    // 📤 Calling generateAITimestamps with: Object
+    // 📤 Calling generateTimestamps with: Object
     // (and any similar console.log statements)
     
     if (!video?.id) {
@@ -154,8 +154,8 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
       switch (type) {
         case 'description':
           // Remove or comment out this console.log:
-          // console.log('📤 Calling generateAIDescription with:', { videoId: video.id, title: formData.title });
-          result = await generateAIDescription(video.id, formData.title);
+          // console.log('📤 Calling generateDescription with:', { videoId: video.id, title: formData.title });
+          result = await generateDescription(video.id, { videoTitle: formData.title });
           setFormData(prev => ({
             ...prev,
             description: result
@@ -164,8 +164,8 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
           
         case 'summary':
           // Remove or comment out this console.log:
-          // console.log('📤 Calling generateAISummary with:', { videoId: video.id, title: formData.title });
-          result = await generateAISummary(video.id, formData.title);
+          // console.log('📤 Calling generateSummary with:', { videoId: video.id, title: formData.title });
+          result = await generateSummary(video.id, { videoTitle: formData.title });
           setFormData(prev => ({
             ...prev,
             summary: result
@@ -174,8 +174,8 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
           
         case 'timestamps':
           // Remove or comment out this console.log:
-          // console.log('📤 Calling generateAITimestamps with:', { videoId: video.id, title: formData.title });
-          result = await generateAITimestamps(video.id, formData.title);
+          // console.log('📤 Calling generateTimestamps with:', { videoId: video.id, title: formData.title });
+          result = await generateTimestamps(video.id, { videoTitle: formData.title });
           setFormData(prev => ({
             ...prev,
             timestamps: result
@@ -337,7 +337,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
             <div className="video-player-wrapper">
               {video?.videoFile ? (
               <ReactPlayer
-                  url={`/api/tutoring/video/${video.id}`}
+                  url={`http://localhost:5000/api/tutoring/video/${video.id}`}
                 width="100%"
                 height="100%"
                 controls={true}

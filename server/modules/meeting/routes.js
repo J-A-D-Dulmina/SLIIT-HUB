@@ -6,11 +6,17 @@ const auth = require('../../middleware/auth');
 // Create a new meeting
 router.post('/', auth, meetingController.createMeeting);
 
-// Get all meetings (public - no auth required)
-router.get('/', meetingController.getMeetings);
+// Get all meetings (now requires authentication)
+router.get('/', auth, meetingController.getMeetings);
 
-// Get a specific meeting (public - no auth required)
-router.get('/:id', meetingController.getMeetingById);
+// Get all public meetings (for joining) - no auth required, filtering done on frontend
+router.get('/public', meetingController.getPublicMeetings);
+
+// Get my meetings (meetings hosted by current user) - must come before /:id routes
+router.get('/my-meetings', auth, meetingController.getMyMeetings);
+
+// Get a specific meeting (requires authentication for host detection)
+router.get('/:id', auth, meetingController.getMeetingById);
 
 // Update a meeting
 router.put('/:id', auth, meetingController.updateMeeting);
@@ -23,6 +29,18 @@ router.post('/:meetingId/join', auth, meetingController.joinMeeting);
 
 // Leave a meeting
 router.post('/:meetingId/leave', auth, meetingController.leaveMeeting);
+
+// Start a meeting
+router.post('/:meetingId/start', auth, meetingController.startMeeting);
+
+// Participate in a meeting
+router.post('/:meetingId/participate', auth, meetingController.participateInMeeting);
+
+// Leave participation in a meeting
+router.post('/:meetingId/leave-participation', auth, meetingController.leaveParticipation);
+
+// End a meeting (host only)
+router.post('/:meetingId/end', auth, meetingController.endMeeting);
 
 // Add participants to meeting
 router.post('/:id/participants', auth, meetingController.addParticipants);

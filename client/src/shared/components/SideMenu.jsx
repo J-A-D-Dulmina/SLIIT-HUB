@@ -29,7 +29,7 @@ const SideMenu = ({ collapsed }) => {
 
   useEffect(() => {
     // Fetch user details from backend
-    fetch('/api/protected', { credentials: 'include' })
+    fetch('http://localhost:5000/api/protected', { credentials: 'include' })
       .then(res => res.ok ? res.json() : Promise.reject(res))
       .then(data => {
         setUser(data.user || {});
@@ -47,7 +47,7 @@ const SideMenu = ({ collapsed }) => {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+      await fetch('http://localhost:5000/api/logout', { method: 'POST', credentials: 'include' });
       localStorage.clear();
       navigate('/login');
     } catch (error) {
@@ -98,12 +98,6 @@ const SideMenu = ({ collapsed }) => {
             <Link to="/dashboard">
               <FaHome className="icon" />
               {!collapsed && <span>Dashboard</span>}
-            </Link>
-          </li>
-          <li className={pathname === '/profile' ? 'active' : ''}>
-            <Link to="/profile">
-              <FaUser className="icon" />
-              {!collapsed && <span>Profile</span>}
             </Link>
           </li>
           <li className={pathname === '/units' ? 'active' : ''}>
@@ -193,18 +187,6 @@ const SideMenu = ({ collapsed }) => {
               <FaCog className="icon" />
               {!collapsed && <span>Settings</span>}
             </Link>
-          </li>
-          <li>
-            <a
-              href="#logout"
-              onClick={e => {
-                e.preventDefault();
-                handleLogout();
-              }}
-            >
-              <FaSignOutAlt className="icon" />
-              {!collapsed && <span>Logout</span>}
-            </a>
           </li>
         </ul>
       </div>

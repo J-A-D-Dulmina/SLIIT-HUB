@@ -14,14 +14,19 @@ class MeetingSocketServer {
   }
 
   setupWebSocketServer() {
+    console.log('WebSocket server setup complete');
     this.wss.on('connection', async (ws, req) => {
+      console.log('WebSocket connection attempt received');
       try {
         // Authenticate the connection
         const user = await this.authenticateConnection(req);
         if (!user) {
+          console.log('WebSocket authentication failed');
           ws.close(1008, 'Authentication failed');
           return;
         }
+
+        console.log('WebSocket authentication successful for:', user.name);
 
         // Store user info with connection
         this.connections.set(ws, {
@@ -29,8 +34,6 @@ class MeetingSocketServer {
           email: user.email,
           name: user.name
         });
-
-        console.log(`WebSocket connected: ${user.name} (${user.email})`);
 
         // Handle incoming messages
         ws.on('message', async (data) => {
@@ -45,12 +48,13 @@ class MeetingSocketServer {
 
         // Handle connection close
         ws.on('close', () => {
+          console.log('WebSocket connection closed for:', user.name);
           this.handleDisconnection(ws, user);
         });
 
         // Handle errors
         ws.on('error', (error) => {
-          console.error('WebSocket error:', error);
+          console.error('WebSocket error for', user.name, ':', error);
           this.handleDisconnection(ws, user);
         });
 
@@ -63,13 +67,20 @@ class MeetingSocketServer {
 
   async authenticateConnection(req) {
     try {
-      // Parse cookies from request headers
-      const cookies = this.parseCookies(req.headers.cookie);
-      const token = cookies.token;
-
-      if (!token) {
-        console.log('No token found in cookies');
-        return null;
+      let token = null;
+      
+      // First try to get token from query parameters (for WebSocket connections)
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const queryToken = url.searchParams.get('token');
+      if (queryToken) {
+        token = queryToken;
+      } else {
+        // Fall back to cookies
+        const cookies = this.parseCookies(req.headers.cookie);
+        token = cookies.token;
+        if (!token) {
+          return null;
+        }
       }
 
       // Verify JWT token
@@ -77,10 +88,14 @@ class MeetingSocketServer {
       
       // Get user from database
       const user = await Student.findById(decoded.id).select('_id email name');
+      if (!user) {
+        return null;
+      }
+
       return user;
 
     } catch (error) {
-      console.error('Authentication error:', error);
+      console.error('Authentication error:', error.message);
       return null;
     }
   }
@@ -162,6 +177,10 @@ class MeetingSocketServer {
         await this.handleRecordingStop(ws, meetingId, user);
         break;
 
+      case 'end-meeting':
+        await this.handleEndMeeting(ws, meetingId, user);
+        break;
+
       default:
         this.sendError(ws, `Unknown message type: ${type}`);
     }
@@ -176,13 +195,15 @@ class MeetingSocketServer {
         return;
       }
 
-      // Check if user is a participant
-      const isParticipant = meeting.participants.some(
-        p => p.userId.toString() === user._id.toString()
-      );
+      // Check if meeting is public
+      if (!meeting.isPublic) {
+        this.sendError(ws, 'This meeting is not public');
+        return;
+      }
 
-      if (!isParticipant) {
-        this.sendError(ws, 'You are not a participant in this meeting');
+      // Check if meeting is not completed
+      if (meeting.status === 'completed') {
+        this.sendError(ws, 'This meeting has already ended');
         return;
       }
 
@@ -195,7 +216,25 @@ class MeetingSocketServer {
       // Store meeting info with connection
       this.connections.get(ws).meetingId = meetingId;
 
-      // Send confirmation
+      // Get existing users in the room
+      const existingUsers = [];
+      const room = this.rooms.get(meetingId);
+      if (room) {
+        room.forEach(participantWs => {
+          if (participantWs !== ws && participantWs.readyState === WebSocket.OPEN) {
+            const participantInfo = this.connections.get(participantWs);
+            if (participantInfo) {
+              existingUsers.push({
+                userId: participantInfo.userId,
+                name: participantInfo.name,
+                email: participantInfo.email
+              });
+            }
+          }
+        });
+      }
+
+      // Send confirmation with existing users
       this.sendToClient(ws, {
         type: 'meeting-joined',
         meetingId,
@@ -203,14 +242,9 @@ class MeetingSocketServer {
           meeting: {
             id: meeting._id,
             title: meeting.title,
-            host: meeting.host.toString(),
-            participants: meeting.participants.map(p => ({
-              userId: p.userId.toString(),
-              name: p.name,
-              email: p.email,
-              role: p.role
-            }))
-          }
+            host: meeting.host.toString()
+          },
+          existingUsers: existingUsers
         }
       });
 
@@ -268,17 +302,17 @@ class MeetingSocketServer {
     try {
       const { message } = data;
 
-      // Save message to database
-      await Meeting.findByIdAndUpdate(meetingId, {
-        $push: {
-          chatHistory: {
-            sender: user._id,
-            senderName: user.name,
-            message: message,
-            timestamp: new Date()
-          }
-        }
-      });
+      // Don't save message to database during meeting - keep temporary in memory
+      // await Meeting.findByIdAndUpdate(meetingId, {
+      //   $push: {
+      //     chatHistory: {
+      //       sender: user._id,
+      //       senderName: user.name,
+      //       message: message,
+      //       timestamp: new Date()
+      //     }
+      //   }
+      // });
 
       // Broadcast to room
       this.broadcastToRoom(meetingId, null, {
@@ -362,7 +396,8 @@ class MeetingSocketServer {
       type: 'screen-share-start',
       meetingId,
       data: {
-        userId: user._id
+        userId: user._id,
+        name: user.name
       }
     });
   }
@@ -372,7 +407,8 @@ class MeetingSocketServer {
       type: 'screen-share-stop',
       meetingId,
       data: {
-        userId: user._id
+        userId: user._id,
+        name: user.name
       }
     });
   }
@@ -481,6 +517,83 @@ class MeetingSocketServer {
     } catch (error) {
       console.error('Error stopping recording:', error);
       this.sendError(ws, 'Failed to stop recording');
+    }
+  }
+
+  async handleEndMeeting(ws, meetingId, user) {
+    try {
+      // Verify meeting exists
+      const meeting = await Meeting.findById(meetingId);
+      if (!meeting) {
+        this.sendError(ws, 'Meeting not found');
+        return;
+      }
+
+      // Check if user is the host
+      let isHost = false;
+      if (user.studentId) {
+        // For students, check hostStudentId
+        isHost = user.studentId === meeting.hostStudentId;
+      } else {
+        // For lecturers, check host ObjectId
+        isHost = meeting.host.toString() === user._id.toString();
+      }
+
+      if (!isHost) {
+        this.sendError(ws, 'Only the meeting host can end the meeting');
+        return;
+      }
+
+      // Update meeting status to completed
+      meeting.status = 'completed';
+      meeting.endedAt = new Date();
+      await meeting.save();
+
+      // Notify all participants that the meeting has ended
+      const room = this.rooms.get(meetingId);
+      if (room) {
+        const endMessage = {
+          type: 'meeting-ended',
+          meetingId: meetingId,
+          data: {
+            message: 'Meeting ended by host',
+            endedBy: user.name
+          }
+        };
+
+        // Send to all participants in the room
+        room.forEach(participantWs => {
+          if (participantWs !== ws && participantWs.readyState === WebSocket.OPEN) {
+            this.sendToClient(participantWs, endMessage);
+          }
+        });
+
+        // Close all connections in the room
+        room.forEach(participantWs => {
+          if (participantWs.readyState === WebSocket.OPEN) {
+            participantWs.close(1000, 'Meeting ended by host');
+          }
+        });
+
+        // Clean up room
+        this.rooms.delete(meetingId);
+        this.rtcConnections.delete(meetingId);
+      }
+
+      // Send confirmation to host
+      this.sendToClient(ws, {
+        type: 'meeting-ended-confirmation',
+        meetingId: meetingId,
+        data: {
+          message: 'Meeting ended successfully'
+        }
+      });
+
+      console.log(`Meeting ${meetingId} ended by host ${user.name}`);
+
+    } catch (error) {
+      console.error('Error ending meeting:', error);
+      this.sendError(ws, 'Failed to end meeting');
     }
   }
 

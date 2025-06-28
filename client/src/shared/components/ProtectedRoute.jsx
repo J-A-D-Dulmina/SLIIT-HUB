@@ -8,7 +8,7 @@ const ProtectedRoute = ({ children }) => {
 
   useEffect(() => {
     console.log('ProtectedRoute: Checking authentication...');
-    fetch('/api/protected', { credentials: 'include' })
+    fetch('http://localhost:5000/api/protected', { credentials: 'include' })
       .then(res => {
         console.log('ProtectedRoute: Response status:', res.status);
         return res.ok ? res.json() : Promise.reject(res);

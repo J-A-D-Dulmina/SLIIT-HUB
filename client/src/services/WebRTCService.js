@@ -36,6 +36,9 @@ class WebRTCService {
     this.onRecordingStart = null;
     this.onRecordingStop = null;
     this.onRecordingTimeUpdate = null;
+    this.onScreenShareStart = null;
+    this.onScreenShareStop = null;
+    this.onMeetingEnded = null;
   }
 
   // Initialize WebRTC service
@@ -56,15 +59,24 @@ class WebRTCService {
   // Connect to WebSocket server
   async connectWebSocket() {
     return new Promise((resolve, reject) => {
-      // Use WebSocket with cookie-based authentication
-      const wsUrl = `ws://localhost:5000`;
-      this.socket = new WebSocket(wsUrl);
-
-      this.socket.onopen = () => {
-        console.log('WebSocket connected');
-        this.joinMeeting();
-        resolve();
+      // Get token from cookies
+      const getCookie = (name) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
       };
+      
+      console.log('WebSocket: All cookies:', document.cookie);
+      const token = getCookie('token');
+      console.log('WebSocket: Token found:', !!token);
+      console.log('WebSocket: Token length:', token ? token.length : 0);
+      
+      // Use WebSocket with token as query parameter
+      const wsUrl = token ? `ws://localhost:5000?token=${encodeURIComponent(token)}` : 'ws://localhost:5000';
+      console.log('WebSocket: Attempting to connect to:', wsUrl);
+      
+      this.socket = new WebSocket(wsUrl);
 
       this.socket.onmessage = (event) => {
         this.handleSocketMessage(JSON.parse(event.data));
@@ -72,13 +84,31 @@ class WebRTCService {
 
       this.socket.onerror = (error) => {
         console.error('WebSocket error:', error);
+        console.error('WebSocket readyState:', this.socket.readyState);
         if (this.onError) this.onError('WebSocket connection failed');
         reject(error);
       };
 
-      this.socket.onclose = () => {
-        console.log('WebSocket disconnected');
+      this.socket.onclose = (event) => {
+        console.log('WebSocket disconnected. Code:', event.code, 'Reason:', event.reason);
         this.cleanup();
+      };
+      
+      // Add timeout
+      const timeoutId = setTimeout(() => {
+        if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
+          console.log('WebSocket connection timeout');
+          this.socket.close();
+          reject(new Error('WebSocket connection timeout'));
+        }
+      }, 10000); // 10 second timeout
+      
+      // Handle successful connection
+      this.socket.onopen = () => {
+        clearTimeout(timeoutId);
+        console.log('WebSocket connected successfully');
+        this.joinMeeting();
+        resolve();
       };
     });
   }
@@ -98,8 +128,35 @@ class WebRTCService {
       console.log('Local stream obtained');
     } catch (error) {
       console.error('Error getting user media:', error);
-      if (this.onError) this.onError('Failed to access camera/microphone');
-      throw error;
+      
+      // Handle specific error types
+      if (error.name === 'NotReadableError' || error.name === 'NotAllowedError') {
+        if (this.onError) this.onError('Camera/microphone is in use by another application. Please close other tabs or applications using your camera and try again.');
+      } else if (error.name === 'NotFoundError') {
+        if (this.onError) this.onError('No camera or microphone found. Please connect a device and try again.');
+      } else if (error.name === 'NotAllowedError') {
+        if (this.onError) this.onError('Camera/microphone access denied. Please allow access and try again.');
+      } else {
+        if (this.onError) this.onError('Failed to access camera/microphone: ' + error.message);
+      }
+      
+      // Try to get audio only if video fails
+      try {
+        this.localStream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: true
+        });
+
+        if (this.onLocalStream) {
+          this.onLocalStream(this.localStream);
+        }
+
+        console.log('Audio-only stream obtained');
+        if (this.onError) this.onError('Video unavailable, but audio is working.');
+      } catch (audioError) {
+        console.error('Audio also failed:', audioError);
+        if (this.onError) this.onError('Unable to access camera or microphone. Please check your device permissions.');
+      }
     }
   }
 
@@ -113,10 +170,13 @@ class WebRTCService {
 
   // Leave meeting room
   leaveMeeting() {
+    // Send leave message to server
     this.sendMessage({
       type: 'leave-meeting',
       meetingId: this.meetingId
     });
+    
+    // Then cleanup resources
     this.cleanup();
   }
 
@@ -181,34 +241,83 @@ class WebRTCService {
         this.handleRecordingStop(data);
         break;
 
+      case 'meeting-ended':
+        this.handleMeetingEnded(data);
+        break;
+
       case 'error':
         console.error('WebSocket error:', data.message);
         if (this.onError) this.onError(data.message);
         break;
 
       default:
-        console.log('Unknown message type:', type);
+        console.log('Unknown message type:', type, message);
     }
   }
 
   // Handle meeting joined confirmation
   handleMeetingJoined(data) {
-    console.log('Joined meeting:', data.meeting.title);
+    console.log('Joined meeting:', data);
     
-    // Create peer connections for existing participants
-    data.meeting.participants.forEach(participant => {
-      if (participant.userId !== this.userId) {
-        this.createPeerConnection(participant.userId);
-      }
-    });
+    // Establish connections with existing users
+    if (data.existingUsers && Array.isArray(data.existingUsers)) {
+      data.existingUsers.forEach(async (existingUser) => {
+        if (existingUser.userId !== this.userId) {
+          console.log('Connecting to existing user:', existingUser);
+          
+          const peerConnection = await this.createPeerConnection(existingUser.userId);
+          if (peerConnection && this.localStream) {
+            try {
+              // Create and send offer to existing user
+              const offer = await peerConnection.createOffer();
+              await peerConnection.setLocalDescription(offer);
+
+              this.sendMessage({
+                type: 'rtc-offer',
+                meetingId: this.meetingId,
+                data: {
+                  targetUserId: existingUser.userId,
+                  offer
+                }
+              });
+            } catch (error) {
+              console.error('Error creating offer for existing user:', error);
+            }
+          }
+        }
+      });
+    }
+
+    if (this.onUserJoined) {
+      this.onUserJoined(data);
+    }
   }
 
   // Handle new user joining
   handleUserJoined(data) {
-    console.log('User joined:', data.name);
+    console.log('User joined:', data);
     
-    // Create peer connection for new user
-    this.createPeerConnection(data.userId);
+    // Create peer connection for the new user
+    this.createPeerConnection(data.userId).then(async (peerConnection) => {
+      if (peerConnection && this.localStream) {
+        try {
+          // Create and send offer to the new user
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+
+          this.sendMessage({
+            type: 'rtc-offer',
+            meetingId: this.meetingId,
+            data: {
+              targetUserId: data.userId,
+              offer
+            }
+          });
+        } catch (error) {
+          console.error('Error creating offer for new user:', error);
+        }
+      }
+    });
 
     if (this.onUserJoined) {
       this.onUserJoined(data);
@@ -234,9 +343,11 @@ class WebRTCService {
       this.peerConnections.set(targetUserId, peerConnection);
 
       // Add local stream tracks
-      this.localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, this.localStream);
-      });
+      if (this.localStream) {
+        this.localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, this.localStream);
+        });
+      }
 
       // Handle remote stream
       peerConnection.ontrack = (event) => {
@@ -262,22 +373,21 @@ class WebRTCService {
         }
       };
 
-      // Create and send offer
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-
-      this.sendMessage({
-        type: 'rtc-offer',
-        meetingId: this.meetingId,
-        data: {
-          targetUserId,
-          offer
+      // Handle connection state changes
+      peerConnection.onconnectionstatechange = () => {
+        console.log(`Connection state with ${targetUserId}:`, peerConnection.connectionState);
+        if (peerConnection.connectionState === 'failed') {
+          console.error('Connection failed with:', targetUserId);
+          this.closePeerConnection(targetUserId);
         }
-      });
+      };
+
+      return peerConnection;
 
     } catch (error) {
       console.error('Error creating peer connection:', error);
       if (this.onError) this.onError('Failed to establish connection');
+      return null;
     }
   }
 
@@ -460,10 +570,16 @@ class WebRTCService {
   // Handle screen share events
   handleScreenShareStart(data) {
     console.log('Screen sharing started by:', data.name);
+    if (this.onScreenShareStart) {
+      this.onScreenShareStart(data);
+    }
   }
 
   handleScreenShareStop(data) {
     console.log('Screen sharing stopped by:', data.name);
+    if (this.onScreenShareStop) {
+      this.onScreenShareStop(data);
+    }
   }
 
   // Handle mute events
@@ -643,7 +759,15 @@ class WebRTCService {
   }
 
   handleRecordingStop(data) {
-    console.log('Recording stopped by:', data.name);
+    this.isRecording = false;
+    this.recordingStartTime = null;
+    if (this.recordingTimer) {
+      clearInterval(this.recordingTimer);
+      this.recordingTimer = null;
+    }
+    if (this.onRecordingStop) {
+      this.onRecordingStop(data);
+    }
   }
 
   // Get recording status
@@ -664,40 +788,46 @@ class WebRTCService {
 
   // Cleanup resources
   cleanup() {
-    // Stop recording if active
-    if (this.isRecording) {
-      this.stopRecording();
+    // Only cleanup WebSocket connection, don't automatically leave meeting
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
     }
-
+    
     // Stop local stream
     if (this.localStream) {
       this.localStream.getTracks().forEach(track => track.stop());
       this.localStream = null;
     }
-
+    
+    // Stop screen share
+    if (this.screenStream) {
+      this.screenStream.getTracks().forEach(track => track.stop());
+      this.screenStream = null;
+    }
+    
     // Close peer connections
-    this.peerConnections.forEach(peerConnection => {
-      peerConnection.close();
+    this.peerConnections.forEach(connection => {
+      connection.close();
     });
     this.peerConnections.clear();
-
+    
     // Clear remote streams
     this.remoteStreams.clear();
-
-    // Clear recording data
-    this.recordedChunks = [];
-    this.mediaRecorder = null;
-
-    // Clear timers
-    if (this.recordingTimer) {
-      clearInterval(this.recordingTimer);
-      this.recordingTimer = null;
+    
+    // Clear recording
+    if (this.mediaRecorder) {
+      this.mediaRecorder.stop();
+      this.mediaRecorder = null;
     }
-
-    // Close WebSocket
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
+    
+    // Clear recording chunks
+    this.recordingChunks = [];
+    
+    // Reset recording time
+    if (this.recordingTimeInterval) {
+      clearInterval(this.recordingTimeInterval);
+      this.recordingTimeInterval = null;
     }
   }
 
@@ -710,6 +840,23 @@ class WebRTCService {
       socketConnected: this.socket?.readyState === WebSocket.OPEN,
       isRecording: this.isRecording
     };
+  }
+
+  handleMeetingEnded(data) {
+    console.log('Meeting ended by host:', data);
+    
+    // Show notification to user
+    if (this.onMeetingEnded) {
+      this.onMeetingEnded(data);
+    }
+    
+    // Clean up resources
+    this.cleanup();
+    
+    // Close WebSocket connection
+    if (this.socket) {
+      this.socket.close(1000, 'Meeting ended by host');
+    }
   }
 }
 

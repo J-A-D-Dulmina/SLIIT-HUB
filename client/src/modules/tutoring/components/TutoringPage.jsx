@@ -56,7 +56,7 @@ const TutoringPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/tutoring/videos', { credentials: 'include' });
+      const res = await fetch('http://localhost:5000/api/tutoring/videos', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setVideos(data.videos);
@@ -85,7 +85,7 @@ const TutoringPage = () => {
   const handleConfirmDelete = async () => {
     if (selectedVideo) {
       try {
-        const res = await fetch(`/api/tutoring/videos/${selectedVideo.id}`, {
+        const res = await fetch(`http://localhost:5000/api/tutoring/videos/${selectedVideo.id}`, {
           method: 'DELETE',
           credentials: 'include'
         });
@@ -126,7 +126,7 @@ const TutoringPage = () => {
   };
 
   const fetchVideoById = async (videoId) => {
-    const res = await fetch('/api/tutoring/videos', { credentials: 'include' });
+    const res = await fetch('http://localhost:5000/api/tutoring/videos', { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       return data.videos.find(v => v.id === videoId);
@@ -163,7 +163,7 @@ const TutoringPage = () => {
       formData.append('semester', uploadFormData.semester);
       formData.append('videoFile', uploadFormData.videoFile);
 
-      const res = await fetch('/api/tutoring/upload', {
+      const res = await fetch('http://localhost:5000/api/tutoring/upload', {
         method: 'POST',
         credentials: 'include',
         body: formData
@@ -213,7 +213,7 @@ const TutoringPage = () => {
   const handleSaveVideo = async (formData) => {
     if (selectedVideo) {
       try {
-        const res = await fetch(`/api/tutoring/videos/${selectedVideo.id}`, {
+        const res = await fetch(`http://localhost:5000/api/tutoring/videos/${selectedVideo.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -345,49 +345,18 @@ const TutoringPage = () => {
                     <div className="video-thumbnail">
                       {video.thumbnail ? (
                         <img 
-                          src={`/api/tutoring/thumbnail/${video.id}`}
+                          src={`http://localhost:5000/api/tutoring/thumbnail/${video.id}`}
                           alt={video.title}
                           onError={(e) => {
-                            // If thumbnail fails, show video element
                             e.target.style.display = 'none';
-                            const videoElement = e.target.parentElement.querySelector('video');
-                            if (videoElement) {
-                              videoElement.style.display = 'block';
-                            } else {
-                              // Show placeholder if no video element
-                              const placeholder = document.createElement('div');
-                              placeholder.className = 'video-placeholder';
-                              placeholder.innerHTML = '<div class="placeholder-icon">📹</div><span>Video</span>';
-                              e.target.parentElement.appendChild(placeholder);
-                            }
+                            e.target.nextSibling.style.display = 'block';
                           }}
                         />
                       ) : video.videoFile ? (
                         <video 
-                          src={`/api/tutoring/video/${video.id}`}
-                          preload="metadata"
-                          muted
-                          onLoadedMetadata={(e) => {
-                            const duration = Math.floor(e.target.duration);
-                            const minutes = Math.floor(duration / 60);
-                            const seconds = duration % 60;
-                            const durationSpan = e.target.parentElement.querySelector('.duration');
-                            if (durationSpan) {
-                              durationSpan.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                            }
-                          }}
-                          onError={() => {
-                            // Show placeholder if video fails
-                            const placeholder = document.createElement('div');
-                            placeholder.className = 'video-placeholder';
-                            placeholder.innerHTML = '<div class="placeholder-icon">📹</div><span>Video</span>';
-                            const videoElement = document.querySelector(`[data-video-id="${video.id}"]`);
-                            if (videoElement) {
-                              videoElement.style.display = 'none';
-                              videoElement.parentElement.appendChild(placeholder);
-                            }
-                          }}
-                          data-video-id={video.id}
+                          src={`http://localhost:5000/api/tutoring/video/${video.id}`}
+                          controls
+                          style={{ display: 'none' }}
                         />
                       ) : (
                         <div className="video-placeholder">

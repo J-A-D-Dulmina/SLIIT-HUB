@@ -31,39 +31,128 @@ import ProtectedRoute from './shared/components/ProtectedRoute.jsx';
 const AppRoutes = () => {
   return (
     <Routes>
+      {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/admin-login" element={<AdminLoginPage />} />
-      <Route path="*" element={
+      
+      {/* Protected routes */}
+      <Route path="/" element={
         <ProtectedRoute>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<LandingPage />} />
-      <Route path="/profile" element={<ProfilePage />} />
-      <Route path="/units" element={<ModuleListPage />} />
-      <Route path="/modules/:degreeId/:yearId" element={<ModuleListPage />} />
-      <Route path="/videos/:moduleId" element={<VideoListPage />} />
-      <Route path="/video/:moduleId/:videoId" element={<VideoDetailsPage />} />
-      <Route path="/tutoring" element={<TutoringPage />} />
-      <Route path="/join-meeting" element={<JoinMeetingPage />} />
-      <Route path="/my-meetings" element={<MyMeetingsPage />} />
-      <Route path="/meeting/:meetingId" element={<MeetingPage />} />
-      <Route path="/resources" element={<ResourcesPage />} />
-      <Route path="/calendar" element={<CalendarPage />} />
-      <Route path="/ai-tool" element={<AIToolPage />} />
-      <Route path="/my-recommendations" element={<MyRecommendationsPage />} />
-      <Route path="/admin-dashboard" element={<AdminLayout><AdminDashboardHome /></AdminLayout>} />
-      <Route path="/admin-degrees" element={<AdminLayout><AdminDegreesPage /></AdminLayout>} />
-      <Route path="/admin-lecturers" element={<AdminLayout><AdminLecturersPage /></AdminLayout>} />
-      <Route path="/admin-students" element={<AdminLayout><AdminStudentsPage /></AdminLayout>} />
-      <Route path="/admin-videos" element={<AdminLayout><AdminVideosPage /></AdminLayout>} />
-      <Route path="/admin-announcements" element={<AdminLayout><AdminAnnouncementsPage /></AdminLayout>} />
-      <Route path="/admin-admins" element={<AdminLayout><AdminAdminsPage /></AdminLayout>} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
+          <Navigate to="/dashboard" replace />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <LandingPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <ProfilePage />
+        </ProtectedRoute>
+      } />
+      <Route path="/units" element={
+        <ProtectedRoute>
+          <ModuleListPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/modules/:degreeId/:yearId" element={
+        <ProtectedRoute>
+          <ModuleListPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/videos/:moduleId" element={
+        <ProtectedRoute>
+          <VideoListPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/video/:moduleId/:videoId" element={
+        <ProtectedRoute>
+          <VideoDetailsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/tutoring" element={
+        <ProtectedRoute>
+          <TutoringPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/join-meeting" element={
+        <ProtectedRoute>
+          <JoinMeetingPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/my-meetings" element={
+        <ProtectedRoute>
+          <MyMeetingsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/meeting/:meetingId" element={
+        <ProtectedRoute>
+          <MeetingPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/resources" element={
+        <ProtectedRoute>
+          <ResourcesPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/calendar" element={
+        <ProtectedRoute>
+          <CalendarPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/ai-tool" element={
+        <ProtectedRoute>
+          <AIToolPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/my-recommendations" element={
+        <ProtectedRoute>
+          <MyRecommendationsPage />
+        </ProtectedRoute>
+      } />
+      
+      {/* Admin routes */}
+      <Route path="/admin-dashboard" element={
+        <ProtectedRoute>
+          <AdminLayout><AdminDashboardHome /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin-degrees" element={
+        <ProtectedRoute>
+          <AdminLayout><AdminDegreesPage /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin-lecturers" element={
+        <ProtectedRoute>
+          <AdminLayout><AdminLecturersPage /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin-students" element={
+        <ProtectedRoute>
+          <AdminLayout><AdminStudentsPage /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin-videos" element={
+        <ProtectedRoute>
+          <AdminLayout><AdminVideosPage /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin-announcements" element={
+        <ProtectedRoute>
+          <AdminLayout><AdminAnnouncementsPage /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin-admins" element={
+        <ProtectedRoute>
+          <AdminLayout><AdminAdminsPage /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      
+      {/* Catch all - redirect to login for unauthenticated users */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 };

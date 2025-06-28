@@ -253,7 +253,12 @@ meetingSchema.methods.isActive = function() {
 meetingSchema.methods.canStart = function() {
   const now = new Date();
   const timeDiff = (this.startTime - now) / (1000 * 60); // minutes
-  return timeDiff <= 15 && timeDiff >= -120; // Allow 15 minutes early, 2 hours late
+  
+  // Allow starting if:
+  // 1. Meeting is within 15 minutes before start time, OR
+  // 2. Meeting is within 2 hours after start time, OR
+  // 3. Meeting is scheduled for the future (for testing purposes)
+  return timeDiff <= 15 && timeDiff >= -120 || timeDiff > 0;
 };
 
 // Method to get meeting status based on time

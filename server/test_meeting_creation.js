@@ -45,20 +45,20 @@ const testMeetingCreation = async () => {
 
     // Create test meeting data
     const testMeetingData = {
-      title: 'Test Meeting - Database Verification',
-      description: 'This is a test meeting to verify database saving functionality',
+      title: 'Test Meeting - AI Discussion',
+      description: 'This is a test meeting to discuss AI topics and recent developments in machine learning.',
       host: testUser._id,
       hostEmail: testUser.email,
       hostName: testUser.name,
-      startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-      endTime: new Date(Date.now() + 24 * 60 * 60 * 1000 + 60 * 60 * 1000), // Tomorrow + 1 hour
+      startTime: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes from now
+      endTime: new Date(Date.now() + 90 * 60 * 1000),   // 90 minutes from now
       duration: 60,
       degree: 'BSc in Information Technology',
-      year: 'Year 2',
+      year: 'Year 3',
       semester: 'Semester 1',
-      module: 'Database Systems',
-      meetingLink: `http://localhost:3000/meeting/test-${Date.now()}`,
-      maxParticipants: 50,
+      module: 'AI',
+      meetingLink: `https://meet.google.com/test-${Date.now()}`,
+      maxParticipants: 20,
       isPublic: true,
       status: 'scheduled',
       participants: [{
@@ -76,14 +76,19 @@ const testMeetingCreation = async () => {
         videoOnEntry: true,
         waitingRoom: false
       },
-      chatHistory: [],
+      chatHistory: [{
+        senderId: testUser._id,
+        senderName: testUser.name,
+        message: 'Welcome to the test meeting!',
+        timestamp: new Date()
+      }],
       recordings: [],
       recordingStatus: {
         isRecording: false,
         duration: 0
       },
-      notes: 'Test meeting for database verification',
-      tags: ['BSc in Information Technology', 'Year 2', 'Semester 1', 'Database Systems']
+      notes: 'Test meeting for AI discussion',
+      tags: ['BSc in Information Technology', 'Year 3', 'Semester 1', 'AI']
     };
 
     console.log('📝 Creating test meeting...');

@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../styles/TopBar.css';
-import { FaBell, FaSearch, FaEnvelope, FaSave } from 'react-icons/fa';
+import { FaBell, FaSearch, FaEnvelope, FaSave, FaUser, FaSignOutAlt } from 'react-icons/fa';
 
 const TopBar = ({ currentTime }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSavedVideos, setShowSavedVideos] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const navigate = useNavigate();
+  
+  // Get user info from localStorage
+  const userName = localStorage.getItem('userName');
+
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -39,11 +46,40 @@ const TopBar = ({ currentTime }) => {
   const toggleNotifications = () => {
     setShowNotifications(!showNotifications);
     setShowSavedVideos(false);
+    setShowUserMenu(false);
   };
 
   const toggleSavedVideos = () => {
     setShowSavedVideos(!showSavedVideos);
     setShowNotifications(false);
+    setShowUserMenu(false);
+  };
+
+  const toggleUserMenu = () => {
+    setShowUserMenu(!showUserMenu);
+    setShowNotifications(false);
+    setShowSavedVideos(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Call logout endpoint to clear cookie
+      await fetch('http://localhost:5000/api/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      // Clear all localStorage data
+      localStorage.clear();
+      
+      // Redirect to login
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear localStorage and redirect even if API call fails
+      localStorage.clear();
+      navigate('/login');
+    }
   };
 
   const markAsRead = (id) => {
@@ -155,6 +191,31 @@ const TopBar = ({ currentTime }) => {
                 ) : (
                   <div className="empty-saved">No saved videos</div>
                 )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="user-menu-wrapper">
+          <button className="icon-button user-button" onClick={toggleUserMenu}>
+            <FaUser />
+          </button>
+
+          {showUserMenu && (
+            <div className="user-menu-panel">
+              <div className="panel-header">
+                <h3>User Menu</h3>
+              </div>
+              
+              <div className="user-menu-items">
+                <button className="menu-item" onClick={() => navigate('/profile')}>
+                  <FaUser />
+                  <span>Profile</span>
+                </button>
+                <button className="menu-item logout-button" onClick={handleLogout}>
+                  <FaSignOutAlt />
+                  <span>Logout</span>
+                </button>
               </div>
             </div>
           )}

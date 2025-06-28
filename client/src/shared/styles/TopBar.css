@@ -79,7 +79,8 @@
 }
 
 .notification-wrapper,
-.saved-videos-wrapper {
+.saved-videos-wrapper,
+.user-menu-wrapper {
   position: relative;
 }
 
@@ -120,7 +121,8 @@
 }
 
 .notification-panel,
-.saved-videos-panel {
+.saved-videos-panel,
+.user-menu-panel {
   position: absolute;
   top: calc(100% + 0.5rem);
   right: 0;
@@ -161,7 +163,8 @@
 }
 
 .notification-items,
-.saved-videos-items {
+.saved-videos-items,
+.user-menu-items {
   max-height: 350px;
   overflow-y: auto;
 }
@@ -200,6 +203,7 @@
   margin: 0 0 0.25rem 0;
   font-size: 0.875rem;
   color: #1e293b;
+  line-height: 1.4;
 }
 
 .entry-time {
@@ -209,10 +213,67 @@
 
 .empty-notifications,
 .empty-saved {
-  padding: 1.5rem;
+  padding: 2rem 1rem;
   text-align: center;
   color: #64748b;
   font-size: 0.875rem;
+}
+
+/* User menu specific styles */
+.user-info {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.user-name {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.user-type {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: #1e293b;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: left;
+}
+
+.menu-item:hover {
+  background-color: #f1f5f9;
+}
+
+.menu-item.logout-button {
+  color: #ef4444;
+}
+
+.menu-item.logout-button:hover {
+  background-color: #fef2f2;
+}
+
+.menu-item svg {
+  font-size: 1rem;
+  color: #64748b;
+}
+
+.menu-item.logout-button svg {
+  color: #ef4444;
 }
 
 @media (max-width: 768px) {

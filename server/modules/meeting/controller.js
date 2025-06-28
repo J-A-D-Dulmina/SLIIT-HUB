@@ -40,8 +40,6 @@ const createMeeting = async (req, res) => {
     const startDateTime = new Date(startTime);
     const durationNum = parseInt(duration);
     const endTime = new Date(startDateTime.getTime() + durationNum * 60000);
-    const meetingId = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-    const meetingLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/meeting/${meetingId}`;
 
     const meetingData = {
       title: title.trim(),
@@ -57,7 +55,6 @@ const createMeeting = async (req, res) => {
       year: year.trim(),
       semester: semester.trim(),
       module: module.trim(),
-      meetingLink,
       maxParticipants: 50,
       isPublic: true,
       status: 'scheduled',
@@ -86,7 +83,11 @@ const createMeeting = async (req, res) => {
       tags: [degree, year, semester, module]
     };
 
-    const meeting = new Meeting(meetingData);
+    let meeting = new Meeting(meetingData);
+    await meeting.save();
+
+    // Now set the meetingLink using the real MongoDB _id
+    meeting.meetingLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/meeting/${meeting._id}`;
     await meeting.save();
 
     res.status(201).json({
@@ -113,24 +114,51 @@ const getMeetings = async (req, res) => {
       hostOnly = false
     } = req.query;
 
-    console.log('getMeetings called with query:', req.query);
-    console.log('User info:', req.user);
-
     let query = {};
 
-    // Filter by hostStudentId if requested and user is authenticated
-    if (hostOnly === 'true') {
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({
-          success: false,
-          message: 'Authentication required to view your meetings'
-        });
+    // Get user info from authenticated user
+    if (req.user && req.user.id) {
+      const userId = req.user.id;
+      const userType = req.user.type;
+      
+      if (userType === 'student') {
+        // Get student info to get studentId
+        const student = await Student.findById(userId);
+        if (student) {
+          const studentId = student.studentId;
+          
+          if (hostOnly === 'true') {
+            // Show only meetings hosted by the current student
+            query.hostStudentId = studentId;
+          } else {
+            // Show meetings where student is host or participant
+            query.$or = [
+              { hostStudentId: studentId },
+              { 'participants.userId': userId }
+            ];
+          }
+        } else {
+          return res.status(404).json({
+            success: false,
+            message: 'Student not found'
+          });
+        }
+      } else {
+        // For lecturers, use the userId directly
+        if (hostOnly === 'true') {
+          query.host = userId;
+        } else {
+          query.$or = [
+            { host: userId },
+            { 'participants.userId': userId }
+          ];
+        }
       }
-      const student = await Student.findById(req.user.id);
-      if (!student) {
-        return res.status(404).json({ success: false, message: 'Student not found' });
-      }
-      query.hostStudentId = student.studentId;
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required to view meetings'
+      });
     }
 
     // Filter by status
@@ -155,11 +183,14 @@ const getMeetings = async (req, res) => {
 
     // Search functionality
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { hostName: { $regex: search, $options: 'i' } }
-      ];
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { hostName: { $regex: search, $options: 'i' } }
+        ]
+      });
     }
 
     const skip = (page - 1) * limit;
@@ -171,15 +202,38 @@ const getMeetings = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
-    const total = await Meeting.countDocuments(query);
+    console.log('Found meetings:', meetings.length);
+    meetings.forEach(meeting => {
+      console.log(`Meeting: ${meeting.title}, Host: ${meeting.hostName}, HostStudentId: ${meeting.hostStudentId}`);
+    });
 
     // Add computed status to each meeting
-    const meetingsWithStatus = meetings.map(meeting => {
+    const meetingsWithStatus = [];
+    for (const meeting of meetings) {
       const meetingObj = meeting.toObject();
-      meetingObj.computedStatus = meeting.getStatus();
-      meetingObj.canStart = meeting.canStart();
-      return meetingObj;
-    });
+      const status = getMeetingStatus(meeting);
+      
+      // Check if user is the host based on user type
+      let isHost = false;
+      if (req.user && req.user.id) {
+        if (req.user.type === 'student') {
+          // For students, check hostStudentId
+          const student = await Student.findById(req.user.id);
+          if (student && student.studentId === meeting.hostStudentId) {
+            isHost = true;
+          }
+        } else {
+          // For lecturers, check host ObjectId
+          isHost = meeting.host.toString() === req.user.id;
+        }
+      }
+      
+      meetingObj.computedStatus = status;
+      meetingObj.isHost = isHost;
+      meetingObj.canStart = isHost && (status === 'starting-soon' || status === 'upcoming');
+      meetingObj.canJoin = status === 'in-progress';
+      meetingsWithStatus.push(meetingObj);
+    }
 
     res.json({
       success: true,
@@ -187,13 +241,12 @@ const getMeetings = async (req, res) => {
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
+        total: await Meeting.countDocuments(query),
+        pages: Math.ceil(await Meeting.countDocuments(query) / limit)
       }
     });
 
   } catch (error) {
-    console.error('Error in getMeetings:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -205,7 +258,18 @@ const getMeetings = async (req, res) => {
 // Get a single meeting by ID
 const getMeetingById = async (req, res) => {
   try {
+    console.log('getMeetingById called with params:', req.params);
+    console.log('req.user:', req.user);
+    
     const { id } = req.params;
+
+    if (!req.user) {
+      console.error('req.user is undefined - authentication failed');
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
 
     const meeting = await Meeting.findById(id)
       .populate('host', 'name email')
@@ -221,8 +285,25 @@ const getMeetingById = async (req, res) => {
 
     // Add computed status
     const meetingObj = meeting.toObject();
-    meetingObj.computedStatus = meeting.getStatus();
-    meetingObj.canStart = meeting.canStart();
+    const status = getMeetingStatus(meeting);
+    
+    // Check if user is the host based on user type
+    let isHost = false;
+    if (req.user.type === 'student') {
+      // For students, check hostStudentId
+      const student = await Student.findById(req.user.id);
+      if (student && student.studentId === meeting.hostStudentId) {
+        isHost = true;
+      }
+    } else {
+      // For lecturers, check host ObjectId
+      isHost = meeting.host.toString() === req.user.id;
+    }
+    
+    meetingObj.computedStatus = status;
+    meetingObj.isHost = isHost;
+    meetingObj.canStart = isHost && (status === 'starting-soon' || status === 'upcoming');
+    meetingObj.canJoin = status === 'in-progress';
 
     res.json({
       success: true,
@@ -366,9 +447,9 @@ const deleteMeeting = async (req, res) => {
 // Join a meeting
 const joinMeeting = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { meetingId } = req.params;
 
-    const meeting = await Meeting.findById(id);
+    const meeting = await Meeting.findById(meetingId);
 
     if (!meeting) {
       return res.status(404).json({
@@ -450,9 +531,9 @@ const joinMeeting = async (req, res) => {
 // Leave a meeting
 const leaveMeeting = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { meetingId } = req.params;
 
-    const meeting = await Meeting.findById(id);
+    const meeting = await Meeting.findById(meetingId);
 
     if (!meeting) {
       return res.status(404).json({
@@ -496,17 +577,58 @@ const leaveMeeting = async (req, res) => {
 // Start a meeting
 const startMeeting = async (req, res) => {
   try {
-    const { id } = req.params;
-    const meeting = await Meeting.findById(id);
+    console.log('startMeeting called with params:', req.params);
+    console.log('req.user:', req.user);
+    
+    const { meetingId } = req.params;
+    const meeting = await Meeting.findById(meetingId);
     if (!meeting) {
+      console.log('Meeting not found with ID:', meetingId);
       return res.status(404).json({ success: false, message: 'Meeting not found' });
     }
-    if (meeting.host.toString() !== req.user.id) {
+
+    console.log('Found meeting:', {
+      id: meeting._id,
+      title: meeting.title,
+      status: meeting.status,
+      startTime: meeting.startTime,
+      currentTime: new Date(),
+      timeDiffMinutes: (meeting.startTime - new Date()) / (1000 * 60),
+      canStart: meeting.canStart()
+    });
+
+    // Check if user is the host
+    let isHost = false;
+    if (req.user.type === 'student') {
+      // For students, check hostStudentId
+      const student = await Student.findById(req.user.id);
+      if (student && student.studentId === meeting.hostStudentId) {
+        isHost = true;
+      }
+    } else {
+      // For lecturers, check host ObjectId
+      if (meeting.host.toString() === req.user.id) {
+        isHost = true;
+      }
+    }
+
+    console.log('Host check:', {
+      userType: req.user.type,
+      userId: req.user.id,
+      meetingHost: meeting.host,
+      meetingHostStudentId: meeting.hostStudentId,
+      isHost: isHost
+    });
+
+    if (!isHost) {
       return res.status(403).json({ success: false, message: 'Only the meeting host can start the meeting' });
     }
+
+    // Check if meeting can be started using the model method
     if (!meeting.canStart()) {
       return res.status(400).json({ success: false, message: 'Meeting cannot be started at this time' });
     }
+
     meeting.status = 'in-progress';
     meeting.startedAt = new Date(); // set start timestamp
     await meeting.save();
@@ -527,14 +649,31 @@ const startMeeting = async (req, res) => {
 // End a meeting
 const endMeeting = async (req, res) => {
   try {
-    const { id } = req.params;
-    const meeting = await Meeting.findById(id);
+    const { meetingId } = req.params;
+    const meeting = await Meeting.findById(meetingId);
     if (!meeting) {
       return res.status(404).json({ success: false, message: 'Meeting not found' });
     }
-    if (meeting.host.toString() !== req.user.id) {
+
+    // Check if user is the host
+    let isHost = false;
+    if (req.user.type === 'student') {
+      // For students, check hostStudentId
+      const student = await Student.findById(req.user.id);
+      if (student && student.studentId === meeting.hostStudentId) {
+        isHost = true;
+      }
+    } else {
+      // For lecturers, check host ObjectId
+      if (meeting.host.toString() === req.user.id) {
+        isHost = true;
+      }
+    }
+
+    if (!isHost) {
       return res.status(403).json({ success: false, message: 'Only the meeting host can end the meeting' });
     }
+
     meeting.status = 'completed';
     meeting.endedAt = new Date(); // set end timestamp
     await meeting.save();
@@ -951,6 +1090,401 @@ const getMeetingStats = async (req, res) => {
   }
 };
 
+// Get my meetings (meetings hosted by current user)
+const getMyMeetings = async (req, res) => {
+  try {
+    const {
+      status,
+      year,
+      semester,
+      module,
+      search,
+      page = 1,
+      limit = 10
+    } = req.query;
+
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required to view your meetings'
+      });
+    }
+
+    const userId = req.user.id;
+    const userType = req.user.type;
+
+    let query = {};
+
+    if (userType === 'student') {
+      // Get student info to get studentId
+      const student = await Student.findById(userId);
+      if (student) {
+        const studentId = student.studentId;
+        query.hostStudentId = studentId;
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: 'Student not found'
+        });
+      }
+    } else {
+      // For lecturers, use the userId directly
+      query.host = userId;
+    }
+
+    // Filter by status
+    if (status) {
+      query.status = status;
+    }
+
+    // Filter by year
+    if (year) {
+      query.year = year;
+    }
+
+    // Filter by semester
+    if (semester) {
+      query.semester = semester;
+    }
+
+    // Filter by module
+    if (module) {
+      query.module = { $regex: module, $options: 'i' };
+    }
+
+    // Search functionality
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { hostName: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const skip = (page - 1) * limit;
+
+    const meetings = await Meeting.find(query)
+      .populate('host', 'name email')
+      .populate('participants.userId', 'name email')
+      .sort({ startTime: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Add computed status to each meeting
+    const meetingsWithStatus = [];
+    for (const meeting of meetings) {
+      const meetingObj = meeting.toObject();
+      const status = getMeetingStatus(meeting);
+      
+      // Check if user is the host based on user type
+      let isHost = false;
+      if (req.user && req.user.id) {
+        if (req.user.type === 'student') {
+          // For students, check hostStudentId
+          const student = await Student.findById(req.user.id);
+          if (student && student.studentId === meeting.hostStudentId) {
+            isHost = true;
+          }
+        } else {
+          // For lecturers, check host ObjectId
+          isHost = meeting.host.toString() === req.user.id;
+        }
+      }
+      
+      meetingObj.computedStatus = status;
+      meetingObj.isHost = isHost;
+      meetingObj.canStart = isHost && (status === 'starting-soon' || status === 'upcoming');
+      meetingObj.canJoin = status === 'in-progress';
+      meetingsWithStatus.push(meetingObj);
+    }
+
+    res.json({
+      success: true,
+      data: meetingsWithStatus,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: await Meeting.countDocuments(query),
+        pages: Math.ceil(await Meeting.countDocuments(query) / limit)
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get all public meetings (for joining)
+const getPublicMeetings = async (req, res) => {
+  try {
+    const {
+      status,
+      year,
+      semester,
+      module,
+      search,
+      page = 1,
+      limit = 10
+    } = req.query;
+
+    let query = {};
+
+    // Only show public meetings that are not completed
+    query.isPublic = true;
+    query.status = { $ne: 'completed' };
+
+    // Filter by status
+    if (status) {
+      query.status = status;
+    }
+
+    // Filter by year
+    if (year) {
+      query.year = year;
+    }
+
+    // Filter by semester
+    if (semester) {
+      query.semester = semester;
+    }
+
+    // Filter by module
+    if (module) {
+      query.module = { $regex: module, $options: 'i' };
+    }
+
+    // Search functionality
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { hostName: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const skip = (page - 1) * limit;
+
+    const meetings = await Meeting.find(query)
+      .populate('host', 'name email')
+      .populate('participants.userId', 'name email')
+      .sort({ startTime: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Add computed status to each meeting
+    const meetingsWithStatus = [];
+    for (const meeting of meetings) {
+      const meetingObj = meeting.toObject();
+      const status = getMeetingStatus(meeting);
+      
+      meetingObj.computedStatus = status;
+      meetingObj.isHost = false; // Will be determined on frontend
+      meetingObj.canStart = false; // Will be determined on frontend
+      meetingObj.canJoin = status !== 'ended' && status !== 'completed'; // Show join button for all non-ended meetings
+      meetingObj.status = status; // Update the status to use computed status
+      meetingsWithStatus.push(meetingObj);
+    }
+
+    res.json({
+      success: true,
+      data: meetingsWithStatus,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: await Meeting.countDocuments(query),
+        pages: Math.ceil(await Meeting.countDocuments(query) / limit)
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Participate in a meeting
+const participateInMeeting = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const meeting = await Meeting.findById(meetingId);
+
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found'
+      });
+    }
+
+    // Check if meeting is public
+    if (!meeting.isPublic) {
+      return res.status(403).json({
+        success: false,
+        message: 'This meeting is not public'
+      });
+    }
+
+    // Check if meeting is not completed
+    if (meeting.status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'This meeting has already ended'
+      });
+    }
+
+    // Check if user is already a participant
+    const isAlreadyParticipant = meeting.participants.some(
+      p => p.userId.toString() === req.user.id
+    );
+
+    if (isAlreadyParticipant) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are already participating in this meeting'
+      });
+    }
+
+    // Check if meeting is full
+    if (meeting.participants.length >= meeting.maxParticipants) {
+      return res.status(400).json({
+        success: false,
+        message: 'This meeting is full'
+      });
+    }
+
+    // Get user info
+    let userInfo;
+    if (req.user.type === 'student') {
+      const student = await Student.findById(req.user.id);
+      userInfo = {
+        userId: student._id,
+        email: student.email,
+        name: student.name,
+        role: 'participant',
+        joinedAt: new Date()
+      };
+    } else {
+      const lecturer = await Lecturer.findById(req.user.id);
+      userInfo = {
+        userId: lecturer._id,
+        email: lecturer.email,
+        name: lecturer.name,
+        role: 'participant',
+        joinedAt: new Date()
+      };
+    }
+
+    // Add user to participants
+    meeting.participants.push(userInfo);
+    await meeting.save();
+
+    // Populate the meeting data
+    await meeting.populate('host', 'name email');
+    await meeting.populate('participants.userId', 'name email');
+
+    res.json({
+      success: true,
+      message: 'Successfully joined the meeting',
+      data: {
+        meeting,
+        participantCount: meeting.participants.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error participating in meeting:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Leave participation in a meeting
+const leaveParticipation = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const meeting = await Meeting.findById(meetingId);
+
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found'
+      });
+    }
+
+    // Find and remove user from participants
+    const participantIndex = meeting.participants.findIndex(
+      p => p.userId.toString() === req.user.id
+    );
+
+    if (participantIndex === -1) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are not participating in this meeting'
+      });
+    }
+
+    // Remove participant
+    meeting.participants.splice(participantIndex, 1);
+    await meeting.save();
+
+    // Populate the meeting data
+    await meeting.populate('host', 'name email');
+    await meeting.populate('participants.userId', 'name email');
+
+    res.json({
+      success: true,
+      message: 'Successfully left the meeting',
+      data: {
+        meeting,
+        participantCount: meeting.participants.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error leaving participation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+function getMeetingStatus(meeting) {
+  const now = new Date();
+  const start = new Date(meeting.startTime);
+  const end = new Date(meeting.endTime);
+  
+  // If meeting has been manually started, prioritize that status
+  if (meeting.status === 'in-progress') {
+    return 'in-progress';
+  }
+  
+  if (meeting.status === 'completed' || meeting.status === 'ended') return 'ended';
+  if (now < start) {
+    const diff = (start - now) / 60000;
+    if (diff <= 15) return 'starting-soon';
+    return 'upcoming';
+  }
+  if (now >= start && now <= end) return 'in-progress';
+  return 'ended';
+}
+
 module.exports = {
   createMeeting,
   getMeetings,
@@ -968,5 +1502,9 @@ module.exports = {
   stopRecording,
   addRecordingFile,
   getRecordingFiles,
-  getMeetingStats
+  getMeetingStats,
+  getMyMeetings,
+  getPublicMeetings,
+  participateInMeeting,
+  leaveParticipation
 }; 

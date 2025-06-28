@@ -33,7 +33,7 @@ const ProfilePage = () => {
 
   useEffect(() => {
     // Fetch user data from backend
-    fetch('/api/protected', { credentials: 'include' })
+    fetch('http://localhost:5000/api/protected', { credentials: 'include' })
       .then(res => res.ok ? res.json() : Promise.reject(res))
       .then(data => {
         setFormData(prev => ({
@@ -92,7 +92,7 @@ const ProfilePage = () => {
         updateData.degree = formData.degree;
       }
       
-      const res = await fetch('/api/profile', {
+      const res = await fetch('http://localhost:5000/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

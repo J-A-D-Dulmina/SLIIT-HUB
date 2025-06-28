@@ -3,11 +3,11 @@ import { FaClock, FaTimes } from 'react-icons/fa';
 import { useAIModel } from '../hooks/useAIModel';
 
 const AITimestampsGenerator = ({ videoId, hasTimestamps, onTimestampsGenerated, onTimestampsRemoved }) => {
-  const { generateAITimestamps, isLoading, error } = useAIModel();
+  const { generateTimestamps, isLoading, error } = useAIModel();
 
   const handleGenerate = async () => {
     try {
-      const timestamps = await generateAITimestamps(videoId);
+      const timestamps = await generateTimestamps(videoId);
       onTimestampsGenerated(timestamps);
     } catch (error) {
       console.error('Error generating timestamps:', error);

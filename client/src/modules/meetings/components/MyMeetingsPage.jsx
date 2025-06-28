@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaChevronLeft, FaChevronRight, FaClock, FaUsers, FaLink, FaPlay, FaEdit, FaTrash, FaPlus, FaEnvelope } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaClock, FaUsers, FaLink, FaPlay, FaEdit, FaTrash, FaPlus, FaEnvelope, FaSearch, FaFilter } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import moment from 'moment';
@@ -41,6 +41,13 @@ const MyMeetingsPage = () => {
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [meetingToDelete, setMeetingToDelete] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedDegree, setSelectedDegree] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedModule, setSelectedModule] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
   const navigate = useNavigate();
 
   // Get user info from localStorage
@@ -58,11 +65,15 @@ const MyMeetingsPage = () => {
   const fetchMeetings = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/meetings?hostOnly=true', {
+      
+      // Use the my-meetings endpoint
+      const response = await fetch('http://localhost:5000/api/meetings/my-meetings', {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
       });
+      
       if (!response.ok) {
+        const errorText = await response.text();
         throw new Error('Failed to fetch meetings');
       }
       const result = await response.json();
@@ -106,7 +117,7 @@ const MyMeetingsPage = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`/api/meetings/${editingMeeting._id}`, {
+      const response = await fetch(`http://localhost:5000/api/meetings/${editingMeeting._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -152,7 +163,7 @@ const MyMeetingsPage = () => {
       return;
     }
     try {
-      const response = await fetch('/api/meetings', {
+      const response = await fetch('http://localhost:5000/api/meetings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -167,18 +178,20 @@ const MyMeetingsPage = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to create meeting');
       }
-      
+      const data = await response.json();
       // Show success message and close form
       setShowSuccessMessage(true);
       setShowScheduleForm(false);
       resetFormData();
-      
       // Hide success message after 3 seconds
       setTimeout(() => {
         setShowSuccessMessage(false);
       }, 3000);
-      
       fetchMeetings();
+      // Don't navigate to meeting page - let user see the start button
+      // if (data && data.data && data.data._id) {
+      //   navigate(`/meeting/${data.data._id}`);
+      // }
     } catch (error) {
       alert(`Failed to schedule meeting: ${error.message}`);
     }
@@ -199,6 +212,28 @@ const MyMeetingsPage = () => {
     });
   };
 
+  const filteredMeetings = meetings.filter(meeting => {
+    const matchesSearch =
+      meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      meeting.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDegree = !selectedDegree || meeting.degree === selectedDegree;
+    const matchesYear = !selectedYear || meeting.year === selectedYear;
+    const matchesSemester = !selectedSemester || meeting.semester === selectedSemester;
+    const matchesModule = !selectedModule || meeting.module === selectedModule;
+    const matchesStatus = !selectedStatus || meeting.status === selectedStatus;
+    return matchesSearch && matchesDegree && matchesYear && matchesSemester && matchesModule && matchesStatus;
+  });
+
+  const clearFilters = () => {
+    setSelectedDegree('');
+    setSelectedYear('');
+    setSelectedSemester('');
+    setSelectedModule('');
+    setSelectedStatus('');
+  };
+
+  const hasActiveFilters = selectedDegree || selectedYear || selectedSemester || selectedModule || selectedStatus;
+
   const handleDeleteClick = (meeting) => {
     setMeetingToDelete(meeting);
     setShowDeleteConfirm(true);
@@ -207,23 +242,28 @@ const MyMeetingsPage = () => {
   const confirmDelete = async () => {
     if (meetingToDelete) {
       try {
-        const response = await fetch(`/api/meetings/${meetingToDelete._id}`, {
+        const response = await fetch(`http://localhost:5000/api/meetings/${meetingToDelete._id}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include'
         });
 
         if (!response.ok) {
-          throw new Error('Failed to delete meeting');
+          let errorMsg = 'Failed to delete meeting.';
+          try {
+            const errorData = await response.json();
+            if (errorData && errorData.message) errorMsg = errorData.message;
+          } catch (e) {}
+          throw new Error(errorMsg);
         }
 
         alert('Meeting deleted successfully!');
         setMeetings(prevMeetings => prevMeetings.filter(m => m._id !== meetingToDelete._id));
-      setShowDeleteConfirm(false);
-      setMeetingToDelete(null);
+        setShowDeleteConfirm(false);
+        setMeetingToDelete(null);
       } catch (error) {
         console.error('Error deleting meeting:', error);
-        alert('Failed to delete meeting. Please try again.');
+        alert('Error deleting meeting: ' + error.message);
       }
     }
   };
@@ -241,6 +281,32 @@ const MyMeetingsPage = () => {
     // Extract meeting ID from the link or use the meeting ID directly
     const meetingId = meeting._id || meeting.link.split('/').pop();
     navigate(`/meeting/${meetingId}`);
+  };
+
+  // Add this function to refresh meetings after ending
+  const handleEndMeeting = async (meetingId) => {
+    if (window.confirm('Are you sure you want to end this meeting for everyone? This action cannot be undone.')) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/meetings/${meetingId}/end`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+        if (response.ok) {
+          alert('Meeting ended successfully!');
+          await fetchMeetings(); // Refresh meetings list
+        } else {
+          let errorMsg = 'Failed to end meeting.';
+          try {
+            const errorData = await response.json();
+            if (errorData && errorData.message) errorMsg = errorData.message;
+          } catch (e) {}
+          alert(errorMsg);
+        }
+      } catch (error) {
+        alert('Failed to end meeting. Please try again.');
+      }
+    }
   };
 
   const renderMeetingForm = (isEdit = false) => (
@@ -487,6 +553,108 @@ const MyMeetingsPage = () => {
             </button>
           </div>
 
+          <div className="search-container">
+            <div className="search-controls">
+              <div className="search-input-wrapper">
+                <FaSearch className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search meetings..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="filter-controls">
+                <button
+                  className={`filter-button ${showFilters ? 'active' : ''}`}
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <FaFilter />
+                  Filters
+                </button>
+                {hasActiveFilters && (
+                  <button
+                    className="filter-button clear-filter-btn"
+                    onClick={clearFilters}
+                    type="button"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {showFilters && (
+              <div className="filter-container">
+                <div className="filter-item">
+                  <label>Degree</label>
+                  <select
+                    value={selectedDegree}
+                    onChange={(e) => setSelectedDegree(e.target.value)}
+                  >
+                    <option value="">All Degrees</option>
+                    {DEGREES.map(degree => (
+                      <option key={degree} value={degree}>{degree}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="filter-item">
+                  <label>Degree Year</label>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                  >
+                    <option value="">All Years</option>
+                    {DEGREE_YEARS.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="filter-item">
+                  <label>Semester</label>
+                  <select
+                    value={selectedSemester}
+                    onChange={(e) => setSelectedSemester(e.target.value)}
+                  >
+                    <option value="">All Semesters</option>
+                    {SEMESTERS.map(semester => (
+                      <option key={semester} value={semester}>{semester}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="filter-item">
+                  <label>Module</label>
+                  <select
+                    value={selectedModule}
+                    onChange={(e) => setSelectedModule(e.target.value)}
+                  >
+                    <option value="">All Modules</option>
+                    {MODULES.map(module => (
+                      <option key={module} value={module}>{module}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="filter-item">
+                  <label>Status</label>
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                  >
+                    <option value="">All Status</option>
+                    <option value="starting-soon">Starting Soon</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="ended">Ended</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
           {showScheduleForm && renderMeetingForm(false)}
           {showEditForm && renderMeetingForm(true)}
 
@@ -506,9 +674,9 @@ const MyMeetingsPage = () => {
           )}
 
           <div className="meetings-grid">
-            {meetings.length > 0 ? (
-              meetings.map(meeting => {
-              return (
+            {filteredMeetings.length > 0 ? (
+              filteredMeetings.map(meeting => {
+                return (
                   <div key={meeting._id} className={`my-meeting-card ${meeting.status}`}>
                   <div className="my-meeting-header">
                     <h3 className="my-meeting-title">{meeting.title}</h3>
@@ -554,6 +722,14 @@ const MyMeetingsPage = () => {
                     </div>
 
                     <div className="info-item">
+                      <FaUsers className="icon" />
+                      <div className="info-content">
+                        <span className="label">Participants</span>
+                          <span className="value">{meeting.participants ? meeting.participants.length : 0} people</span>
+                      </div>
+                    </div>
+
+                    <div className="info-item">
                       <FaLink className="icon" />
                       <div className="info-content">
                         <span className="label">Meeting Link</span>
@@ -567,19 +743,33 @@ const MyMeetingsPage = () => {
                   <p className="my-meeting-description">{meeting.description}</p>
 
                   <div className="my-meeting-footer">
-                    <span className={`my-status-badge ${meeting.status}`}>
-                      {meeting.status === 'starting-soon' && 'Starting Soon'}
-                      {meeting.status === 'upcoming' && 'Upcoming'}
-                      {meeting.status === 'in-progress' && 'In Progress'}
-                        {meeting.status === 'ended' && 'Ended'}
-                    </span>
-                    <button 
-                      className="strt-meeting-btn"
-                      onClick={() => handleStartMeeting(meeting)}
-                        disabled={meeting.status === 'ended'}
-                    >
-                      <FaPlay /> {meeting.status === 'in-progress' ? 'Join Now' : 'Start Meeting'}
-                    </button>
+                    <span className={`my-status-badge ${meeting.status}`}>{meeting.status}</span>
+                    <div className="meeting-actions">
+                      {/* Show start button for upcoming or starting-soon meetings if user is host */}
+                      {meeting.isHost && (meeting.status === 'upcoming' || meeting.status === 'starting-soon') && (
+                        <button className="strt-meeting-btn" onClick={() => handleStartMeeting(meeting)}>
+                          <FaPlay /> Start Meeting
+                        </button>
+                      )}
+                      {/* Show start button if canStart is true (backup logic) */}
+                      {meeting.canStart && meeting.isHost && (
+                        <button className="strt-meeting-btn" onClick={() => handleStartMeeting(meeting)}>
+                          <FaPlay /> Start Meeting
+                        </button>
+                      )}
+                      {/* Show join button for non-hosts when meeting is in progress */}
+                      {meeting.canJoin && !meeting.isHost && (
+                        <button className="strt-meeting-btn" onClick={() => handleStartMeeting(meeting)}>
+                          <FaPlay /> Join Now
+                        </button>
+                      )}
+                      {/* Show end button for hosts when meeting is in progress */}
+                      {meeting.status === 'in-progress' && meeting.isHost && (
+                        <button className="end-meeting-btn" onClick={() => handleEndMeeting(meeting._id)}>
+                          End Meeting
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

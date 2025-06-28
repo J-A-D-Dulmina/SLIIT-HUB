@@ -3,11 +3,11 @@ import { FaRobot, FaTimes } from 'react-icons/fa';
 import { useAIModel } from '../hooks/useAIModel';
 
 const AISummaryGenerator = ({ videoId, hasSummary, onSummaryGenerated, onSummaryRemoved }) => {
-  const { generateAISummary, isLoading, error } = useAIModel();
+  const { generateSummary, isLoading, error } = useAIModel();
 
   const handleGenerate = async () => {
     try {
-      const summary = await generateAISummary(videoId);
+      const summary = await generateSummary(videoId);
       onSummaryGenerated(summary);
     } catch (error) {
       console.error('Error generating summary:', error);

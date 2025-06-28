@@ -28,9 +28,12 @@ const RegisterPage = () => {
     setMessage('');
     setError('');
     try {
-      const res = await fetch('/api/register', {
+      const res = await fetch('http://localhost:5000/api/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
         body: JSON.stringify({
           ...form,
           enrolYear: form.enrolYear ? Number(form.enrolYear) : undefined,

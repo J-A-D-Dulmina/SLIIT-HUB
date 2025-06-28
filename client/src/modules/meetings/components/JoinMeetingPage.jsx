@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaChevronLeft, FaChevronRight, FaClock, FaUsers, FaLink, FaPlay, FaSearch, FaFilter, FaTimes, FaSquare, FaCheckSquare } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaClock, FaUsers, FaLink, FaPlay, FaSearch, FaFilter, FaTimes, FaSquare, FaCheckSquare, FaSyncAlt } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import moment from 'moment';
@@ -30,29 +30,57 @@ const JoinMeetingPage = () => {
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedModule, setSelectedModule] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [participatingMeetings, setParticipatingMeetings] = useState(() => {
-    const saved = localStorage.getItem('participatingMeetings');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [participatingMeetings, setParticipatingMeetings] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+
   const navigate = useNavigate();
 
-  // Get user info and token
-  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-  const token = localStorage.getItem('token');
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Get current user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/protected', { 
+          credentials: 'include' 
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentUser(data.user);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+    fetchUserData();
+  }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-
     fetchMeetings();
-    return () => clearInterval(timer);
+    // Load participating meetings from localStorage
+    const saved = localStorage.getItem('participatingMeetings');
+    if (saved) {
+      setParticipatingMeetings(JSON.parse(saved));
+    }
+    
+    // Set up periodic refresh every 30 seconds to catch status changes
+    const refreshInterval = setInterval(() => {
+      fetchMeetings();
+    }, 30000);
+    
+    return () => clearInterval(refreshInterval);
   }, []);
 
   const fetchMeetings = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/meetings', {
+      const response = await fetch('http://localhost:5000/api/meetings/public', {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
       });
@@ -60,7 +88,24 @@ const JoinMeetingPage = () => {
         throw new Error('Failed to fetch meetings');
       }
       const result = await response.json();
-      setMeetings(result.data || []);
+      
+      // Filter out meetings where current user is the host
+      let filteredMeetings = result.data || [];
+      if (currentUser && currentUser.studentId) {
+        filteredMeetings = filteredMeetings.filter(meeting => 
+          meeting.hostStudentId !== currentUser.studentId
+        );
+        console.log('Filtered out user meetings. Original count:', result.data?.length, 'Filtered count:', filteredMeetings.length);
+      }
+      
+      setMeetings(filteredMeetings);
+      console.log('Fetched meetings:', filteredMeetings.map(m => ({
+        id: m._id,
+        title: m.title,
+        status: m.status,
+        canJoin: m.canJoin,
+        computedStatus: m.computedStatus
+      })));
     } catch (error) {
       setError('Failed to load meetings');
     } finally {
@@ -68,23 +113,17 @@ const JoinMeetingPage = () => {
     }
   };
 
-  const getMeetingStatus = (meeting) => {
-    const now = new Date();
-    const start = new Date(meeting.startTime);
-    const end = new Date(meeting.endTime);
-
-    if (now < start) {
-      const diff = (start - now) / 60000; // minutes
-      if (diff <= 15) return 'starting-soon';
-      return 'upcoming';
+  // Refetch meetings when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      fetchMeetings();
     }
-    if (now >= start && now <= end) return 'in-progress';
-    return 'ended';
-  };
+  }, [currentUser]);
 
   const filteredMeetings = meetings.filter(meeting => {
-    const status = getMeetingStatus(meeting);
-    if (status === 'ended' || status === 'completed') return false;
+    // Only filter out truly ended meetings, allow all others to show join button
+    if (meeting.status === 'ended' || meeting.status === 'completed') return false;
+    
     const matchesSearch =
       meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.hostName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -93,7 +132,7 @@ const JoinMeetingPage = () => {
     const matchesYear = !selectedYear || meeting.year === selectedYear;
     const matchesSemester = !selectedSemester || meeting.semester === selectedSemester;
     const matchesModule = !selectedModule || meeting.module === selectedModule;
-    const matchesStatus = !selectedStatus || getMeetingStatus(meeting) === selectedStatus;
+    const matchesStatus = !selectedStatus || meeting.status === selectedStatus;
     return matchesSearch && matchesDegree && matchesYear && matchesSemester && matchesModule && matchesStatus;
   });
 
@@ -111,49 +150,49 @@ const JoinMeetingPage = () => {
     return moment(date).format('MMM D, YYYY [at] HH:mm');
   };
 
-  const canStartMeeting = (meeting) => {
-    const now = new Date();
-    const start = new Date(meeting.startTime);
-    const diff = (start - now) / 60000; // minutes
-    return diff <= 15 && diff >= -120; // allow up to 2 hours after start
-  };
-
   const handleParticipateToggle = async (meetingId) => {
     try {
       const isCurrentlyParticipating = participatingMeetings.includes(meetingId);
       
       if (isCurrentlyParticipating) {
-        // Leave meeting
-        const response = await fetch(`/api/meetings/${meetingId}/leave`, {
+        // Leave participation
+        const response = await fetch(`http://localhost:5000/api/meetings/${meetingId}/leave-participation`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          credentials: 'include'
         });
 
         if (response.ok) {
           setParticipatingMeetings(prev => prev.filter(id => id !== meetingId));
           localStorage.setItem('participatingMeetings', JSON.stringify(participatingMeetings.filter(id => id !== meetingId)));
+          // Refresh meetings to get updated participant count
+          fetchMeetings();
+        } else {
+          const errorData = await response.json();
+          alert(errorData.message || 'Failed to leave participation');
         }
       } else {
-        // Join meeting
-        const response = await fetch(`/api/meetings/${meetingId}/join`, {
+        // Join participation
+        const response = await fetch(`http://localhost:5000/api/meetings/${meetingId}/participate`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          credentials: 'include'
         });
 
         if (response.ok) {
           setParticipatingMeetings(prev => [...prev, meetingId]);
           localStorage.setItem('participatingMeetings', JSON.stringify([...participatingMeetings, meetingId]));
+          // Refresh meetings to get updated participant count
+          fetchMeetings();
+        } else {
+          const errorData = await response.json();
+          alert(errorData.message || 'Failed to join participation');
         }
       }
-
-      // Refresh meetings to get updated participant count
-      fetchMeetings();
     } catch (error) {
       console.error('Error toggling participation:', error);
       alert('Failed to update participation status');
@@ -206,6 +245,13 @@ const JoinMeetingPage = () => {
         <main className="meeting-dashboard">
           <div className="dashboard-header">
             <h1>All Meetings</h1>
+            <button 
+              className="refresh-button"
+              onClick={fetchMeetings}
+              title="Refresh meetings"
+            >
+              <FaSyncAlt /> Refresh
+            </button>
           </div>
 
           <div className="search-container">
@@ -312,12 +358,11 @@ const JoinMeetingPage = () => {
           <div className="meeting-grid">
             {filteredMeetings.length > 0 ? (
               filteredMeetings.map(meeting => {
-                const status = getMeetingStatus(meeting);
-                const isParticipating = participatingMeetings.includes(meeting._id);
                 const participantCount = meeting.participants ? meeting.participants.length : 0;
+                const isParticipating = participatingMeetings.includes(meeting._id);
                 
                 return (
-                  <div key={meeting._id} className={`meeting-card ${status}`}>
+                  <div key={meeting._id} className={`meeting-card ${meeting.status}`}>
                     <div className="meeting-content">
                       <div>
                         <div className="meeting-header">
@@ -349,27 +394,31 @@ const JoinMeetingPage = () => {
 
                       <div>
                         <div className="action-panel">
-                          <span className={`status-tag ${status}`}>
-                            {status === 'starting-soon' && 'Starting Soon'}
-                            {status === 'upcoming' && 'Upcoming'}
-                            {status === 'in-progress' && 'In Progress'}
-                            {status === 'ended' && 'Ended'}
-                          </span>
+                          <span className={`status-tag ${meeting.status}`}>{meeting.status}</span>
                           <button
                             className={`toggle-participate ${isParticipating ? 'active' : ''}`}
                             onClick={() => handleParticipateToggle(meeting._id)}
-                            disabled={status === 'ended'}
+                            disabled={meeting.status === 'ended'}
                           >
                             {isParticipating ? <FaCheckSquare /> : <FaSquare />}
                             {isParticipating ? 'Participating' : 'Participate'}
                           </button>
-                          <button
-                            className="join-meeting"
-                            onClick={() => handleJoinMeeting(meeting)}
-                            disabled={status === 'ended'}
-                          >
-                            <FaPlay /> {status === 'in-progress' ? 'Join Now' : 'Join Meeting'}
-                          </button>
+                          {/* Show join button for all non-ended meetings */}
+                          {meeting.status !== 'ended' && meeting.status !== 'completed' && (
+                            <button
+                              className={`join-meeting ${meeting.status === 'in-progress' ? 'in-progress' : ''}`}
+                              onClick={() => handleJoinMeeting(meeting)}
+                              disabled={meeting.status === 'ended'}
+                              title={meeting.status === 'in-progress' ? 'Join ongoing meeting' : 
+                                     meeting.status === 'starting-soon' ? 'Join meeting starting soon' :
+                                     meeting.status === 'upcoming' ? 'Join upcoming meeting' : 'Join meeting'}
+                            >
+                              <FaPlay /> 
+                              {meeting.status === 'in-progress' ? 'Join Meeting' :
+                               meeting.status === 'starting-soon' ? 'Join Soon' :
+                               meeting.status === 'upcoming' ? 'Join Later' : 'Join Meeting'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

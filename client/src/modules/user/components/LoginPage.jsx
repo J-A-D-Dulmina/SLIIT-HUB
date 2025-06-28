@@ -10,6 +10,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -18,14 +19,24 @@ const LoginPage = () => {
       setError('Please enter both email and password.');
       return;
     }
+    
+    setLoading(true);
+    setError('');
+    
     try {
-      const res = await fetch('/api/login', {
+      const res = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
       });
+      
       const data = await res.json();
+      
       if (res.ok) {
+        // Store user info in localStorage for the frontend to use
         localStorage.setItem('userType', data.userType);
         localStorage.setItem('userName', data.name);
         if (data.userType === 'student') {
@@ -33,13 +44,16 @@ const LoginPage = () => {
         } else if (data.userType === 'lecturer') {
           localStorage.setItem('lecturerId', data.lecturerId);
         }
-        setError('');
+        
+        // Navigate to dashboard
         navigate('/dashboard');
       } else {
         setError(data.message || 'Invalid credentials.');
       }
     } catch (err) {
-      setError('Server error.');
+      setError('Server error. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,6 +74,7 @@ const LoginPage = () => {
           placeholder="Email"
           value={email}
           onChange={e => setEmail(e.target.value)}
+          disabled={loading}
         />
         <div style={{ position: 'relative' }}>
         <input
@@ -69,6 +84,7 @@ const LoginPage = () => {
           value={password}
           onChange={e => setPassword(e.target.value)}
             style={{ paddingRight: 40 }}
+            disabled={loading}
         />
           <button
             type="button"
@@ -86,13 +102,14 @@ const LoginPage = () => {
             }}
             tabIndex={-1}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
+            disabled={loading}
           >
             {showPassword ? <FaEyeSlash /> : <FaEye />}
           </button>
         </div>
         <div className="login-button-row">
-          <button className="button login-button" type="submit">
-            Login
+          <button className="button login-button" type="submit" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </div>
         <div className="login-links">

@@ -3,11 +3,11 @@ import { FaRobot, FaTimes } from 'react-icons/fa';
 import { useAIModel } from '../hooks/useAIModel';
 
 const AIDescriptionGenerator = ({ videoId, hasDescription, onDescriptionGenerated, onDescriptionRemoved }) => {
-  const { generateAIDescription, isLoading, error } = useAIModel();
+  const { generateDescription, isLoading, error } = useAIModel();
 
   const handleGenerate = async () => {
     try {
-      const description = await generateAIDescription(videoId);
+      const description = await generateDescription(videoId);
       onDescriptionGenerated(description);
     } catch (error) {
       console.error('Error generating description:', error);

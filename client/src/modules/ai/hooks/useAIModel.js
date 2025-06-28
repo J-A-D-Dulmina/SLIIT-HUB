@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const SERVER_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const SERVER_URL = 'http://localhost:5000';
 
 // NOTE: The backend is now always using gpt-3.5-turbo for all AI completions.
 // No need to specify or select model in the frontend.
@@ -10,36 +10,36 @@ export const useAIModel = () => {
   const [error, setError] = useState(null);
 
   // All functions below simply call the backend API, which uses gpt-3.5-turbo
-  const generateAISummary = async (videoId, videoTitle = '') => {
+  const generateSummary = async (videoId, options = {}) => {
     setIsLoading(true);
     setError(null);
     try {
-      const requestBody = {
-        videoId,
-        videoTitle
-      };
       const response = await fetch(`${SERVER_URL}/api/ai/generate-summary`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
+        credentials: 'include',
+        body: JSON.stringify({
+          videoId,
+          ...options
+        }),
       });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to generate summary');
       }
       const data = await response.json();
-      return data.summary;
-    } catch (err) {
-      setError(err.message);
-      throw err;
+      return data;
+    } catch (error) {
+      setError(error.message);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const generateAIDescription = async (videoId, videoTitle = '') => {
+  const generateDescription = async (videoId, options = {}) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -48,9 +48,10 @@ export const useAIModel = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           videoId,
-          videoTitle
+          ...options
         }),
       });
       if (!response.ok) {
@@ -58,16 +59,16 @@ export const useAIModel = () => {
         throw new Error(errorData.error || 'Failed to generate description');
       }
       const data = await response.json();
-      return data.description;
-    } catch (err) {
-      setError(err.message);
-      throw err;
+      return data;
+    } catch (error) {
+      setError(error.message);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const generateAITimestamps = async (videoId, videoTitle = '', useSceneDetection = true) => {
+  const generateTimestamps = async (videoId, options = {}) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -76,10 +77,10 @@ export const useAIModel = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           videoId,
-          videoTitle,
-          useSceneDetection
+          ...options
         }),
       });
       if (!response.ok) {
@@ -87,16 +88,16 @@ export const useAIModel = () => {
         throw new Error(errorData.error || 'Failed to generate timestamps');
       }
       const data = await response.json();
-      return data.timestamps;
-    } catch (err) {
-      setError(err.message);
-      throw err;
+      return data;
+    } catch (error) {
+      setError(error.message);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const detectScenes = async (videoId, method = 'content', threshold = 27.0, minSceneLength = 1.0) => {
+  const detectScenes = async (videoId, options = {}) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -105,11 +106,10 @@ export const useAIModel = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           videoId,
-          method,
-          threshold,
-          minSceneLength
+          ...options
         }),
       });
       if (!response.ok) {
@@ -118,15 +118,15 @@ export const useAIModel = () => {
       }
       const data = await response.json();
       return data;
-    } catch (err) {
-      setError(err.message);
-      throw err;
+    } catch (error) {
+      setError(error.message);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const processVideoWithAI = async (videoId, videoTitle, types = ['summary', 'timestamps', 'description'], useSceneDetection = true) => {
+  const processVideoWithAI = async (videoId, options = {}) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -135,51 +135,42 @@ export const useAIModel = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           videoId,
-          videoTitle,
-          types,
-          useSceneDetection
+          ...options
         }),
       });
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to process video with AI');
+        throw new Error(errorData.error || 'Failed to process video');
       }
       const data = await response.json();
       return data;
-    } catch (err) {
-      setError(err.message);
-      throw err;
+    } catch (error) {
+      setError(error.message);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const testVideoFileAccess = async (videoId) => {
+  const testVideoAccess = async (videoId) => {
     try {
       const response = await fetch(`${SERVER_URL}/api/ai/test-video/${videoId}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Video file not found');
-      }
-      const data = await response.json();
-      return data;
+      return await response.json();
     } catch (error) {
+      console.error('Error testing video access:', error);
       throw error;
     }
   };
 
-  const testAIServiceHealth = async () => {
+  const healthCheck = async () => {
     try {
       const response = await fetch(`${SERVER_URL}/api/ai/health`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'AI service not available');
-      }
-      const data = await response.json();
-      return data;
+      return await response.json();
     } catch (error) {
+      console.error('Error checking AI service health:', error);
       throw error;
     }
   };
@@ -187,12 +178,12 @@ export const useAIModel = () => {
   return {
     isLoading,
     error,
-    generateAISummary,
-    generateAIDescription,
-    generateAITimestamps,
+    generateSummary,
+    generateDescription,
+    generateTimestamps,
     detectScenes,
     processVideoWithAI,
-    testVideoFileAccess,
-    testAIServiceHealth,
+    testVideoAccess,
+    healthCheck,
   };
 }; 
