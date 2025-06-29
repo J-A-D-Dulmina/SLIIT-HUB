@@ -1,0 +1,21 @@
+# Core Flask dependencies
+Flask==2.3.3
+Flask-CORS==4.0.0
+Werkzeug==2.3.7
+
+# Environment variables
+python-dotenv==1.0.0
+
+# OpenAI API
+openai==0.28.1
+
+# Audio/Video processing
+openai-whisper==20231117
+scenedetect==0.6.2
+opencv-python==4.8.1.78
+
+# File handling and utilities
+requests==2.31.0
+
+# Development and debugging (optional)
+python-multipart==0.0.6 

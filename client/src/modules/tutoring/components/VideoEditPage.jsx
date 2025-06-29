@@ -37,12 +37,12 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // AI model hook
-  const {
+  const { 
     generateSummary,
     generateTimestamps,
     generateDescription,
     processVideoWithAI,
-    error: aiError
+    error: aiError 
   } = useAIModel();
 
   useEffect(() => {

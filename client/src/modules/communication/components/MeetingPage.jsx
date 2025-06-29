@@ -143,7 +143,7 @@ const MeetingPage = () => {
   }, [showPreJoin, preJoinSettings]);
 
   const initializeMeeting = async () => {
-    try {
+      try {
       setConnectionStatus('connecting');
       
       // Get current user info from localStorage
@@ -162,7 +162,7 @@ const MeetingPage = () => {
         name: userName,
         type: userType
       };
-      
+
       setCurrentUser(userInfo);
       
       // Fetch meeting data first
@@ -178,7 +178,7 @@ const MeetingPage = () => {
           localVideoRef.current.srcObject = stream;
         }
       };
-      
+
       webrtc.onRemoteStream = (userId, stream) => {
         console.log('Remote stream received for user:', userId);
         // Find or create video element for this user
@@ -187,7 +187,7 @@ const MeetingPage = () => {
           videoElement.srcObject = stream;
         }
       };
-      
+
       webrtc.onUserJoined = (data) => {
         console.log('User joined meeting:', data);
         // Add user to participants list
@@ -223,24 +223,24 @@ const MeetingPage = () => {
       webrtc.onChatMessage = (data) => {
         addChatMessage('user', data.message, data.sender);
       };
-      
+
       webrtc.onRecordingStart = () => {
         setIsRecording(true);
         setRecordingStatus('recording');
         addChatMessage('system', 'Recording started');
       };
-      
+
       webrtc.onRecordingStop = () => {
         setIsRecording(false);
         setRecordingStatus('idle');
         setRecordingTime(0);
         addChatMessage('system', 'Recording stopped - file will be downloaded automatically');
       };
-      
+
       webrtc.onRecordingTimeUpdate = (elapsed) => {
         setRecordingTime(elapsed);
       };
-      
+
       webrtc.onScreenShareStart = (data) => {
         console.log('Screen sharing started by:', data.name);
         setIsScreenSharing(true);
@@ -250,14 +250,14 @@ const MeetingPage = () => {
         });
         addChatMessage('system', `${data.name} started screen sharing`);
       };
-      
+
       webrtc.onScreenShareStop = (data) => {
         console.log('Screen sharing stopped by:', data.name);
         setIsScreenSharing(false);
         setScreenSharer(null);
         addChatMessage('system', `${data.name} stopped screen sharing`);
       };
-      
+
       // Handle meeting ended by host
       webrtc.onMeetingEnded = (data) => {
         console.log('Meeting ended by host:', data);
@@ -269,11 +269,11 @@ const MeetingPage = () => {
       // Initialize WebRTC service
       await webrtc.initialize(meetingId, userInfo.id, userInfo.name);
       setConnectionStatus('connected');
-      
+
     } catch (error) {
       console.error('Error initializing meeting:', error);
-      setError(error.message);
-      setConnectionStatus('error');
+        setError(error.message);
+        setConnectionStatus('error');
     }
   };
 
@@ -798,12 +798,12 @@ const MeetingPage = () => {
                     }
                   }
                   return (
-                    <video
-                      autoPlay
-                      playsInline
-                      muted
-                      className="expanded-video"
-                      ref={el => {
+                <video
+                  autoPlay
+                  playsInline
+                  muted
+                  className="expanded-video"
+                  ref={el => {
                         if (el) {
                           console.log('Setting up expanded video element for:', expandedVideo);
                           // Use the same ref as the original video
@@ -816,8 +816,8 @@ const MeetingPage = () => {
                           }
                           remoteVideosRef.current.set(expandedVideo, el);
                         }
-                      }}
-                    />
+                  }}
+                />
                   );
                 })()}
                 <div className="expanded-video-label">{getUserName(expandedVideo)}</div>

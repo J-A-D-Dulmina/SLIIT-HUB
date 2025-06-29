@@ -356,16 +356,52 @@ class AIController {
     try {
       const { videoId, videoTitle, types = ['summary', 'timestamps', 'description'], useSceneDetection = true } = req.body;
       
+      console.log('=== AI Processing Request ===');
+      console.log('Request body:', req.body);
+      console.log('Video ID:', videoId);
+      console.log('Video Title:', videoTitle);
+      console.log('Python Service URL:', PYTHON_SERVICE_URL);
+      
       if (!videoId) {
         return res.status(400).json({ error: 'Video ID is required' });
       }
 
       console.log('Processing video with AI: ' + videoId);
       
+      // First check if Python service is running
+      try {
+        console.log('Checking Python service health...');
+        const healthResponse = await axios.get(`${PYTHON_SERVICE_URL}/health`, {
+          timeout: 5000
+        });
+        console.log('Python service is running:', healthResponse.data);
+      } catch (healthError) {
+        console.error('Python service is not running:', healthError.message);
+        return res.status(503).json({ 
+          error: 'AI service is not available',
+          details: 'Please make sure the Python AI service is running on port 5001'
+        });
+      }
+      
       // Get video file path
+      console.log('Getting video file path...');
       const videoFilePath = await this.getVideoFile(videoId, videoTitle);
+      console.log('Video file path:', videoFilePath);
+      
+      // Check if file exists
+      if (!fs.existsSync(videoFilePath)) {
+        console.error('Video file does not exist:', videoFilePath);
+        return res.status(404).json({ 
+          error: 'Video file not found',
+          details: `File not found at: ${videoFilePath}`
+        });
+      }
+      
+      const stats = fs.statSync(videoFilePath);
+      console.log('Video file size:', stats.size, 'bytes');
       
       // Create form data for Python service
+      console.log('Creating form data...');
       const formData = new FormData();
       formData.append('video', fs.createReadStream(videoFilePath));
       formData.append('title', videoTitle || '');
@@ -374,6 +410,9 @@ class AIController {
         formData.append('scene_method', 'content');
         formData.append('threshold', '27.0');
       }
+      
+      console.log('Sending request to Python service...');
+      console.log('Form data headers:', formData.getHeaders());
       
       // Send to Python service
       const response = await axios.post(`${PYTHON_SERVICE_URL}/process-video`, formData, {
@@ -384,6 +423,7 @@ class AIController {
       });
       
       console.log('Full AI processing completed successfully');
+      console.log('Response data:', response.data);
       res.json({ 
         success: true, 
         ...response.data,
@@ -391,10 +431,31 @@ class AIController {
       });
       
     } catch (error) {
-      console.error('Error processing video with AI:', error.message);
+      console.error('=== AI Processing Error ===');
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Full error:', error);
+      
+      let errorMessage = 'Failed to process video with AI';
+      let errorDetails = error.message;
+      
+      if (error.code === 'ECONNREFUSED') {
+        errorMessage = 'AI service is not running';
+        errorDetails = 'Please start the Python AI service on port 5001';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Video file not found';
+        errorDetails = error.response.data?.error || error.message;
+      } else if (error.response?.status === 500) {
+        errorMessage = 'AI processing failed';
+        errorDetails = error.response.data?.error || error.message;
+      }
+      
       res.status(500).json({ 
-        error: 'Failed to process video with AI',
-        details: error.message 
+        error: errorMessage,
+        details: errorDetails 
       });
     }
   }

@@ -284,8 +284,8 @@ class WebRTCService {
               console.error('Error creating offer for existing user:', error);
             }
           }
-        }
-      });
+      }
+    });
     }
 
     if (this.onUserJoined) {
@@ -344,9 +344,9 @@ class WebRTCService {
 
       // Add local stream tracks
       if (this.localStream) {
-        this.localStream.getTracks().forEach(track => {
-          peerConnection.addTrack(track, this.localStream);
-        });
+      this.localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, this.localStream);
+      });
       }
 
       // Handle remote stream

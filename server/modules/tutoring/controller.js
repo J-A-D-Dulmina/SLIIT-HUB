@@ -7,7 +7,7 @@ const Student = require('../user/model');
 // Configure multer for video upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = 'uploads/videos';
+    const uploadDir = path.join(__dirname, '../../uploads/videos');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -71,7 +71,7 @@ exports.uploadVideo = async (req, res) => {
       const uniqueId = `${req.user.id}_${Date.now()}`;
 
       // Generate thumbnail path
-      const thumbnailDir = 'uploads/thumbnails';
+      const thumbnailDir = path.join(__dirname, '../../uploads/thumbnails');
       if (!fs.existsSync(thumbnailDir)) {
         fs.mkdirSync(thumbnailDir, { recursive: true });
       }

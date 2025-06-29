@@ -79,7 +79,7 @@ const VideoListPage = () => {
   const [generatingAI, setGeneratingAI] = useState({});
 
   // AI model hook
-  const {
+  const { 
     generateSummary,
     generateTimestamps,
     generateDescription,
