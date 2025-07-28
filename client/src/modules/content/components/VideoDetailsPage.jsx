@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactPlayer from 'react-player';
 import '../styles/VideoDetailsPage.css';
@@ -23,7 +23,8 @@ import {
   FaVolumeUp,
   FaEye,
   FaReply,
-  FaEllipsisV
+  FaEllipsisV,
+  FaDownload
 } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
@@ -64,6 +65,19 @@ const VideoDetailsPage = () => {
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [showCommentForm, setShowCommentForm] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
+  const [videoReady, setVideoReady] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [editingComment, setEditingComment] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [replyContent, setReplyContent] = useState('');
+
+  useEffect(() => {
+    getCurrentUser();
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -75,6 +89,60 @@ const VideoDetailsPage = () => {
     
     return () => clearInterval(timer);
   }, [moduleId, videoId]);
+
+  const getCurrentUser = () => {
+    const userType = localStorage.getItem('userType');
+    const studentId = localStorage.getItem('studentId');
+    const lecturerId = localStorage.getItem('lecturerId');
+    const userName = localStorage.getItem('userName') || localStorage.getItem('name') || 'Unknown User';
+    
+    console.log('=== Frontend User Debug ===');
+    console.log('userType:', userType);
+    console.log('studentId:', studentId);
+    console.log('lecturerId:', lecturerId);
+    console.log('userName:', userName);
+    console.log('All localStorage keys:', Object.keys(localStorage));
+    console.log('All localStorage values:');
+    Object.keys(localStorage).forEach(key => {
+      console.log(`${key}:`, localStorage.getItem(key));
+    });
+    
+    // Check if user is logged in
+    if (!userType || (!studentId && !lecturerId)) {
+      console.log('User not properly logged in!');
+      setCurrentUser(null);
+      return;
+    }
+    
+    const currentUserData = {
+      type: userType,
+      id: studentId || lecturerId,
+      studentId: studentId,
+      lecturerId: lecturerId,
+      name: userName
+    };
+    
+    console.log('Setting current user to:', currentUserData);
+    setCurrentUser(currentUserData);
+  };
+
+  const fetchComments = async () => {
+    try {
+      setCommentsLoading(true);
+      const response = await axios.get(`http://localhost:5000/api/content/videos/${videoId}/comments`, {
+        withCredentials: true
+      });
+      
+      if (response.data.success) {
+        console.log('Fetched comments:', response.data.comments);
+        setComments(response.data.comments);
+      }
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
 
   const fetchVideoDetails = async () => {
     try {
@@ -117,77 +185,234 @@ const VideoDetailsPage = () => {
     } finally {
       setLoading(false);
     }
+    
+    // Fetch comments after video details
+    fetchComments();
   };
 
   const handleBackClick = () => {
     navigate(`/videos/${moduleId}`);
   };
 
-  const handleAddComment = (e) => {
+  const handleAddComment = async (e, content) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!content.trim()) return;
 
-    const comment = {
-      id: Date.now(),
-      user: 'Current Student', // This would come from your auth system
-      role: 'Student',
-      content: newComment,
-      isPinned: false,
-      timestamp: new Date().toLocaleString(),
-      replies: []
-    };
+    // Check if user is authenticated
+    if (!currentUser || !currentUser.id) {
+      alert('Please log in to add comments.');
+      window.location.href = '/login';
+      return;
+    }
 
-    setVideo(prev => ({
-      ...prev,
-      comments: [...prev.comments, comment]
-    }));
-    setNewComment('');
-    setShowCommentForm(false);
+    try {
+      console.log('Adding comment with user:', currentUser);
+      const response = await axios.post(`http://localhost:5000/api/content/videos/${videoId}/comments`, {
+        content: content
+      }, {
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        console.log('Comment added successfully:', response.data.comment);
+        setComments(prev => [response.data.comment, ...prev]);
+        setNewComment('');
+        setShowCommentForm(false);
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      if (error.response?.status === 401) {
+        alert('Please log in again to add comments.');
+        window.location.href = '/login';
+      } else {
+        alert('Failed to add comment. Please try again.');
+      }
+    }
   };
 
-  const handleReply = (commentId, replyContent) => {
+  const handleReply = async (commentId, replyContent) => {
     if (!replyContent.trim()) return;
 
-    const reply = {
-      id: Date.now(),
-      user: 'Current Student', // This would come from your auth system
-      role: 'Student',
-      content: replyContent,
-      timestamp: new Date().toLocaleString()
-    };
+    try {
+      console.log('Adding reply with user:', currentUser);
+      const response = await axios.post(`http://localhost:5000/api/content/videos/comments/${commentId}/replies`, {
+        content: replyContent
+      }, {
+        withCredentials: true
+      });
 
-    setVideo(prev => ({
-      ...prev,
-      comments: prev.comments.map(comment => 
-        comment.id === commentId
-          ? { ...comment, replies: [...(comment.replies || []), reply] }
-          : comment
-      )
-    }));
-    setReplyTo(null);
+      if (response.data.success) {
+        console.log('Reply added successfully:', response.data.comment);
+        setComments(prev => prev.map(comment => 
+          comment._id === commentId ? response.data.comment : comment
+        ));
+        setReplyTo(null);
+        setReplyContent('');
+      }
+    } catch (error) {
+      console.error('Error adding reply:', error);
+      alert('Failed to add reply. Please try again.');
+    }
   };
 
-  const CommentForm = ({ onSubmit, initialValue = '', placeholder = 'Add a comment...' }) => (
-    <form onSubmit={onSubmit} className="comment-form">
-      <textarea
-        value={initialValue}
-        onChange={(e) => setNewComment(e.target.value)}
-        placeholder={placeholder}
-        rows={3}
-      />
-      <div className="comment-form-actions">
-        <button type="button" className="cancel-btn" onClick={() => {
-          setShowCommentForm(false);
-          setReplyTo(null);
-        }}>
-          Cancel
-        </button>
-        <button type="submit" className="submit-btn">
-          {replyTo ? 'Reply' : 'Comment'}
-        </button>
-      </div>
-    </form>
-  );
+  const handleEditComment = async (commentId, newContent) => {
+    if (!newContent.trim()) return;
+
+    try {
+      const response = await axios.put(`http://localhost:5000/api/content/videos/comments/${commentId}`, {
+        content: newContent
+      }, {
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        setComments(prev => prev.map(comment => 
+          comment._id === commentId ? response.data.comment : comment
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      alert('Failed to update comment. Please try again.');
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+
+    try {
+      const response = await axios.delete(`http://localhost:5000/api/content/videos/comments/${commentId}`, {
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        setComments(prev => prev.filter(comment => comment._id !== commentId));
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert('Failed to delete comment. Please try again.');
+    }
+  };
+
+  const handlePinComment = async (commentId) => {
+    try {
+      const response = await axios.patch(`http://localhost:5000/api/content/videos/comments/${commentId}/pin`, {}, {
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        setComments(prev => prev.map(comment => 
+          comment._id === commentId ? response.data.comment : comment
+        ));
+      }
+    } catch (error) {
+      console.error('Error pinning comment:', error);
+      alert('Failed to pin comment. Please try again.');
+    }
+  };
+
+  const handleDownloadSummary = () => {
+    if (!video.aiSummary) {
+      alert('No AI summary available to download.');
+      return;
+    }
+
+    // Create the content for the file
+    const content = `AI Summary - ${video.title}\n\n${video.aiSummary}\n\nGenerated on: ${new Date().toLocaleString()}`;
+    
+    // Create a blob and download link
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ai-summary-${video.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleVideoReady = () => {
+    setVideoLoading(false);
+    setVideoReady(true);
+    setVideoError(false);
+  };
+
+  const handleVideoError = (error) => {
+    console.error('Video player error:', error);
+    setVideoLoading(false);
+    setVideoError(true);
+    setVideoReady(false);
+  };
+
+  const handleVideoStart = () => {
+    setVideoLoading(false);
+  };
+
+  const handleRetryVideo = () => {
+    setVideoError(false);
+    setVideoLoading(true);
+    setVideoReady(false);
+    // Force re-render of ReactPlayer
+    if (playerRef.current) {
+      playerRef.current.seekTo(0);
+    }
+  };
+
+  const CommentForm = ({ onSubmit, initialValue = '', placeholder = 'Add a comment...', isReply = false }) => {
+    const [localValue, setLocalValue] = useState(initialValue);
+    const textareaRef = useRef(null);
+    
+    // Update local value when initialValue changes
+    useEffect(() => {
+      setLocalValue(initialValue);
+    }, [initialValue]);
+
+    // Focus the textarea when component mounts
+    useEffect(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, []);
+
+    const handleSubmit = useCallback((e) => {
+      e.preventDefault();
+      // Pass the local value to the parent
+      onSubmit(e, localValue);
+      setLocalValue(''); // Clear local value after submit
+    }, [onSubmit, localValue]);
+
+    const handleChange = useCallback((e) => {
+      const value = e.target.value;
+      setLocalValue(value);
+    }, []);
+
+    const handleCancel = useCallback(() => {
+      setShowCommentForm(false);
+      setReplyTo(null);
+      setReplyContent('');
+      setNewComment('');
+    }, []);
+
+    return (
+      <form onSubmit={handleSubmit} className="comment-form">
+        <textarea
+          ref={textareaRef}
+          value={localValue}
+          onChange={handleChange}
+          placeholder={placeholder}
+          rows={3}
+        />
+        <div className="comment-form-actions">
+          <button type="button" className="cancel-btn" onClick={handleCancel}>
+            Cancel
+          </button>
+          <button type="submit" className="submit-btn">
+            {replyTo ? 'Reply' : 'Comment'}
+          </button>
+        </div>
+      </form>
+    );
+  };
 
   if (loading) {
     return (
@@ -249,20 +474,60 @@ const VideoDetailsPage = () => {
         <div className="video-section">
           <div className="video-player-container">
             <div className="video-player">
-              <ReactPlayer
-                ref={playerRef}
-                url={video.videoUrl}
-                width="100%"
-                height="100%"
-                playing={playing}
-                volume={volume}
-                controls={true}
-                config={{
-                  youtube: {
-                    playerVars: { showinfo: 1 }
-                  }
-                }}
-              />
+              {videoLoading && (
+                <div className="video-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading video...</p>
+                </div>
+              )}
+              
+              {videoError && (
+                <div className="video-error">
+                  <div className="error-icon">⚠️</div>
+                  <h3>Video Playback Error</h3>
+                  <p>The video could not be loaded. This might be due to:</p>
+                  <ul>
+                    <li>Network connectivity issues</li>
+                    <li>Video file format not supported</li>
+                    <li>Server temporarily unavailable</li>
+                  </ul>
+                  <button className="retry-btn" onClick={handleRetryVideo}>
+                    Try Again
+                  </button>
+                  <button className="download-video-btn" onClick={() => window.open(video.videoUrl, '_blank')}>
+                    Download Video
+                  </button>
+                </div>
+              )}
+              
+              {!videoError && (
+                <ReactPlayer
+                  ref={playerRef}
+                  url={video.videoUrl}
+                  width="100%"
+                  height="100%"
+                  playing={playing}
+                  volume={volume}
+                  controls={true}
+                  onReady={handleVideoReady}
+                  onError={handleVideoError}
+                  onStart={handleVideoStart}
+                  config={{
+                    file: {
+                      attributes: {
+                        crossOrigin: "anonymous"
+                      },
+                      forceVideo: true,
+                      forceHLS: false,
+                      forceDASH: false
+                    },
+                    youtube: {
+                      playerVars: { showinfo: 1 }
+                    }
+                  }}
+                  style={{ display: videoLoading ? 'none' : 'block' }}
+                />
+              )}
             </div>
           </div>
 
@@ -315,7 +580,18 @@ const VideoDetailsPage = () => {
           <div className="tab-content">
             {activeTab === 'summary' && (
               <div className="ai-summary">
-                <h3>AI-Generated Summary</h3>
+                <div className="ai-summary-header">
+                  <h3>AI-Generated Summary</h3>
+                  {video.hasAISummary && video.aiSummary && (
+                    <button 
+                      className="download-summary-btn"
+                      onClick={handleDownloadSummary}
+                      title="Download AI Summary"
+                    >
+                      <FaDownload /> Download
+                    </button>
+                  )}
+                </div>
                 <p>{video.aiSummary}</p>
               </div>
             )}
@@ -365,9 +641,6 @@ const VideoDetailsPage = () => {
                 </div>
               )}
             </div>
-            <div className="tag publisher">
-              <FaUser /> {video.publisher}
-            </div>
           </div>
 
           <div className="comments-header">
@@ -381,59 +654,146 @@ const VideoDetailsPage = () => {
           </div>
 
           {showCommentForm && !replyTo && (
-            <CommentForm onSubmit={handleAddComment} />
+            <CommentForm key="main-comment" onSubmit={(e, content) => handleAddComment(e, content)} initialValue={newComment} />
           )}
 
           <div className="comment-list">
-            {video.comments.map((comment, index) => (
-              <div key={index} className={`comment ${comment.isPinned ? 'pinned' : ''}`}>
-                {comment.isPinned && (
-                  <div className="pinned-badge">
-                    <FaThumbtack /> Pinned
-                  </div>
-                )}
-                <div className="comment-header">
-                  <span className="user">{comment.user}</span>
-                  <span className="role">{comment.role}</span>
-                  <span className="timestamp">{comment.timestamp}</span>
-                </div>
-                <p className="content">{comment.content}</p>
-                
-                {comment.role !== 'Lecturer' && (
-                  <button 
-                    className="reply-btn"
-                    onClick={() => setReplyTo(comment.id)}
-                  >
-                    <FaReply /> Reply
-                  </button>
-                )}
-
-                {replyTo === comment.id && (
-                  <CommentForm 
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleReply(comment.id, newComment);
-                    }}
-                    placeholder="Write a reply..."
-                  />
-                )}
-
-                {comment.replies && comment.replies.length > 0 && (
-                  <div className="replies">
-                    {comment.replies.map((reply, replyIndex) => (
-                      <div key={replyIndex} className="reply">
-                        <div className="reply-header">
-                          <span className="user">{reply.user}</span>
-                          <span className="role">{reply.role}</span>
-                          <span className="timestamp">{reply.timestamp}</span>
-                        </div>
-                        <p className="content">{reply.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {commentsLoading ? (
+              <div className="comments-loading">
+                <div className="loading-spinner"></div>
+                <p>Loading comments...</p>
               </div>
-            ))}
+            ) : comments.length === 0 ? (
+              <div className="no-comments">
+                <p>No comments yet. Be the first to comment!</p>
+              </div>
+            ) : (
+              comments.map((comment, index) => (
+                <div key={comment._id} className={`comment ${comment.isPinned ? 'pinned' : ''}`}>
+                  {comment.isPinned && (
+                    <div className="pinned-badge">
+                      <FaThumbtack /> Pinned
+                    </div>
+                  )}
+                  <div className="comment-header">
+                    <span className="user">{comment.user.name}</span>
+                    <span className="user-type">{comment.user.type === 'lecturer' ? 'Lecturer' : 'Student'}</span>
+                    <span className="timestamp">{new Date(comment.createdAt).toLocaleString()}</span>
+                  </div>
+                  
+                  {editingComment === comment._id ? (
+                    <div className="edit-comment-form">
+                      <textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        rows={3}
+                        className="edit-textarea"
+                      />
+                      <div className="edit-actions">
+                        <button 
+                          className="save-edit-btn"
+                          onClick={() => {
+                            handleEditComment(comment._id, editContent);
+                            setEditingComment(null);
+                            setEditContent('');
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button 
+                          className="cancel-edit-btn"
+                          onClick={() => {
+                            setEditingComment(null);
+                            setEditContent('');
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="content">{comment.content}</p>
+                  )}
+                  
+                  <div className="comment-actions">
+                    <button 
+                      className="reply-btn"
+                      onClick={() => setReplyTo(comment._id)}
+                    >
+                      <FaReply /> Reply
+                    </button>
+                    
+                    {/* Debug: Log user comparison */}
+                    {console.log('=== Comment User Debug ===')}
+                    {console.log('Comment user:', comment.user)}
+                    {console.log('Current user:', currentUser)}
+                    {console.log('Comment user.id:', comment.user.id)}
+                    {console.log('Current user.id:', currentUser?.id)}
+                    {console.log('Current user.studentId:', currentUser?.studentId)}
+                    {console.log('Current user.lecturerId:', currentUser?.lecturerId)}
+                    {console.log('Comparison result:', currentUser && comment.user.id === currentUser.id)}
+                    
+                    {/* Show edit/delete/pin buttons only for comment author */}
+                    {/* Temporary: Always show for testing */}
+                    {(currentUser && comment.user.id === currentUser.id) || true && (
+                      <>
+                        <button 
+                          className="edit-btn"
+                          onClick={() => {
+                            setEditingComment(comment._id);
+                            setEditContent(comment.content);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          className="delete-btn"
+                          onClick={() => handleDeleteComment(comment._id)}
+                        >
+                          Delete
+                        </button>
+                        {currentUser && currentUser.type === 'lecturer' && (
+                          <button 
+                            className={`pin-btn ${comment.isPinned ? 'pinned' : ''}`}
+                            onClick={() => handlePinComment(comment._id)}
+                          >
+                            {comment.isPinned ? 'Unpin' : 'Pin'}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {replyTo === comment._id && (
+                    <CommentForm 
+                      key={`reply-to-${comment._id}`}
+                      onSubmit={(e, content) => {
+                        e.preventDefault();
+                        handleReply(comment._id, content);
+                      }}
+                      placeholder="Write a reply..."
+                      isReply={true}
+                      initialValue={replyContent}
+                    />
+                  )}
+
+                  {comment.replies && comment.replies.length > 0 && (
+                    <div className="replies">
+                      {comment.replies.map((reply, replyIndex) => (
+                        <div key={replyIndex} className="reply">
+                          <div className="reply-header">
+                            <span className="user">{reply.user.name}</span>
+                            <span className="user-type">{reply.user.type === 'lecturer' ? 'Lecturer' : 'Student'}</span>
+                            <span className="timestamp">{new Date(reply.createdAt).toLocaleString()}</span>
+                          </div>
+                          <p className="content">{reply.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
