@@ -4,12 +4,16 @@ import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import moment from 'moment';
 import '../styles/ResourcesPage.css';
+import axios from 'axios';
 
 const RESOURCE_TYPES = ['All', 'Documents', 'Presentations', 'Notes', 'Assignments', 'Others'];
 const DEGREES = ['All', 'BSc (Hons) in IT', 'BSc (Hons) in Software Engineering', 'BSc (Hons) in Computer Systems Engineering', 'BSc (Hons) in Information Systems Engineering'];
 const DEGREE_YEARS = ['All', 'Year 1', 'Year 2', 'Year 3', 'Year 4'];
 const SEMESTERS = ['All', 'Semester 1', 'Semester 2'];
 const MODULES = ['All', 'AI', 'Web Development', 'Database Systems', 'Software Engineering', 'Networks', 'Operating Systems'];
+
+const API_BASE = 'http://localhost:5000/api/resources';
+const DEGREE_API = 'http://localhost:5000/api/admin/degrees';
 
 const ResourcesPage = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -35,6 +39,7 @@ const ResourcesPage = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedResource, setSelectedResource] = useState(null);
   const [shareLink, setShareLink] = useState('');
+  const [degreeOptions, setDegreeOptions] = useState([]);
 
   // Set constant uploader name
   const UPLOADER_NAME = "J A D Dulmina";
@@ -44,61 +49,35 @@ const ResourcesPage = () => {
       setCurrentTime(new Date());
     }, 60000);
 
-    // Simulate fetching resources from API
-    const dummyResources = [
-      {
-        id: 1,
-        title: 'AI Lecture Notes - Week 1',
-        description: 'Introduction to Machine Learning and Neural Networks',
-        type: 'Notes',
-        degree: 'BSc (Hons) in IT',
-        year: 'Year 2',
-        semester: 'Semester 2',
-        module: 'AI',
-        uploadDate: new Date('2024-03-25T10:30:00'),
-        uploader: UPLOADER_NAME,
-        fileSize: '2.5 MB',
-        fileType: 'pdf',
-        downloadCount: 45,
-        shareLink: 'https://sliit-hub.com/resources/ai-notes-w1'
-      },
-      {
-        id: 2,
-        title: 'Web Development Assignment 1',
-        description: 'Frontend Development using React and TypeScript',
-        type: 'Assignments',
-        degree: 'BSc (Hons) in Software Engineering',
-        year: 'Year 3',
-        semester: 'Semester 1',
-        module: 'Web Development',
-        uploadDate: new Date('2024-03-24T14:15:00'),
-        uploader: UPLOADER_NAME,
-        fileSize: '1.8 MB',
-        fileType: 'zip',
-        downloadCount: 78,
-        shareLink: 'https://sliit-hub.com/resources/web-assignment1'
-      },
-      {
-        id: 3,
-        title: 'Database Systems Presentation',
-        description: 'Database Design and Normalization',
-        type: 'Presentations',
-        degree: 'BSc (Hons) in IT',
-        year: 'Year 2',
-        semester: 'Semester 1',
-        module: 'Database Systems',
-        uploadDate: new Date('2024-03-23T09:45:00'),
-        uploader: UPLOADER_NAME,
-        fileSize: '4.2 MB',
-        fileType: 'pptx',
-        downloadCount: 32,
-        shareLink: 'https://sliit-hub.com/resources/db-presentation'
-      }
-    ];
-    
-    setResources(dummyResources);
+    // Fetch resources and degrees from backend
+    fetchResources();
+    fetchDegrees();
     return () => clearInterval(timer);
   }, []);
+
+  const fetchResources = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}`);
+      setResources(res.data.map(r => ({
+        ...r,
+        id: r._id,
+        shareLink: `${API_BASE}/download/${r._id}`,
+        fileType: (r.fileType || '').split('/').pop(),
+        fileSize: r.fileSize ? formatFileSize(r.fileSize) : '',
+      })));
+    } catch (err) {
+      console.error('Failed to fetch resources:', err);
+    }
+  };
+
+  const fetchDegrees = async () => {
+    try {
+      const res = await axios.get(DEGREE_API);
+      setDegreeOptions(res.data);
+    } catch (err) {
+      console.error('Failed to fetch degrees:', err);
+    }
+  };
 
   const filteredResources = resources.filter(resource => {
     const matchesSearch = 
@@ -122,26 +101,42 @@ const ResourcesPage = () => {
     }));
   };
 
-  const handleUploadSubmit = (e) => {
+  const handleUploadSubmit = async (e) => {
     e.preventDefault();
     if (!uploadFormData.title.trim()) {
       alert('Please enter a title for the resource');
       return;
     }
-    // TODO: Implement file upload logic
-    console.log('Uploading resource:', uploadFormData);
-    alert('Resource uploaded successfully!');
-    setShowUploadModal(false);
-    setUploadFormData({
-      title: '',
-      description: '',
-      type: '',
-      degree: '',
-      year: '',
-      semester: '',
-      module: '',
-      file: null
+    if (!uploadFormData.file) {
+      alert('Please select a file to upload');
+      return;
+    }
+    const formData = new FormData();
+    Object.entries(uploadFormData).forEach(([key, value]) => {
+      if (value) formData.append(key, value);
     });
+    formData.append('uploader', UPLOADER_NAME);
+    try {
+      await axios.post(`${API_BASE}/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      alert('Resource uploaded successfully!');
+      setShowUploadModal(false);
+      setUploadFormData({
+        title: '',
+        description: '',
+        type: '',
+        degree: '',
+        year: '',
+        semester: '',
+        module: '',
+        file: null
+      });
+      fetchResources();
+    } catch (err) {
+      alert('Failed to upload resource.');
+      console.error(err);
+    }
   };
 
   const handleShare = (resource) => {
@@ -160,6 +155,12 @@ const ResourcesPage = () => {
     setSelectedYear('All');
     setSelectedSemester('All');
     setSelectedModule('All');
+  };
+
+  const formatFileSize = (size) => {
+    if (size >= 1024 * 1024) return (size / (1024 * 1024)).toFixed(1) + ' MB';
+    if (size >= 1024) return (size / 1024).toFixed(1) + ' KB';
+    return size + ' B';
   };
 
   const getFileIcon = (fileType) => {
@@ -404,8 +405,8 @@ const ResourcesPage = () => {
                         onChange={handleUploadChange}
                       >
                         <option value="">Select Degree</option>
-                        {DEGREES.filter(degree => degree !== 'All').map(degree => (
-                          <option key={degree} value={degree}>{degree}</option>
+                        {degreeOptions.map(degree => (
+                          <option key={degree._id} value={degree._id}>{degree.name}</option>
                         ))}
                       </select>
                     </div>

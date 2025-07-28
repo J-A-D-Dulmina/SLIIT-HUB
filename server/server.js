@@ -44,6 +44,7 @@ app.use('/api', require('./modules/ai'));
 app.use('/api', require('./modules/meeting'));
 app.use('/api/admin/degrees', degreeRoutes);
 app.use('/api/admin/videos', videoRoutes);
+app.use('/api/resources', require('./modules/resources'));
 
 // WebSocket status endpoint
 app.get('/api/websocket/status', (req, res) => {
