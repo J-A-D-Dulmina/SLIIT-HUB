@@ -660,6 +660,91 @@
   font-size: 0.8rem;
 }
 
+.event-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.event-modal-content {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 2rem 2.5rem;
+  min-width: 340px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: fadeInModal 0.2s;
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.event-modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  color: #2563eb;
+}
+
+.event-modal-content div {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.event-modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.start-meeting-btn, .join-meeting-btn, .close-modal-btn {
+  padding: 0.5rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.start-meeting-btn {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.join-meeting-btn {
+  background: #10b981;
+  color: #fff;
+}
+
+.close-modal-btn {
+  background: #e5e7eb;
+  color: #111;
+}
+
+.start-meeting-btn:hover {
+  background: #d97706;
+}
+
+.join-meeting-btn:hover {
+  background: #059669;
+}
+
+.close-modal-btn:hover {
+  background: #d1d5db;
+}
+
 @media (max-width: 1024px) {
   .content-container {
     padding: 16px;
