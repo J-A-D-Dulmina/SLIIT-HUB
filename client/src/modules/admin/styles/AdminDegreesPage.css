@@ -659,6 +659,25 @@
   padding: 0.25rem 0.7rem;
   font-size: 0.97rem;
 }
+.modal-module-table td, .modal-module-table th {
+  padding: 8px;
+}
+.edit-btn, .delete-btn, .update-btn, .cancel-btn {
+  margin-left: 4px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+.edit-btn { background: #4f46e5; color: #fff; }
+.delete-btn { background: #ef4444; color: #fff; }
+.update-btn { background: #10b981; color: #fff; }
+.cancel-btn { background: #aaa; color: #fff; }
+.modal-module-table {
+  overflow-x: auto;
+  display: block;
+  width: 100%;
+}
 
 .degree-edit-btn, .degree-delete-btn {
   width: 36px;
@@ -720,4 +739,49 @@
 .add-btn:hover {
   background: #174ea6;
   box-shadow: 0 4px 16px rgba(37,99,235,0.13);
+} 
+
+.degree-icon-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  max-width: 350px;
+  width: 100%;
+} 
+
+.module-edit-btn {
+  background: #4f46e5;
+  color: #fff;
+  margin-left: 4px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+.module-edit-btn:hover {
+  background: #4338ca;
+}
+.module-delete-btn {
+  background: #ef4444;
+  color: #fff;
+  margin-left: 4px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+.module-delete-btn:hover {
+  background: #dc2626;
+} 
+
+.confirmation-dialog-confirm.success {
+  background-color: #22c55e !important; /* Tailwind's green-500 */
+  color: #fff !important;
+  border: none;
+  box-shadow: 0 2px 8px rgba(34,197,94,0.08);
+  transition: background 0.2s;
+}
+.confirmation-dialog-confirm.success:hover,
+.confirmation-dialog-confirm.success:focus {
+  background-color: #16a34a !important; /* Tailwind's green-600 */
 } 

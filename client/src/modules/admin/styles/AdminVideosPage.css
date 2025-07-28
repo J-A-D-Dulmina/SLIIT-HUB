@@ -174,3 +174,55 @@
   background: #f59e0b;
   box-shadow: 0 4px 16px rgba(251,191,36,0.13);
 } 
+
+.tag { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 12px; margin-right: 4px; }
+.status-tag.status-published { background: #22c55e; color: #fff; }
+.status-tag.status-draft { background: #6b7280; color: #fff; }
+.status-tag.status-unpublished { background: #f59e42; color: #fff; }
+.ai-tag { background: #2563eb; color: #fff; }
+.lecturer-tag { background: #a21caf; color: #fff; } 
+
+.videos-view-btn,
+.videos-edit-btn,
+.videos-delete-btn {
+  height: 32px;
+  width: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 16px;
+  margin-right: 6px;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.videos-view-btn {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+}
+.videos-view-btn:hover, .videos-view-btn:focus {
+  background: #1d4ed8;
+}
+.videos-edit-btn {
+  background: #fbbf24;
+  color: #fff;
+  border: none;
+}
+.videos-edit-btn:hover, .videos-edit-btn:focus {
+  background: #f59e42;
+}
+.videos-delete-btn {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+}
+.videos-delete-btn:hover, .videos-delete-btn:focus {
+  background: #dc2626;
+} 
+
+.video-details-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.video-detail-row { display: flex; gap: 16px; align-items: flex-start; }
+.video-detail-label { font-weight: 600; min-width: 140px; color: #2563eb; }
+.video-detail-value { flex: 1; word-break: break-all; } 

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../styles/AdminAdminsPage.css';
 import { FaPencilAlt, FaTrash, FaEye, FaEyeSlash } from 'react-icons/fa';
 import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
+import Toast from '../../../shared/components/Toast';
 
 const initialAdmins = [
   { id: 1, name: 'Super Admin', email: 'super@admin.com', mobile: '0711111111', password: 'admin123' },
@@ -11,7 +12,9 @@ const initialAdmins = [
 const emptyAdmin = { name: '', email: '', mobile: '', password: '' };
 
 const AdminAdminsPage = () => {
-  const [admins, setAdmins] = useState(initialAdmins);
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [adminForm, setAdminForm] = useState(emptyAdmin);
@@ -20,6 +23,23 @@ const AdminAdminsPage = () => {
   const [search, setSearch] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showPasswordTable, setShowPasswordTable] = useState({});
+  const [toastMessage, setToastMessage] = useState('');
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
+
+  // Fetch admins from backend
+  useEffect(() => {
+    setLoading(true);
+    fetch('/api/admins', { credentials: 'include' })
+      .then(res => res.ok ? res.json() : Promise.reject(res))
+      .then(data => {
+        setAdmins(data.admins || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Failed to load admins');
+        setLoading(false);
+      });
+  }, []);
 
   // Modal open/close helpers
   const openAddModal = () => {
@@ -30,7 +50,7 @@ const AdminAdminsPage = () => {
   };
   const openEditModal = (admin) => {
     setModalMode('edit');
-    setAdminForm({ ...admin });
+    setAdminForm({ ...admin, password: '' }); // Always blank password field
     setSelectedAdmin(admin);
     setShowModal(true);
     setShowPasswordModal(false);
@@ -49,16 +69,69 @@ const AdminAdminsPage = () => {
   };
 
   // Add/Edit Admin
-  const handleAdminFormSubmit = (e) => {
+  const handleAdminFormSubmit = async (e) => {
     e.preventDefault();
     if (!adminForm.name.trim() || !adminForm.email.trim() || !adminForm.mobile.trim() || !adminForm.password.trim()) return;
-    if (modalMode === 'add') {
-      setAdmins([
-        { ...adminForm, id: Date.now() },
-        ...admins,
-      ]);
-    } else if (modalMode === 'edit' && selectedAdmin) {
-      setAdmins(admins.map(a => a.id === selectedAdmin.id ? { ...adminForm, id: a.id } : a));
+    if (modalMode === 'edit') {
+      setShowUpdateConfirm(true);
+      return;
+    }
+    try {
+      if (modalMode === 'add') {
+        const res = await fetch('/api/admins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(adminForm)
+        });
+        if (res.ok) {
+          const newAdmin = await res.json();
+          setAdmins([newAdmin, ...admins]);
+        } else {
+          setError('Failed to add admin');
+        }
+      } else if (modalMode === 'edit' && selectedAdmin) {
+        const res = await fetch(`/api/admins/${selectedAdmin._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(adminForm)
+        });
+        if (res.ok) {
+          const updatedAdmin = await res.json();
+          setAdmins(admins.map(a => a._id === updatedAdmin._id ? updatedAdmin : a));
+          setToastMessage('Admin updated successfully!');
+          setTimeout(() => setToastMessage(''), 3000);
+        } else {
+          setError('Failed to update admin');
+        }
+      }
+    } catch {
+      setError('Server error');
+    }
+    closeModal();
+  };
+
+  const confirmUpdateAdmin = async () => {
+    setShowUpdateConfirm(false);
+    try {
+      const res = await fetch(`/api/admins/${selectedAdmin._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(adminForm)
+      });
+      if (res.ok) {
+        const updatedAdmin = await res.json();
+        // Set password to blank in the list after update
+        setAdmins(admins.map(a => a._id === updatedAdmin._id ? { ...updatedAdmin, password: '' } : a));
+        setToastMessage('Admin updated successfully!');
+        setTimeout(() => setToastMessage(''), 3000);
+      } else {
+        setError('Failed to update admin');
+      }
+    } catch {
+      setError('Server error');
     }
     closeModal();
   };
@@ -68,8 +141,20 @@ const AdminAdminsPage = () => {
     setSelectedAdmin(admin);
     setShowDeleteDialog(true);
   };
-  const confirmDeleteAdmin = () => {
-    setAdmins(admins.filter(a => a.id !== selectedAdmin.id));
+  const confirmDeleteAdmin = async () => {
+    try {
+      const res = await fetch(`/api/admins/${selectedAdmin._id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        setAdmins(admins.filter(a => a._id !== selectedAdmin._id));
+      } else {
+        setError('Failed to delete admin');
+      }
+    } catch {
+      setError('Server error');
+    }
     setShowDeleteDialog(false);
     setSelectedAdmin(null);
   };
@@ -110,29 +195,20 @@ const AdminAdminsPage = () => {
             {admins.filter(a => {
               const q = search.toLowerCase();
               return (
-                a.name.toLowerCase().includes(q) ||
-                a.email.toLowerCase().includes(q) ||
-                a.mobile.toLowerCase().includes(q)
+                (a.name || '').toLowerCase().includes(q) ||
+                (a.email || '').toLowerCase().includes(q) ||
+                (a.mobile || '').toLowerCase().includes(q)
               );
             }).map(a => (
-              <tr key={a.id} className="admins-row">
+              <tr key={a._id || a.id} className="admins-row">
                 <td>{a.name}</td>
                 <td>{a.email}</td>
                 <td>{a.mobile}</td>
                 <td style={{ position: 'relative' }}>
+                  {/* Never show the real or hashed password. Always show dots. */}
                   <span style={{ userSelect: 'none' }}>
-                    {showPasswordTable[a.id] ? a.password : '•'.repeat(a.password.length)}
+                    {'•'.repeat(8)}
                   </span>
-                  <button
-                    type="button"
-                    className="admins-password-toggle-btn"
-                    style={{ background: 'none', border: 'none', marginLeft: 8, cursor: 'pointer', verticalAlign: 'middle' }}
-                    onClick={e => { e.stopPropagation(); toggleShowPasswordTable(a.id); }}
-                    tabIndex={-1}
-                    title={showPasswordTable[a.id] ? 'Hide Password' : 'Show Password'}
-                  >
-                    {showPasswordTable[a.id] ? <FaEyeSlash /> : <FaEye />}
-                  </button>
                 </td>
                 <td style={{textAlign: 'right'}}>
                   <button type="button" className="admins-edit-btn" onClick={() => openEditModal(a)} title="Edit"><FaPencilAlt /></button>
@@ -197,6 +273,17 @@ const AdminAdminsPage = () => {
         cancelText="Cancel"
         type="danger"
       />
+      <ConfirmationDialog
+        isOpen={showUpdateConfirm}
+        onClose={() => setShowUpdateConfirm(false)}
+        onConfirm={confirmUpdateAdmin}
+        title="Confirm Update"
+        message="Are you sure you want to update this admin's details?"
+        confirmText="Update"
+        cancelText="Cancel"
+        type="info"
+      />
+      <Toast message={toastMessage} onClose={() => setToastMessage('')} />
     </div>
   );
 };

@@ -21,6 +21,9 @@ const TutoringPage = () => {
   const [showEditPage, setShowEditPage] = useState(false);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [publishLoading, setPublishLoading] = useState(false);
+  const [publishTarget, setPublishTarget] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -39,6 +42,8 @@ const TutoringPage = () => {
   const [uploadError, setUploadError] = useState('');
   const [deleteMessage, setDeleteMessage] = useState('');
   const [moduleError, setModuleError] = useState('');
+  const [degrees, setDegrees] = useState([]);
+  const [showTermsPopup, setShowTermsPopup] = useState(false); // NEW STATE
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -46,6 +51,21 @@ const TutoringPage = () => {
     }, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    fetch('/api/admin/degrees')
+      .then(res => res.json())
+      .then(data => setDegrees(data))
+      .catch(() => setDegrees([]));
+  }, []);
+
+  // Dynamic year/semester/module options
+  const selectedDegree = degrees.find(d => d._id === uploadFormData.degree);
+  const years = selectedDegree ? selectedDegree.years : [];
+  const selectedYear = years.find(y => String(y.yearNumber) === String(uploadFormData.year));
+  const semesters = selectedYear ? selectedYear.semesters : [];
+  const selectedSemester = semesters.find(s => String(s.semesterNumber) === String(uploadFormData.semester));
+  const modules = selectedSemester ? selectedSemester.modules : [];
 
   // Fetch videos from backend
   useEffect(() => {
@@ -123,6 +143,47 @@ const TutoringPage = () => {
     }
     setShowPublishConfirm(false);
     setSelectedVideo(null);
+  };
+
+  // Add a function to handle publish/unpublish for a video in the list
+  const handlePublishToggleList = (video) => {
+    setPublishTarget(video);
+    if (video.status === 'published') {
+      setShowPublishConfirm(true); // Unpublish: show confirmation only
+    } else {
+      setShowTermsPopup(true); // Publish: show terms first
+    }
+  };
+
+  const handleConfirmTerms = () => {
+    setShowTermsPopup(false);
+    setShowPublishConfirm(true); // Then show confirmation popup
+  };
+
+  const handleCancelTerms = () => {
+    setShowTermsPopup(false);
+    setPublishTarget(null);
+    setAgreeTerms(false);
+  };
+  const handleConfirmPublishList = async () => {
+    if (!publishTarget) return;
+    setPublishLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/tutoring/videos/${publishTarget.id}/publish`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: publishTarget.status === 'published' ? 'unpublished' : 'published' })
+      });
+      if (res.ok) {
+        setVideos(videos => videos.map(v => v.id === publishTarget.id ? { ...v, status: v.status === 'published' ? 'unpublished' : 'published' } : v));
+        setShowPublishConfirm(false);
+        setAgreeTerms(false);
+        setPublishTarget(null);
+      }
+    } finally {
+      setPublishLoading(false);
+    }
   };
 
   const fetchVideoById = async (videoId) => {
@@ -421,9 +482,10 @@ const TutoringPage = () => {
                           className={`video-action-btn ${video.status === 'published' ? 'unpublish-video-btn' : 'publish-video-btn'}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handlePublishToggle(video);
+                            handlePublishToggleList(video);
                           }}
                           title={video.status === 'published' ? 'Unpublish Video' : 'Publish Video'}
+                          disabled={publishLoading}
                         >
                           <FaGlobe /> {video.status === 'published' ? 'Unpublish' : 'Publish'}
                         </button>
@@ -458,20 +520,52 @@ const TutoringPage = () => {
         />
       )}
 
-      <ConfirmationDialog
-        isOpen={showPublishConfirm}
-        onClose={() => {
-          setShowPublishConfirm(false);
-          setSelectedVideo(null);
-        }}
-        onConfirm={handleConfirmPublish}
-        title={selectedVideo?.status === 'published' ? 'Unpublish Video' : 'Publish Video'}
-        message={selectedVideo?.status === 'published' 
-          ? 'Are you sure you want to unpublish this video? It will no longer be visible to students.'
-          : 'Are you sure you want to publish this video? It will be visible to all students.'}
-        confirmText={selectedVideo?.status === 'published' ? 'Unpublish' : 'Publish'}
-        type="warning"
-      />
+      {showTermsPopup && publishTarget && publishTarget.status !== 'published' && (
+        <ConfirmationDialog
+          isOpen={showTermsPopup}
+          onClose={handleCancelTerms}
+          onConfirm={handleConfirmTerms}
+          title="Terms and Conditions"
+          message={<div>
+            <p>To publish this video, you must agree to the following terms:</p>
+            <div className="terms-box" style={{ background: '#f8fafc', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 14 }}>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                <li>This video is your original work and does not infringe on copyrights.</li>
+                <li>You have the right to share this content for educational purposes.</li>
+                <li>No inappropriate, offensive, or illegal content is included.</li>
+                <li>Once published, the video will be visible to all students in the relevant degree/module.</li>
+              </ul>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
+              <input type="checkbox" checked={agreeTerms} onChange={e => setAgreeTerms(e.target.checked)} />
+              I agree to the terms and conditions above
+            </label>
+          </div>}
+          confirmText="Confirm"
+          cancelText="Cancel"
+          type="info"
+          // Only allow confirm if terms are checked
+          onConfirm={agreeTerms ? handleConfirmTerms : undefined}
+        />
+      )}
+
+      {showPublishConfirm && publishTarget && (
+        <ConfirmationDialog
+          isOpen={showPublishConfirm}
+          onClose={() => {
+            setShowPublishConfirm(false);
+            setPublishTarget(null);
+            setAgreeTerms(false);
+          }}
+          onConfirm={handleConfirmPublishList}
+          title={publishTarget.status === 'published' ? 'Unpublish Video' : 'Publish Video'}
+          message={publishTarget.status === 'published'
+            ? 'Are you sure you want to unpublish this video? It will no longer be visible to students.'
+            : 'Are you sure you want to publish this video? It will be visible to all students.'}
+          confirmText={publishTarget.status === 'published' ? 'Unpublish' : 'Publish'}
+          type="warning"
+        />
+      )}
 
       <ConfirmationDialog
         isOpen={showDeleteConfirm}
@@ -534,6 +628,7 @@ const TutoringPage = () => {
               <div className="tutoring-review-field">
                 <label>Module Selection <span style={{color: 'red'}}>*</span></label>
                 <div className="module-selection">
+                  {/* Degree Dropdown */}
                   <select
                     name="degree"
                     value={uploadFormData.degree}
@@ -541,51 +636,55 @@ const TutoringPage = () => {
                     required
                   >
                     <option value="">Select Degree</option>
-                    <option value="BSc (Hons) in Information Technology">BSc (Hons) in Information Technology</option>
-                    <option value="BSc (Hons) in Computer Science">BSc (Hons) in Computer Science</option>
-                    <option value="BSc (Hons) in Software Engineering">BSc (Hons) in Software Engineering</option>
-                    <option value="BSc (Hons) in Data Science">BSc (Hons) in Data Science</option>
-                    <option value="BSc (Hons) in Cyber Security">BSc (Hons) in Cyber Security</option>
-                    <option value="BSc (Hons) in Business Information Systems">BSc (Hons) in Business Information Systems</option>
+                    {degrees.map(degree => (
+                      <option key={degree._id} value={degree._id}>{degree.name}</option>
+                    ))}
                   </select>
 
-                  <select
-                    name="year"
-                    value={uploadFormData.year}
-                    onChange={handleUploadChange}
-                    required
-                  >
-                    <option value="">Select Year</option>
-                    <option value="1">Year 1</option>
-                    <option value="2">Year 2</option>
-                    <option value="3">Year 3</option>
-                    <option value="4">Year 4</option>
-                  </select>
+                  {/* Year Dropdown */}
+                  {selectedDegree && (
+                    <select
+                      name="year"
+                      value={uploadFormData.year}
+                      onChange={handleUploadChange}
+                      required
+                    >
+                      <option value="">Select Year</option>
+                      {years.map(y => (
+                        <option key={y.yearNumber} value={y.yearNumber}>Year {y.yearNumber}</option>
+                      ))}
+                    </select>
+                  )}
 
-                  <select
-                    name="semester"
-                    value={uploadFormData.semester}
-                    onChange={handleUploadChange}
-                    required
-                  >
-                    <option value="">Select Semester</option>
-                    <option value="1">Semester 1</option>
-                    <option value="2">Semester 2</option>
-                  </select>
+                  {/* Semester Dropdown */}
+                  {selectedYear && (
+                    <select
+                      name="semester"
+                      value={uploadFormData.semester}
+                      onChange={handleUploadChange}
+                      required
+                    >
+                      <option value="">Select Semester</option>
+                      {semesters.map(s => (
+                        <option key={s.semesterNumber} value={s.semesterNumber}>Semester {s.semesterNumber}</option>
+                      ))}
+                    </select>
+                  )}
 
-                  <select
-                    name="module"
-                    value={uploadFormData.module}
-                    onChange={handleUploadChange}
-                    required
-                  >
-                    <option value="">Select Module</option>
-                    <option value="IT1010">IT1010 - Introduction to Programming</option>
-                    <option value="IT1020">IT1020 - Data Structures</option>
-                    <option value="IT1030">IT1030 - Database Systems</option>
-                    <option value="IT1040">IT1040 - Web Development</option>
-                    <option value="IT1050">IT1050 - Software Engineering</option>
-                  </select>
+                  {/* Module Dropdown */}
+                  {selectedSemester && (
+                    <select
+                      name="module"
+                      value={uploadFormData.module}
+                      onChange={handleUploadChange}
+                      required
+                    >
+                      <option value="">Select Module</option>
+                      {modules.map(m => (
+                        <option key={m.code} value={m.code}>{m.code} - {m.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 

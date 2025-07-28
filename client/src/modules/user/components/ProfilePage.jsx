@@ -16,11 +16,15 @@ const ProfilePage = () => {
     email: '',
     phone: '',
     degree: '',
+    year: '',
+    semester: '',
+    module: '',
     userType: '',
     studentId: '',
     lecturerId: '',
     profileImage: profileImage
   });
+  const [degrees, setDegrees] = useState([]);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -30,6 +34,13 @@ const ProfilePage = () => {
 
   const [updateMessage, setUpdateMessage] = useState('');
   const [updateError, setUpdateError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/admin/degrees')
+      .then(res => res.json())
+      .then(data => setDegrees(data))
+      .catch(() => setDegrees([]));
+  }, []);
 
   useEffect(() => {
     // Fetch user data from backend
@@ -42,6 +53,9 @@ const ProfilePage = () => {
           email: data.user.email || '',
           phone: data.user.mobile || '',
           degree: data.user.degree || '',
+          year: data.user.year || '',
+          semester: data.user.semester || '',
+          module: data.user.module || '',
           userType: data.user.userType || '',
           studentId: data.user.studentId || '',
           lecturerId: data.user.lecturerId || ''
@@ -59,6 +73,14 @@ const ProfilePage = () => {
     }, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Dynamic year/semester/module options
+  const selectedDegree = degrees.find(d => d._id === formData.degree);
+  const years = selectedDegree ? selectedDegree.years : [];
+  const selectedYear = years.find(y => String(y.yearNumber) === String(formData.year));
+  const semesters = selectedYear ? selectedYear.semesters : [];
+  const selectedSemester = semesters.find(s => String(s.semesterNumber) === String(formData.semester));
+  const modules = selectedSemester ? selectedSemester.modules : [];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -258,6 +280,7 @@ const ProfilePage = () => {
                           onChange={handleInputChange}
                         />
                       </div>
+                      {/* Degree Dropdown */}
                       <div className="form-group">
                         <label>Degree</label>
                         <select
@@ -266,14 +289,62 @@ const ProfilePage = () => {
                           onChange={handleInputChange}
                         >
                           <option value="">Select your degree</option>
-                          <option value="BSc (Hons) in Information Technology">BSc (Hons) in Information Technology</option>
-                          <option value="BSc (Hons) in Computer Science">BSc (Hons) in Computer Science</option>
-                          <option value="BSc (Hons) in Software Engineering">BSc (Hons) in Software Engineering</option>
-                          <option value="BSc (Hons) in Data Science">BSc (Hons) in Data Science</option>
-                          <option value="BSc (Hons) in Cyber Security">BSc (Hons) in Cyber Security</option>
-                          <option value="BSc (Hons) in Business Information Systems">BSc (Hons) in Business Information Systems</option>
+                          {degrees.map(degree => (
+                            <option key={degree._id} value={degree._id}>{degree.name}</option>
+                          ))}
                         </select>
                       </div>
+
+                      {/* Year Dropdown */}
+                      {selectedDegree && (
+                        <div className="form-group">
+                          <label>Year</label>
+                          <select
+                            name="year"
+                            value={formData.year}
+                            onChange={handleInputChange}
+                          >
+                            <option value="">Select year</option>
+                            {years.map(y => (
+                              <option key={y.yearNumber} value={y.yearNumber}>Year {y.yearNumber}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Semester Dropdown */}
+                      {selectedYear && (
+                        <div className="form-group">
+                          <label>Semester</label>
+                          <select
+                            name="semester"
+                            value={formData.semester}
+                            onChange={handleInputChange}
+                          >
+                            <option value="">Select semester</option>
+                            {semesters.map(s => (
+                              <option key={s.semesterNumber} value={s.semesterNumber}>Semester {s.semesterNumber}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Module Dropdown */}
+                      {selectedSemester && (
+                        <div className="form-group">
+                          <label>Module</label>
+                          <select
+                            name="module"
+                            value={formData.module}
+                            onChange={handleInputChange}
+                          >
+                            <option value="">Select module</option>
+                            {modules.map(m => (
+                              <option key={m.code} value={m.code}>{m.code} - {m.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       <div className="form-actions">
                         <button type="submit" className="save-btn">Save Changes</button>
                         <button 

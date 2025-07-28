@@ -2,19 +2,34 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const AdminLoginPage = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (username === 'admin' && password === 'admin123') {
-      localStorage.setItem('role', 'admin');
-      setError('');
-      navigate('/admin-dashboard');
-    } else {
-      setError('Invalid admin credentials.');
+    if (!email || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
+      });
+      if (response.ok) {
+        localStorage.setItem('role', 'admin');
+        setError('');
+        navigate('/admin-dashboard');
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Invalid admin credentials.');
+      }
+    } catch (err) {
+      setError('Server error.');
     }
   };
 
@@ -24,10 +39,10 @@ const AdminLoginPage = () => {
         <h2 style={{ marginBottom: 24 }}>Admin Login</h2>
         {error && <div style={{ color: '#dc2626', marginBottom: 16 }}>{error}</div>}
         <input
-          type="text"
-          placeholder="Admin Username"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
+          type="email"
+          placeholder="Admin Email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
           style={{ width: '100%', marginBottom: 16, padding: 10, borderRadius: 6, border: '1px solid #e2e8f0' }}
         />
         <input

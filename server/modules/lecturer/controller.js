@@ -1,9 +1,10 @@
 const bcrypt = require('bcryptjs');
 const Lecturer = require('./model');
+const Degree = require('../admin/degree.model');
 
 exports.createLecturer = async (req, res) => {
   // TODO: Add admin authentication check
-  const { lecturerId, name, email, password, mobile, modules } = req.body;
+  const { lecturerId, name, email, password, mobile, modules, degrees } = req.body;
   if (!lecturerId || !name || !email || !password || !mobile) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
@@ -13,13 +14,21 @@ exports.createLecturer = async (req, res) => {
     const existingLecturerId = await Lecturer.findOne({ lecturerId });
     if (existingLecturerId) return res.status(409).json({ message: 'Lecturer ID already registered' });
     const hashed = await bcrypt.hash(password, 10);
+    let degreeIds = [];
+    if (degrees && Array.isArray(degrees)) {
+      for (const deg of degrees) {
+        let degreeObj = await Degree.findOne({ code: deg }) || await Degree.findById(deg);
+        if (degreeObj) degreeIds.push(degreeObj._id);
+      }
+    }
     const lecturer = new Lecturer({
       lecturerId,
       name,
       email,
       password: hashed,
       mobile,
-      modules: modules && Array.isArray(modules) ? modules : []
+      modules: modules && Array.isArray(modules) ? modules : [],
+      degrees: degreeIds
     });
     await lecturer.save();
     res.status(201).json({ message: 'Lecturer created successfully' });

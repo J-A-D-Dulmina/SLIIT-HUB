@@ -1,26 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner.jsx';
 
 const ProtectedRoute = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [userType, setUserType] = useState(null);
+  const location = useLocation();
 
   useEffect(() => {
-    console.log('ProtectedRoute: Checking authentication...');
     fetch('http://localhost:5000/api/protected', { credentials: 'include' })
-      .then(res => {
-        console.log('ProtectedRoute: Response status:', res.status);
-        return res.ok ? res.json() : Promise.reject(res);
-      })
+      .then(res => res.ok ? res.json() : Promise.reject(res))
       .then((data) => {
-        console.log('ProtectedRoute: Authentication successful:', data);
+        if (data.user && data.user.userType) {
+          localStorage.setItem('userType', data.user.userType);
+          setUserType(data.user.userType);
+        }
         setAuthenticated(true);
         setLoading(false);
       })
-      .catch((error) => {
-        console.log('ProtectedRoute: Authentication failed:', error);
+      .catch(() => {
         setAuthenticated(false);
+        setUserType(null);
         setLoading(false);
       });
   }, []);
@@ -28,13 +29,20 @@ const ProtectedRoute = ({ children }) => {
   if (loading) {
     return <LoadingSpinner message="Checking authentication..." size="fullscreen" />;
   }
-  
+
+  // Role-based route protection
+  const path = location.pathname;
   if (!authenticated) {
-    console.log('ProtectedRoute: Redirecting to login');
     return <Navigate to="/login" replace />;
   }
-  
-  console.log('ProtectedRoute: Rendering protected content');
+  if (path.startsWith('/admin') && userType !== 'admin') {
+    // Only admin can access /admin routes
+    return <Navigate to="/login" replace />;
+  }
+  if (!path.startsWith('/admin') && userType === 'admin') {
+    // Admin should not access student/lecturer routes
+    return <Navigate to="/admin-dashboard" replace />;
+  }
   return children;
 };
 

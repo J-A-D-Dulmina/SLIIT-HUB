@@ -6,17 +6,6 @@ import TopBar from '../../../shared/components/TopBar';
 import moment from 'moment';
 import '../styles/MyMeetingsPage.css';
 
-const DEGREES = [
-  'BSc in Information Technology',
-  'BSc in Software Engineering',
-  'BSc in Computer Science',
-  'BSc in Data Science'
-];
-
-const DEGREE_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4'];
-const SEMESTERS = ['Semester 1', 'Semester 2'];
-const MODULES = ['AI', 'Web Development', 'Database Systems', 'Software Engineering', 'Networks', 'Operating Systems'];
-
 const MyMeetingsPage = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -43,11 +32,7 @@ const MyMeetingsPage = () => {
   const [meetingToDelete, setMeetingToDelete] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedDegree, setSelectedDegree] = useState('');
-  const [selectedYear, setSelectedYear] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('');
-  const [selectedModule, setSelectedModule] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [degrees, setDegrees] = useState([]);
   const navigate = useNavigate();
 
   // Get user info from localStorage
@@ -60,6 +45,13 @@ const MyMeetingsPage = () => {
 
     fetchMeetings();
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/admin/degrees')
+      .then(res => res.json())
+      .then(data => setDegrees(data))
+      .catch(() => setDegrees([]));
   }, []);
 
   const fetchMeetings = async () => {
@@ -216,23 +208,19 @@ const MyMeetingsPage = () => {
     const matchesSearch =
       meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDegree = !selectedDegree || meeting.degree === selectedDegree;
-    const matchesYear = !selectedYear || meeting.year === selectedYear;
-    const matchesSemester = !selectedSemester || meeting.semester === selectedSemester;
-    const matchesModule = !selectedModule || meeting.module === selectedModule;
-    const matchesStatus = !selectedStatus || meeting.status === selectedStatus;
+    const matchesDegree = !scheduleFormData.degree || meeting.degree === scheduleFormData.degree;
+    const matchesYear = !scheduleFormData.year || meeting.year === scheduleFormData.year;
+    const matchesSemester = !scheduleFormData.semester || meeting.semester === scheduleFormData.semester;
+    const matchesModule = !scheduleFormData.module || meeting.module === scheduleFormData.module;
+    const matchesStatus = !scheduleFormData.status || meeting.status === scheduleFormData.status;
     return matchesSearch && matchesDegree && matchesYear && matchesSemester && matchesModule && matchesStatus;
   });
 
   const clearFilters = () => {
-    setSelectedDegree('');
-    setSelectedYear('');
-    setSelectedSemester('');
-    setSelectedModule('');
-    setSelectedStatus('');
+    setScheduleFormData(prev => ({ ...prev, degree: '', year: '', semester: '', module: '', status: '' }));
   };
 
-  const hasActiveFilters = selectedDegree || selectedYear || selectedSemester || selectedModule || selectedStatus;
+  const hasActiveFilters = scheduleFormData.degree || scheduleFormData.year || scheduleFormData.semester || scheduleFormData.module || scheduleFormData.status;
 
   const handleDeleteClick = (meeting) => {
     setMeetingToDelete(meeting);
@@ -309,103 +297,119 @@ const MyMeetingsPage = () => {
     }
   };
 
-  const renderMeetingForm = (isEdit = false) => (
-    <div className="schedule-form-overlay">
-      <div className="schedule-form-card">
-        <div className="form-header">
-          <h2>{isEdit ? 'Edit Meeting' : 'Schedule New Meeting'}</h2>
-          <button 
-            className="close-btn" 
-            onClick={() => {
-              setShowScheduleForm(false);
-              setShowEditForm(false);
-              setEditingMeeting(null);
-              resetFormData();
-            }}
-          >
-            ×
-          </button>
-        </div>
-        <form onSubmit={isEdit ? handleEditSubmit : handleScheduleSubmit}>
-          <div className="form-group">
-            <label htmlFor="topic">Topic</label>
-            <input
-              type="text"
-              id="topic"
-              name="topic"
-              value={scheduleFormData.topic}
-              onChange={handleScheduleChange}
-              required
-              placeholder="Meeting Topic"
-            />
-          </div>
+  const renderMeetingForm = (isEdit = false) => {
+    // Dynamic year/semester/module options for scheduling/editing
+    const selectedDegree = degrees.find(d => d._id === scheduleFormData.degree);
+    const years = selectedDegree ? selectedDegree.years : [];
+    const selectedYear = years.find(y => String(y.yearNumber) === String(scheduleFormData.year));
+    const semesters = selectedYear ? selectedYear.semesters : [];
+    const selectedSemester = semesters.find(s => String(s.semesterNumber) === String(scheduleFormData.semester));
+    const modules = selectedSemester ? selectedSemester.modules : [];
 
-          <div className="form-group">
-            <label htmlFor="degree">Degree</label>
-            <select
-              id="degree"
-              name="degree"
-              value={scheduleFormData.degree}
-              onChange={handleScheduleChange}
-              required
+    return (
+      <div className="schedule-form-overlay">
+        <div className="schedule-form-card">
+          <div className="form-header">
+            <h2>{isEdit ? 'Edit Meeting' : 'Schedule New Meeting'}</h2>
+            <button 
+              className="close-btn" 
+              onClick={() => {
+                setShowScheduleForm(false);
+                setShowEditForm(false);
+                setEditingMeeting(null);
+                resetFormData();
+              }}
             >
-              <option value="">Select Degree</option>
-              {DEGREES.map(degree => (
-                <option key={degree} value={degree}>{degree}</option>
-              ))}
-            </select>
+              ×
+            </button>
           </div>
-
-          <div className="form-row">
+          <form onSubmit={isEdit ? handleEditSubmit : handleScheduleSubmit}>
             <div className="form-group">
-              <label htmlFor="year">Degree Year</label>
+              <label htmlFor="topic">Topic</label>
+              <input
+                type="text"
+                id="topic"
+                name="topic"
+                value={scheduleFormData.topic}
+                onChange={handleScheduleChange}
+                required
+                placeholder="Meeting Topic"
+              />
+            </div>
+
+            {/* Degree Dropdown */}
+            <div className="form-group">
+              <label htmlFor="degree">Degree</label>
               <select
-                id="year"
-                name="year"
-                value={scheduleFormData.year}
+                id="degree"
+                name="degree"
+                value={scheduleFormData.degree}
                 onChange={handleScheduleChange}
                 required
               >
-                <option value="">Select Year</option>
-                {DEGREE_YEARS.map(year => (
-                  <option key={year} value={year}>{year}</option>
+                <option value="">Select Degree</option>
+                {degrees.map(degree => (
+                  <option key={degree._id} value={degree._id}>{degree.name}</option>
                 ))}
               </select>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="semester">Semester</label>
-              <select
-                id="semester"
-                name="semester"
-                value={scheduleFormData.semester}
-                onChange={handleScheduleChange}
-                required
-              >
-                <option value="">Select Semester</option>
-                {SEMESTERS.map(semester => (
-                  <option key={semester} value={semester}>{semester}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+            {/* Year Dropdown */}
+            {selectedDegree && (
+              <div className="form-group">
+                <label htmlFor="year">Degree Year</label>
+                <select
+                  id="year"
+                  name="year"
+                  value={scheduleFormData.year}
+                  onChange={handleScheduleChange}
+                  required
+                >
+                  <option value="">Select Year</option>
+                  {years.map(y => (
+                    <option key={y.yearNumber} value={y.yearNumber}>Year {y.yearNumber}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="module">Module</label>
-              <select
-                id="module"
-                name="module"
-                value={scheduleFormData.module}
-                onChange={handleScheduleChange}
-                required
-              >
-                <option value="">Select Module</option>
-                {MODULES.map(module => (
-                  <option key={module} value={module}>{module}</option>
-                ))}
-              </select>
-            </div>
+            {/* Semester Dropdown */}
+            {selectedYear && (
+              <div className="form-group">
+                <label htmlFor="semester">Semester</label>
+                <select
+                  id="semester"
+                  name="semester"
+                  value={scheduleFormData.semester}
+                  onChange={handleScheduleChange}
+                  required
+                >
+                  <option value="">Select Semester</option>
+                  {semesters.map(s => (
+                    <option key={s.semesterNumber} value={s.semesterNumber}>Semester {s.semesterNumber}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Module Dropdown */}
+            {selectedSemester && (
+              <div className="form-group">
+                <label htmlFor="module">Module</label>
+                <select
+                  id="module"
+                  name="module"
+                  value={scheduleFormData.module}
+                  onChange={handleScheduleChange}
+                  required
+                >
+                  <option value="">Select Module</option>
+                  {modules.map(m => (
+                    <option key={m.code} value={m.code}>{m.code} - {m.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="form-group">
               <label htmlFor="email">Your Email</label>
@@ -419,81 +423,88 @@ const MyMeetingsPage = () => {
                 placeholder="your.email@example.com"
               />
             </div>
-          </div>
 
-          <div className="form-row">
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="date">Date</label>
+                <input
+                  type="date"
+                  id="date"
+                  name="date"
+                  value={scheduleFormData.date}
+                  onChange={handleScheduleChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="time">Time</label>
+                <input
+                  type="time"
+                  id="time"
+                  name="time"
+                  value={scheduleFormData.time}
+                  onChange={handleScheduleChange}
+                  required
+                />
+              </div>
+            </div>
+
             <div className="form-group">
-              <label htmlFor="date">Date</label>
+              <label htmlFor="duration">Duration (minutes)</label>
               <input
-                type="date"
-                id="date"
-                name="date"
-                value={scheduleFormData.date}
+                type="number"
+                id="duration"
+                name="duration"
+                value={scheduleFormData.duration}
                 onChange={handleScheduleChange}
                 required
+                min="15"
+                step="15"
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="time">Time</label>
-              <input
-                type="time"
-                id="time"
-                name="time"
-                value={scheduleFormData.time}
+              <label htmlFor="description">Description</label>
+              <textarea
+                id="description"
+                name="description"
+                value={scheduleFormData.description}
                 onChange={handleScheduleChange}
-                required
+                placeholder="Meeting description..."
+                rows="3"
               />
             </div>
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="duration">Duration (minutes)</label>
-            <input
-              type="number"
-              id="duration"
-              name="duration"
-              value={scheduleFormData.duration}
-              onChange={handleScheduleChange}
-              required
-              min="15"
-              step="15"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="description">Description</label>
-            <textarea
-              id="description"
-              name="description"
-              value={scheduleFormData.description}
-              onChange={handleScheduleChange}
-              placeholder="Meeting description..."
-              rows="3"
-            />
-          </div>
-
-          <div className="form-actions">
-            <button 
-              type="button" 
-              className="cancel-btn" 
-              onClick={() => {
-                setShowScheduleForm(false);
-                setShowEditForm(false);
-                setEditingMeeting(null);
-                resetFormData();
-              }}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="submit-btn">
-              {isEdit ? 'Update Meeting' : 'Schedule Meeting'}
-            </button>
-          </div>
-        </form>
+            <div className="form-actions">
+              <button 
+                type="button" 
+                className="cancel-btn" 
+                onClick={() => {
+                  setShowScheduleForm(false);
+                  setShowEditForm(false);
+                  setEditingMeeting(null);
+                  resetFormData();
+                }}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="submit-btn">
+                {isEdit ? 'Update Meeting' : 'Schedule Meeting'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const selectedDegreeFilter = degrees.find(d => d._id === scheduleFormData.degree);
+  const years = selectedDegreeFilter ? selectedDegreeFilter.years : [];
+  const selectedYearFilter = years.find(y => String(y.yearNumber) === String(scheduleFormData.year));
+  const semesters = selectedYearFilter ? selectedYearFilter.semesters : [];
+  const selectedSemesterFilter = semesters.find(s => String(s.semesterNumber) === String(scheduleFormData.semester));
+  const modules = selectedSemesterFilter ? selectedSemesterFilter.modules : [];
 
   if (loading) {
     return (
@@ -589,12 +600,12 @@ const MyMeetingsPage = () => {
                 <div className="filter-item">
                   <label>Degree</label>
                   <select
-                    value={selectedDegree}
-                    onChange={(e) => setSelectedDegree(e.target.value)}
+                    value={scheduleFormData.degree}
+                    onChange={(e) => setScheduleFormData(prev => ({ ...prev, degree: e.target.value }))}
                   >
                     <option value="">All Degrees</option>
-                    {DEGREES.map(degree => (
-                      <option key={degree} value={degree}>{degree}</option>
+                    {degrees.map(degree => (
+                      <option key={degree._id} value={degree._id}>{degree.name}</option>
                     ))}
                   </select>
                 </div>
@@ -602,12 +613,12 @@ const MyMeetingsPage = () => {
                 <div className="filter-item">
                   <label>Degree Year</label>
                   <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(e.target.value)}
+                    value={scheduleFormData.year}
+                    onChange={(e) => setScheduleFormData(prev => ({ ...prev, year: e.target.value }))}
                   >
                     <option value="">All Years</option>
-                    {DEGREE_YEARS.map(year => (
-                      <option key={year} value={year}>{year}</option>
+                    {years.map(y => (
+                      <option key={y.yearNumber} value={y.yearNumber}>Year {y.yearNumber}</option>
                     ))}
                   </select>
                 </div>
@@ -615,12 +626,12 @@ const MyMeetingsPage = () => {
                 <div className="filter-item">
                   <label>Semester</label>
                   <select
-                    value={selectedSemester}
-                    onChange={(e) => setSelectedSemester(e.target.value)}
+                    value={scheduleFormData.semester}
+                    onChange={(e) => setScheduleFormData(prev => ({ ...prev, semester: e.target.value }))}
                   >
                     <option value="">All Semesters</option>
-                    {SEMESTERS.map(semester => (
-                      <option key={semester} value={semester}>{semester}</option>
+                    {semesters.map(s => (
+                      <option key={s.semesterNumber} value={s.semesterNumber}>Semester {s.semesterNumber}</option>
                     ))}
                   </select>
                 </div>
@@ -628,12 +639,12 @@ const MyMeetingsPage = () => {
                 <div className="filter-item">
                   <label>Module</label>
                   <select
-                    value={selectedModule}
-                    onChange={(e) => setSelectedModule(e.target.value)}
+                    value={scheduleFormData.module}
+                    onChange={(e) => setScheduleFormData(prev => ({ ...prev, module: e.target.value }))}
                   >
                     <option value="">All Modules</option>
-                    {MODULES.map(module => (
-                      <option key={module} value={module}>{module}</option>
+                    {modules.map(m => (
+                      <option key={m.code} value={m.code}>{m.code} - {m.name}</option>
                     ))}
                   </select>
                 </div>
@@ -641,8 +652,8 @@ const MyMeetingsPage = () => {
                 <div className="filter-item">
                   <label>Status</label>
                   <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    value={scheduleFormData.status}
+                    onChange={(e) => setScheduleFormData(prev => ({ ...prev, status: e.target.value }))}
                   >
                     <option value="">All Status</option>
                     <option value="starting-soon">Starting Soon</option>

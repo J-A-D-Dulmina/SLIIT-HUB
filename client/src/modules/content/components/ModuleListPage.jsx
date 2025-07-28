@@ -14,106 +14,16 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaPlay,
-  FaLink
+  FaLink,
+  FaGraduationCap
 } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import UpcomingMeetings from '../../../shared/components/UpcomingMeetings';
 import moment from 'moment';
+import * as FaIcons from 'react-icons/fa';
 
-const DEGREES = [
-  { 
-    id: 'bsc', 
-    name: 'Bachelor of Science in Information Technology',
-    icon: <FaLaptopCode />
-  },
-  { 
-    id: 'bse', 
-    name: 'Bachelor of Software Engineering',
-    icon: <FaCode />
-  },
-  { 
-    id: 'bcs', 
-    name: 'Bachelor of Computer Science',
-    icon: <FaDatabase />
-  },
-  { 
-    id: 'bnet', 
-    name: 'Bachelor of Network Engineering',
-    icon: <FaNetworkWired />
-  },
-  { 
-    id: 'bmob', 
-    name: 'Bachelor of Mobile Computing',
-    icon: <FaMobileAlt />
-  },
-  { 
-    id: 'bcloud', 
-    name: 'Bachelor of Cloud Computing',
-    icon: <FaCloud />
-  }
-];
-
-const YEARS = [
-  { id: 1, name: 'Year 1' },
-  { id: 2, name: 'Year 2' },
-  { id: 3, name: 'Year 3' },
-  { id: 4, name: 'Year 4' }
-];
-
-const SEMESTERS = [
-  { id: 1, name: 'Semester 1' },
-  { id: 2, name: 'Semester 2' }
-];
-
-// Update MODULES structure to include semesters
-const MODULES = {
-  bsc: {
-    1: {
-      1: [ // Year 1, Semester 1
-        {
-          id: 'IT1010',
-          name: 'Introduction to Programming',
-          description: 'Fundamental concepts of programming and problem-solving using Python.',
-          credits: 3
-        },
-        {
-          id: 'IT1020',
-          name: 'Database Management Systems',
-          description: 'Introduction to database concepts, SQL, and database design.',
-          credits: 3
-        }
-      ],
-      2: [ // Year 1, Semester 2
-        {
-          id: 'IT1030',
-          name: 'Web Development',
-          description: 'HTML, CSS, and JavaScript fundamentals for web development.',
-          credits: 3
-        }
-      ]
-    },
-    2: {
-      1: [ // Year 2, Semester 1
-        {
-          id: 'IT2010',
-          name: 'Object-Oriented Programming',
-          description: 'Advanced programming concepts using Java.',
-          credits: 3
-        }
-      ],
-      2: [ // Year 2, Semester 2
-        {
-          id: 'IT2020',
-          name: 'Data Structures and Algorithms',
-          description: 'Implementation and analysis of common data structures and algorithms.',
-          credits: 3
-        }
-      ]
-    }
-  }
-};
-
+// Remove static YEARS, SEMESTERS, MODULES
 // Add the same meeting data structure as LandingPage
 const MY_SCHEDULED_MEETINGS = [
   {
@@ -144,6 +54,7 @@ const getModuleDetails = (meetingId) => {
 
 const ModuleListPage = () => {
   const navigate = useNavigate();
+  const [degrees, setDegrees] = useState([]);
   const [expandedDegrees, setExpandedDegrees] = useState({});
   const [selectedYear, setSelectedYear] = useState({});
   const [selectedSemester, setSelectedSemester] = useState({});
@@ -152,8 +63,24 @@ const ModuleListPage = () => {
   const [events, setEvents] = useState([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [meetingToStart, setMeetingToStart] = useState(null);
+  const [allPublishedVideos, setAllPublishedVideos] = useState([]);
+
+  const fetchAllPublishedVideos = async () => {
+    const res = await fetch(`/api/tutoring/videos/published`);
+    if (res.ok) {
+      const data = await res.json();
+      setAllPublishedVideos(data.videos);
+    } else {
+      setAllPublishedVideos([]);
+    }
+  };
 
   useEffect(() => {
+    fetch('/api/admin/degrees')
+      .then(res => res.json())
+      .then(data => setDegrees(data))
+      .catch(() => setDegrees([]));
+    
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
@@ -188,6 +115,7 @@ const ModuleListPage = () => {
     ];
 
     setEvents([...calendarEvents, ...upcomingMeetings]);
+    fetchAllPublishedVideos();
     
     return () => clearInterval(timer);
   }, []);
@@ -254,9 +182,28 @@ const ModuleListPage = () => {
     navigate(`/videos/${moduleId}`);
   };
 
-  const getModules = (degreeId, yearId, semesterId) => {
-    return MODULES[degreeId]?.[yearId]?.[semesterId] || [];
-  };
+  // Remove static YEARS and SEMESTERS usage
+  // const getModules = (degreeId, yearId, semesterId) => {
+  //   // Always use 'bsc' for demo/testing so modules show for any degree
+  //   return MODULES['bsc']?.[yearId]?.[semesterId] || [];
+  // };
+
+  // Add a function to fetch published videos for a module
+  // const fetchPublishedVideos = async (degreeId, yearNumber, semesterNumber, moduleCode) => {
+  //   const params = new URLSearchParams({
+  //     degree: degreeId,
+  //     year: yearNumber,
+  //     semester: semesterNumber,
+  //     module: moduleCode
+  //   });
+  //   const res = await fetch(`/api/tutoring/videos/published?${params.toString()}`);
+  //   if (res.ok) {
+  //     const data = await res.json();
+  //     setSelectedModuleVideos(data.videos);
+  //   } else {
+  //     setSelectedModuleVideos([]);
+  //   }
+  // };
 
   return (
     <div className="landing-page">
@@ -282,71 +229,112 @@ const ModuleListPage = () => {
                   <div className="degree-selection">
                     <h2>Select Your Degree Program</h2>
                     <div className="degree-list">
-                      {DEGREES.map(degree => (
-                        <div key={degree.id} className="degree-section">
-                          <div 
-                            className={`degree-card ${expandedDegrees[degree.id] ? 'expanded' : ''}`}
-                            onClick={() => toggleDegree(degree.id)}
-                          >
-                            <div className="degree-icon">{degree.icon}</div>
-                            <div className="degree-info">
-                              <h3>{degree.name}</h3>
-                            </div>
-                            {expandedDegrees[degree.id] ? <FaChevronUp /> : <FaChevronDown />}
-                          </div>
-                          
-                          {expandedDegrees[degree.id] && (
-                            <div className="degree-content">
-                              <div className="year-list">
-                                {YEARS.map(year => (
-                                  <div
-                                    key={year.id}
-                                    className={`year-card ${selectedYear[degree.id] === year.id ? 'selected' : ''}`}
-                                    onClick={() => toggleYear(degree.id, year.id)}
-                                  >
-                                    <h3>{year.name}</h3>
-                                  </div>
-                                ))}
+                      {degrees.map(degree => {
+                        return (
+                          <div key={degree._id} className="degree-section">
+                            <div 
+                              className={`degree-card ${expandedDegrees[degree._id] ? 'expanded' : ''}`}
+                              onClick={() => toggleDegree(degree._id)}
+                            >
+                              <div className="degree-icon">
+                                {degree.icon && FaIcons[degree.icon]
+                                  ? React.createElement(FaIcons[degree.icon])
+                                  : <FaGraduationCap />}
                               </div>
-                              
-                              {selectedYear[degree.id] && (
-                                <div className="semester-list">
-                                  {SEMESTERS.map(semester => (
-                                    <div
-                                      key={semester.id}
-                                      className={`semester-card ${selectedSemester[degree.id] === semester.id ? 'selected' : ''}`}
-                                      onClick={() => toggleSemester(degree.id, semester.id)}
-                                    >
-                                      <h4>{semester.name}</h4>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              
-                              {selectedSemester[degree.id] && (
-                                <div className="module-list">
-                                  <div className="module-grid">
-                                    {getModules(degree.id, selectedYear[degree.id], selectedSemester[degree.id]).map(module => (
-                                      <div
-                                        key={module.id}
-                                        className="module-card"
-                                        onClick={() => handleModuleClick(module.id)}
-                                      >
-                                        <div className="module-header">
-                                          <h3>{module.id}</h3>
-                                          <span className="credits">{module.credits} Credits</span>
-                                        </div>
-                                        <h4>{module.name}</h4>
-                                        <p>{module.description}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                              <div className="degree-info">
+                                <h3>{degree.name}</h3>
+                              </div>
+                              {expandedDegrees[degree._id] ? <FaChevronUp /> : <FaChevronDown />}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            
+                            {expandedDegrees[degree._id] && (
+                              <div className="degree-content">
+                                <div className="year-list">
+                                  {degree.years.map(year => {
+                                    return (
+                                      <div
+                                        key={year.yearNumber}
+                                        className={`year-card ${selectedYear[degree._id] === year.yearNumber ? 'selected' : ''}`}
+                                        onClick={() => {
+                                          toggleYear(degree._id, year.yearNumber);
+                                        }}
+                                      >
+                                        <h3>Year {year.yearNumber}</h3>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                
+                                {selectedYear[degree._id] && (
+                                  <div className="semester-list">
+                                    {degree.years.find(y => y.yearNumber === selectedYear[degree._id])?.semesters.map(semester => {
+                                      return (
+                                        <div
+                                          key={semester.semesterNumber}
+                                          className={`semester-card ${selectedSemester[degree._id] === semester.semesterNumber ? 'selected' : ''}`}
+                                          onClick={() => {
+                                            toggleSemester(degree._id, semester.semesterNumber);
+                                          }}
+                                        >
+                                          <h4>Semester {semester.semesterNumber}</h4>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                
+                                {selectedSemester[degree._id] && (
+                                  <div className="module-list">
+                                    <div className="module-grid">
+                                      {degree.years.find(y => y.yearNumber === selectedYear[degree._id])?.semesters.find(s => s.semesterNumber === selectedSemester[degree._id])?.modules.map(module => {
+                                        const moduleVideos = allPublishedVideos.filter(video => video.module === module.code);
+                                        console.log('Module code:', module.code, 'All video.module:', allPublishedVideos.map(v => v.module));
+                                        console.log('Filtered videos for this module:', moduleVideos);
+                                        return (
+                                          <div
+                                            key={module.code}
+                                            className="module-card"
+                                            onClick={() => handleModuleClick(module.code)}
+                                          >
+                                            <div className="module-header">
+                                              <h3>{module.code}</h3>
+                                              <span className="credits">{module.credit} Credits</span>
+                                            </div>
+                                            <h4>{module.name}</h4>
+                                            <p>{module.description}</p>
+                                            {/* Show published videos for this module */}
+                                            {moduleVideos && moduleVideos.length > 0 && (
+                                              <div className="published-videos-list">
+                                                {moduleVideos.map(video => {
+                                                  // Patch: fallback for missing thumbnail/title, show raw data if missing
+                                                  const thumbnail = video.thumbnail || '/assets/SLITT HUB logo transparent.png';
+                                                  const title = video.title || 'Untitled Video';
+                                                  return (
+                                                    <div key={video._id} className="published-video-card">
+                                                      <img src={thumbnail} alt={title} style={{ width: 120, height: 68, objectFit: 'cover', borderRadius: 6 }} />
+                                                      <div style={{ marginLeft: 10 }}>
+                                                        <div style={{ fontWeight: 600 }}>{title}</div>
+                                                        <div style={{ fontSize: 12, color: '#666' }}>{video.description}</div>
+                                                        {(!video.title || !video.thumbnail) && (
+                                                          <pre style={{ fontSize: 10, color: '#b91c1c', background: '#fef2f2', padding: 4, borderRadius: 4 }}>{JSON.stringify(video, null, 2)}</pre>
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

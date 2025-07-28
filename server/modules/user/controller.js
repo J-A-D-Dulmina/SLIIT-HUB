@@ -1,13 +1,17 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const Student = require('./model');
+const { Student } = require('./model');
 const Lecturer = require('../lecturer/model');
+const { Admin } = require('./model');
+const Degree = require('../admin/degree.model');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required.' });
+  }
 
   try {
     // Try student first
@@ -18,11 +22,16 @@ exports.loginUser = async (req, res) => {
       user = await Lecturer.findOne({ email });
       userType = 'lecturer';
     }
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-
+    if (!user) {
+      return res.status(401).json({ message: 'No user found with this email.' });
+    }
+    if (!user.password) {
+      return res.status(400).json({ message: 'User account is missing a password. Please reset your password or contact support.' });
+    }
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
-
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Incorrect password.' });
+    }
     const token = jwt.sign({ 
       id: user._id, 
       type: userType,
@@ -42,7 +51,8 @@ exports.loginUser = async (req, res) => {
       ...(userType === 'student' ? { studentId: user.studentId } : { lecturerId: user.lecturerId })
     });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
 
@@ -59,6 +69,9 @@ exports.registerUser = async (req, res) => {
     const existingStudentId = await Student.findOne({ studentId });
     if (existingStudentId) return res.status(409).json({ message: 'Student ID already registered' });
     const hashed = await bcrypt.hash(password, 10);
+    // Find degree by code or _id
+    let degreeObj = await Degree.findOne({ code: degree }) || await Degree.findById(degree);
+    if (!degreeObj) return res.status(400).json({ message: 'Degree not found' });
     const student = new Student({
       name,
       email,
@@ -66,7 +79,8 @@ exports.registerUser = async (req, res) => {
       studentId,
       mobile,
       enrolYear: Number(enrolYear),
-      degree
+      degree: degreeObj._id,
+      degreeLegacy: degree // Store original string for legacy
     });
     await student.save();
     res.status(201).json({ message: 'User registered successfully' });
@@ -112,7 +126,12 @@ exports.updateProfile = async (req, res) => {
   try {
     if (userType === 'student') {
       const updateData = { name, mobile };
-      if (degree) updateData.degree = degree;
+      if (degree) {
+        let degreeObj = await Degree.findOne({ code: degree }) || await Degree.findById(degree);
+        if (!degreeObj) return res.status(400).json({ message: 'Degree not found' });
+        updateData.degree = degreeObj._id;
+        updateData.degreeLegacy = degree;
+      }
       
       const updatedUser = await Student.findByIdAndUpdate(
         userId,
@@ -132,7 +151,8 @@ exports.updateProfile = async (req, res) => {
           mobile: updatedUser.mobile,
           userType: 'student',
           studentId: updatedUser.studentId,
-          degree: updatedUser.degree
+          degree: updatedUser.degree,
+          degreeLegacy: updatedUser.degreeLegacy
         }
       });
     } else if (userType === 'lecturer') {
@@ -159,6 +179,86 @@ exports.updateProfile = async (req, res) => {
     } else {
       res.status(400).json({ message: 'Invalid user type' });
     }
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}; 
+
+exports.adminLogin = async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
+  try {
+    const admin = await Admin.findOne({ email });
+    if (!admin) return res.status(401).json({ message: 'Invalid credentials' });
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
+    const token = jwt.sign({ id: admin._id, type: 'admin', email: admin.email, adminId: admin.adminId }, JWT_SECRET, { expiresIn: '1d' });
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+    res.json({ token, email: admin.email, userType: 'admin', adminId: admin.adminId });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}; 
+
+exports.getAllAdmins = async (req, res) => {
+  try {
+    const admins = await Admin.find({}, '-password'); // Exclude password from list
+    res.json({ admins });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createAdmin = async (req, res) => {
+  // Only extract allowed fields, ignore adminId if present in req.body
+  const { name, email, mobile, password } = req.body;
+  if (!name || !email || !mobile || !password) return res.status(400).json({ message: 'All fields required' });
+  try {
+    const existing = await Admin.findOne({ email });
+    if (existing) return res.status(409).json({ message: 'Email already exists' });
+    const hashed = await bcrypt.hash(password, 10);
+    // Do NOT set adminId here, let the schema pre-save hook handle it
+    const admin = new Admin({ name, email, mobile, password: hashed });
+    await admin.save();
+    res.status(201).json(admin);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateAdmin = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, mobile, password } = req.body;
+  try {
+    const admin = await Admin.findById(id);
+    if (!admin) return res.status(404).json({ message: 'Admin not found' });
+    admin.name = name || admin.name;
+    admin.email = email || admin.email;
+    admin.mobile = mobile || admin.mobile;
+    if (password) {
+      // Only hash if password is changed
+      if (!(await bcrypt.compare(password, admin.password))) {
+        admin.password = await bcrypt.hash(password, 10);
+      }
+    }
+    await admin.save();
+    res.json(admin);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteAdmin = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const admin = await Admin.findByIdAndDelete(id);
+    if (!admin) return res.status(404).json({ message: 'Admin not found' });
+    res.json({ message: 'Admin deleted' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

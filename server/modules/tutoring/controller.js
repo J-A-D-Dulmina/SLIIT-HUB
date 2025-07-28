@@ -2,7 +2,9 @@ const Video = require('./model');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const Student = require('../user/model');
+const { Student } = require('../user/model');
+const crypto = require('crypto'); // Added for uniqueId generation
+const mongoose = require('mongoose');
 
 // Configure multer for video upload
 const storage = multer.diskStorage({
@@ -68,7 +70,13 @@ exports.uploadVideo = async (req, res) => {
       }
 
       // Generate unique ID combining student ID and timestamp
-      const uniqueId = `${req.user.id}_${Date.now()}`;
+      let uniqueId = `${req.user.id}_${Date.now()}`;
+
+      // Ensure uniqueId is exactly 6 uppercase alphanumeric characters
+      while (uniqueId.length < 6) {
+        uniqueId += crypto.randomBytes(3).toString('base64').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+      }
+      uniqueId = uniqueId.slice(0, 6);
 
       // Generate thumbnail path
       const thumbnailDir = path.join(__dirname, '../../uploads/thumbnails');
@@ -121,7 +129,9 @@ exports.uploadVideo = async (req, res) => {
         thumbnail: thumbnail,
         fileSize: req.file.size,
         uploadedBy: req.user.id,
-        studentId: student.studentId
+        studentId: student.studentId,
+        addDate: new Date(),
+        updateDate: new Date()
       });
 
       // Always update summary if provided
@@ -176,6 +186,7 @@ exports.uploadVideo = async (req, res) => {
       if (req.file) {
         fs.unlinkSync(req.file.path);
       }
+      console.error('Video upload error:', error);
       res.status(500).json({ message: 'Server error' });
     }
   });
@@ -267,6 +278,7 @@ exports.updateVideo = async (req, res) => {
     video.aiFeatures.timestamps = Array.isArray(video.timestamps) && video.timestamps.length > 0;
     console.log('aiFeatures to be saved:', video.aiFeatures);
     video.markModified('aiFeatures');
+    video.updateDate = new Date();
 
     await video.save();
     
@@ -313,6 +325,8 @@ exports.deleteVideo = async (req, res) => {
       fs.unlinkSync(video.thumbnail);
     }
 
+    video.deleteDate = new Date();
+    await video.save();
     await Video.findByIdAndDelete(videoId);
     
     res.json({ message: 'Video deleted successfully' });
@@ -335,7 +349,10 @@ exports.togglePublishStatus = async (req, res) => {
     video.status = video.status === 'published' ? 'unpublished' : 'published';
     if (video.status === 'published') {
       video.publishDate = new Date();
+    } else {
+      video.unpublishDate = new Date();
     }
+    video.updateDate = new Date();
 
     await video.save();
     
@@ -456,6 +473,32 @@ exports.getVideoById = async (req, res) => {
       }
     });
   } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}; 
+
+// Get published videos by degree, year, semester, and module
+exports.getPublishedVideos = async (req, res) => {
+  try {
+    const { degree, year, semester, module } = req.query;
+    const query = { status: 'published' };
+    if (degree) {
+      // If degree looks like a MongoDB ObjectId, use ObjectId for query
+      if (/^[a-fA-F0-9]{24}$/.test(degree)) {
+        query.degree = mongoose.Types.ObjectId(degree);
+      } else {
+        query.degree = degree;
+      }
+    }
+    if (year) query.year = year;
+    if (semester) query.semester = semester;
+    if (module) query.module = module;
+    console.log('Published videos query:', query);
+    const videos = await Video.find(query);
+    console.log('Published videos found:', videos);
+    res.json({ videos });
+  } catch (err) {
+    console.error('Error in getPublishedVideos:', err);
     res.status(500).json({ message: 'Server error' });
   }
 }; 

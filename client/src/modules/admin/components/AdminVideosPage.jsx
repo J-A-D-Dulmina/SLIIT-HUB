@@ -1,46 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import '../styles/AdminVideosPage.css';
-import { FaPencilAlt, FaTrash } from 'react-icons/fa';
+import { FaPencilAlt, FaTrash, FaEye } from 'react-icons/fa';
 import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
-
-const initialVideos = [
-  {
-    id: 1,
-    videoId: 'VID001',
-    videoName: 'Intro to Programming',
-    preview: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    studentName: 'Alice Smith',
-    studentId: 'S001',
-    degreeNumber: 'D001',
-    degreeName: 'BSc in IT',
-    year: '1',
-    module: 'Programming',
-    moduleNumber: 'M101',
-    semester: '1',
-    publishDate: '2024-06-01',
-    description: 'Intro to programming basics.'
-  },
-  {
-    id: 2,
-    videoId: 'VID002',
-    videoName: 'Networks Overview',
-    preview: 'https://www.w3schools.com/html/movie.mp4',
-    studentName: 'Bob Lee',
-    studentId: 'S002',
-    degreeNumber: 'D002',
-    degreeName: 'BSc in Software Engineering',
-    year: '2',
-    module: 'Networks',
-    moduleNumber: 'M102',
-    semester: '2',
-    publishDate: '2024-06-02',
-    description: 'Understanding computer networks.'
-  }
-];
+import ReactPlayer from 'react-player';
 
 const emptyVideo = {
-  videoId: '',
-  videoName: '',
+  uniqueId: '',
+  title: '',
   preview: '',
   studentName: '',
   studentId: '',
@@ -54,8 +20,56 @@ const emptyVideo = {
   description: ''
 };
 
+const viewFieldOrder = [
+  'uniqueId', 'title', 'description', 'module', 'moduleName', 'degreeName', 'year', 'semester', 'videoFile', 'thumbnail', 'fileSize', 'uploadedBy', 'studentId', 'status', 'timestamps', 'uploadDate', 'aiFeatures', 'summary'
+];
+const fieldLabels = {
+  uniqueId: 'Video ID',
+  title: 'Title',
+  description: 'Description',
+  module: 'Module Code',
+  moduleName: 'Module Name',
+  degreeName: 'Degree Name',
+  year: 'Year',
+  semester: 'Semester',
+  videoFile: 'Video',
+  thumbnail: 'Thumbnail',
+  fileSize: 'File Size',
+  uploadedBy: 'Uploaded By',
+  studentId: 'Student ID',
+  status: 'Status',
+  timestamps: 'Timestamps',
+  uploadDate: 'Upload Date',
+  aiFeatures: 'AI Features',
+  summary: 'Summary',
+};
+function formatFileSize(size) {
+  if (!size) return '';
+  if (size > 1024 * 1024) return (size / (1024 * 1024)).toFixed(2) + ' MB';
+  if (size > 1024) return (size / 1024).toFixed(2) + ' KB';
+  return size + ' B';
+}
+function formatDate(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d)) return date;
+  return d.toISOString().replace('T', ' ').slice(0, 19);
+}
+
+function getWebPath(dbPath) {
+  if (!dbPath) return '';
+  let path = dbPath.replace(/\\/g, '/');
+  const idx = path.indexOf('uploads/');
+  if (idx !== -1) {
+    path = '/' + path.slice(idx);
+  } else if (!path.startsWith('/')) {
+    path = '/' + path;
+  }
+  return path;
+}
+
 const AdminVideosPage = () => {
-  const [videos, setVideos] = useState(initialVideos);
+  const [videos, setVideos] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -67,13 +81,105 @@ const AdminVideosPage = () => {
   const [filterModule, setFilterModule] = useState('');
   const [filterSemester, setFilterSemester] = useState('');
   const [filterYear, setFilterYear] = useState('');
+  const studentNameCache = useRef({});
+  const [, forceUpdate] = useState(0); // for re-render after cache update
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewVideo, setViewVideo] = useState(null);
+  const [degrees, setDegrees] = useState([]);
+  const [yearOptions, setYearOptions] = useState([]);
+  const [semesterOptions, setSemesterOptions] = useState([]);
+  const [moduleOptions, setModuleOptions] = useState([]);
+
+  // Fetch degrees for select options
+  useEffect(() => {
+    fetch('/api/admin/degrees')
+      .then(res => res.json())
+      .then(data => setDegrees(data));
+  }, []);
+
+  // Update year options when degree changes
+  useEffect(() => {
+    const degree = degrees.find(d => d.name === videoForm.degreeName);
+    if (degree) {
+      setYearOptions(degree.years.map(y => y.yearNumber));
+    } else {
+      setYearOptions([]);
+    }
+    setSemesterOptions([]);
+    setModuleOptions([]);
+  }, [videoForm.degreeName, degrees]);
+
+  // Update semester options when year changes
+  useEffect(() => {
+    const degree = degrees.find(d => d.name === videoForm.degreeName);
+    const year = degree?.years.find(y => String(y.yearNumber) === String(videoForm.year));
+    if (year) {
+      setSemesterOptions(year.semesters.map(s => s.semesterNumber));
+    } else {
+      setSemesterOptions([]);
+    }
+    setModuleOptions([]);
+  }, [videoForm.degreeName, videoForm.year, degrees]);
+
+  // Update module options when semester changes
+  useEffect(() => {
+    const degree = degrees.find(d => d.name === videoForm.degreeName);
+    const year = degree?.years.find(y => String(y.yearNumber) === String(videoForm.year));
+    const semester = year?.semesters.find(s => String(s.semesterNumber) === String(videoForm.semester));
+    if (semester) {
+      setModuleOptions(semester.modules.map(m => ({ code: m.code, name: m.name })));
+    } else {
+      setModuleOptions([]);
+    }
+  }, [videoForm.degreeName, videoForm.year, videoForm.semester, degrees]);
+
+  // Auto-fetch student name by studentId
+  useEffect(() => {
+    if (videoForm.studentId && !videoForm.studentName) {
+      fetch(`/api/students/by-id/${videoForm.studentId}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.name) {
+            setVideoForm(vf => ({ ...vf, studentName: data.name }));
+          }
+        });
+    }
+  }, [videoForm.studentId]);
+
+  // Fetch videos from backend on mount
+  useEffect(() => {
+    fetchVideos();
+  }, []);
+
+  const fetchVideos = async () => {
+    try {
+      const res = await fetch('/api/admin/videos');
+      if (res.ok) {
+        const data = await res.json();
+        setVideos(data);
+      }
+    } catch (err) {
+      // Optionally handle error
+    }
+  };
+
+  // Fetch student name by studentId if not present
+  const getStudentName = (studentId, fallbackName) => {
+    if (!studentId) return fallbackName || 'Unknown Student';
+    if (studentNameCache.current[studentId]) return studentNameCache.current[studentId];
+    // Fetch and cache
+    fetch(`/api/students/by-id/${studentId}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.name) {
+          studentNameCache.current[studentId] = data.name;
+          forceUpdate(n => n + 1); // trigger re-render
+        }
+      });
+    return fallbackName || 'Unknown Student';
+  };
 
   // Modal open/close helpers
-  const openAddModal = () => {
-    setModalMode('add');
-    setVideoForm(emptyVideo);
-    setShowModal(true);
-  };
   const openEditModal = (video) => {
     setModalMode('edit');
     setVideoForm({ ...video });
@@ -84,6 +190,15 @@ const AdminVideosPage = () => {
     setShowModal(false);
     setSelectedVideo(null);
     setVideoForm(emptyVideo);
+  };
+
+  const openViewModal = (video) => {
+    setViewVideo(video);
+    setShowViewModal(true);
+  };
+  const closeViewModal = () => {
+    setShowViewModal(false);
+    setViewVideo(null);
   };
 
   // Form changes
@@ -105,16 +220,31 @@ const AdminVideosPage = () => {
   };
 
   // Add/Edit Video
-  const handleVideoFormSubmit = (e) => {
+  const handleVideoFormSubmit = async (e) => {
     e.preventDefault();
-    if (!videoForm.videoId.trim() || !videoForm.videoName.trim() || !videoForm.preview.trim() || !videoForm.studentName.trim() || !videoForm.studentId.trim() || !videoForm.module.trim() || !videoForm.moduleNumber.trim() || !videoForm.degreeNumber.trim() || !videoForm.degreeName.trim() || !videoForm.semester.trim() || !videoForm.publishDate.trim() || !videoForm.description.trim()) return;
+    if (!videoForm.uniqueId.trim() || !videoForm.title.trim() || !videoForm.preview.trim() || !videoForm.studentName.trim() || !videoForm.studentId.trim() || !videoForm.module.trim() || !videoForm.moduleNumber.trim() || !videoForm.degreeName.trim() || !videoForm.semester.trim() || !videoForm.publishDate.trim() || !videoForm.description.trim()) return;
     if (modalMode === 'add') {
-      setVideos([
-        ...videos,
-        { ...videoForm, id: Date.now() },
-      ]);
-    } else if (modalMode === 'edit' && selectedVideo) {
-      setVideos(videos.map(v => v.id === selectedVideo.id ? { ...videoForm, id: v.id } : v));
+      try {
+        const res = await fetch('/api/admin/videos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(videoForm)
+        });
+        if (res.ok) {
+          await fetchVideos();
+        }
+      } catch {}
+    } else if (modalMode === 'edit' && selectedVideo && selectedVideo._id) {
+      try {
+        const res = await fetch(`/api/admin/videos/${selectedVideo._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(videoForm)
+        });
+        if (res.ok) {
+          await fetchVideos();
+        }
+      } catch {}
     }
     closeModal();
   };
@@ -124,8 +254,13 @@ const AdminVideosPage = () => {
     setVideoToDelete(video);
     setShowDeleteDialog(true);
   };
-  const confirmDeleteVideo = () => {
-    setVideos(videos.filter(v => v.id !== videoToDelete.id));
+  const confirmDeleteVideo = async () => {
+    if (videoToDelete && videoToDelete._id) {
+      try {
+        await fetch(`/api/admin/videos/${videoToDelete._id}`, { method: 'DELETE' });
+        await fetchVideos();
+      } catch {}
+    }
     setShowDeleteDialog(false);
     setVideoToDelete(null);
   };
@@ -149,25 +284,29 @@ const AdminVideosPage = () => {
         />
         <select value={filterDegree} onChange={e => setFilterDegree(e.target.value)} className="videos-filter-select">
           <option value="">All Degrees</option>
-          {[...new Set(videos.map(v => v.degreeName))].map(d => (
-            <option key={d} value={d}>{d}</option>
-          ))}
+          {[...new Set(videos.map(v => (v.degreeCode || '') + '|' + (v.degreeName || '')).filter(pair => pair && pair !== '|'))]
+            .map(pair => {
+              const [code, name] = pair.split('|');
+              return (
+                <option key={code} value={code}>{name ? `${name} (${code})` : code}</option>
+              );
+            })}
         </select>
         <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="videos-filter-select">
           <option value="">All Years</option>
-          {[...new Set(videos.map(v => v.year))].map(y => (
+          {[...new Set(videos.map(v => v.year).filter(Boolean))].map(y => (
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
         <select value={filterSemester} onChange={e => setFilterSemester(e.target.value)} className="videos-filter-select">
           <option value="">All Semesters</option>
-          {[...new Set(videos.map(v => v.semester))].map(s => (
+          {[...new Set(videos.map(v => v.semester).filter(Boolean))].map(s => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
         <select value={filterModule} onChange={e => setFilterModule(e.target.value)} className="videos-filter-select">
           <option value="">All Modules</option>
-          {[...new Set(videos.map(v => v.module))].map(m => (
+          {[...new Set(videos.map(v => v.module).filter(Boolean))].map(m => (
             <option key={m} value={m}>{m}</option>
           ))}
         </select>
@@ -177,76 +316,90 @@ const AdminVideosPage = () => {
           <thead>
             <tr>
               <th>Video ID</th>
-              <th>Video Name</th>
+              <th>Title</th>
               <th>Preview</th>
-              <th>Student Name</th>
-              <th>Student ID</th>
-              <th>Degree Number</th>
               <th>Degree Name</th>
               <th>Year</th>
-              <th>Module</th>
               <th>Semester</th>
-              <th>Module Number</th>
-              <th>Publish Date</th>
+              <th>Module Name</th>
+              <th>Tags</th>
+              <th>Student Name</th>
+              <th>Student ID</th>
               <th>Description</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {videos.filter(video => {
-              const q = search.toLowerCase();
-              const matchesSearch = (
-                video.videoId.toLowerCase().includes(q) ||
-                video.videoName.toLowerCase().includes(q) ||
-                video.studentName.toLowerCase().includes(q) ||
-                video.studentId.toLowerCase().includes(q) ||
-                video.degreeNumber.toLowerCase().includes(q) ||
-                video.degreeName.toLowerCase().includes(q) ||
-                video.year.toLowerCase().includes(q) ||
-                video.semester.toLowerCase().includes(q) ||
-                video.module.toLowerCase().includes(q) ||
-                video.moduleNumber.toLowerCase().includes(q) ||
-                video.publishDate.toLowerCase().includes(q) ||
-                video.description.toLowerCase().includes(q)
-              );
-              const matchesDegree = !filterDegree || video.degreeName === filterDegree;
-              const matchesYear = !filterYear || video.year === filterYear;
-              const matchesModule = !filterModule || video.module === filterModule;
-              const matchesSemester = !filterSemester || video.semester === filterSemester;
-              return matchesSearch && matchesDegree && matchesYear && matchesModule && matchesSemester;
-            }).map(video => (
-              <tr key={video.id} onClick={e => { if (e.target.tagName !== 'BUTTON') handleRowClick(video); }} className="videos-row">
-                <td>{video.videoId}</td>
-                <td>{video.videoName}</td>
-                <td>
-                  {video.preview ? (
-                    <video src={video.preview} width={80} height={48} controls style={{ borderRadius: 6, background: '#eee' }}>
-                      Your browser does not support the video tag.
-                    </video>
-                  ) : (
-                    <span style={{ color: '#aaa' }}>No Preview</span>
-                  )}
-                </td>
-                <td>{video.studentName}</td>
-                <td>{video.studentId}</td>
-                <td>{video.degreeNumber}</td>
-                <td>{video.degreeName}</td>
-                <td>{video.year}</td>
-                <td>{video.module}</td>
-                <td>{video.semester}</td>
-                <td>{video.moduleNumber}</td>
-                <td>{video.publishDate}</td>
-                <td>{video.description}</td>
-                <td style={{textAlign: 'right'}}>
-                  <button type="button" className="videos-edit-btn" onClick={e => { e.stopPropagation(); openEditModal(video); }} title="Edit">
-                    <FaPencilAlt />
-                  </button>
-                  <button type="button" className="videos-delete-btn" onClick={e => { e.stopPropagation(); handleDeleteVideo(video); }} title="Delete">
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {videos.length === 0 ? (
+              <tr><td colSpan={12} style={{ textAlign: 'center', color: '#888', padding: '32px 0' }}>No videos found.</td></tr>
+            ) : (
+              videos.filter(video => {
+                const q = search.toLowerCase();
+                const matchesSearch = (
+                  (video.degreeName || '').toLowerCase().includes(q) ||
+                  (video.year || '').toLowerCase().includes(q) ||
+                  (video.semester || '').toLowerCase().includes(q) ||
+                  (video.moduleName || '').toLowerCase().includes(q) ||
+                  (video.uniqueId || '').toLowerCase().includes(q) ||
+                  (video.title || '').toLowerCase().includes(q) ||
+                  (video.studentName || getStudentName(video.studentId)).toLowerCase().includes(q) ||
+                  (video.studentId || '').toLowerCase().includes(q) ||
+                  (video.description || '').toLowerCase().includes(q)
+                );
+                const matchesDegree = !filterDegree || (video.degreeName || '') === filterDegree;
+                const matchesYear = !filterYear || (video.year || '') === filterYear;
+                const matchesModule = !filterModule || (video.module || '') === filterModule;
+                const matchesSemester = !filterSemester || (video.semester || '') === filterSemester;
+                return matchesSearch && matchesDegree && matchesYear && matchesModule && matchesSemester;
+              }).map(video => (
+                <tr key={video._id} className="videos-row">
+                  <td>{video.uniqueId || ''}</td>
+                  <td>{video.title || ''}</td>
+                  <td>
+                    {video.videoFile ? (
+                      <video src={getWebPath(video.videoFile)} width={80} height={48} controls style={{ borderRadius: 6, background: '#eee' }}>
+                        Your browser does not support the video tag.
+                      </video>
+                    ) : (
+                      <span style={{ color: '#aaa' }}>No Preview</span>
+                    )}
+                  </td>
+                  <td>{video.degreeName || ''}</td>
+                  <td>{video.year || ''}</td>
+                  <td>{video.semester || ''}</td>
+                  <td>{video.moduleName || ''}</td>
+                  <td>
+                    {/* Tags: status, AI features */}
+                    {video.status && (
+                      <span className={`tag status-tag status-${video.status}`}>{video.status}</span>
+                    )}
+                    {video.aiFeatures?.summary && (
+                      <span className="tag ai-tag">AI Summary</span>
+                    )}
+                    {video.aiFeatures?.timestamps && (
+                      <span className="tag ai-tag">AI Timestamps</span>
+                    )}
+                    {video.aiFeatures?.lecturerRecommended && (
+                      <span className="tag lecturer-tag">Lecturer Recommended</span>
+                    )}
+                  </td>
+                  <td>{video.studentName || getStudentName(video.studentId)}</td>
+                  <td>{video.studentId || ''}</td>
+                  <td>{video.description || ''}</td>
+                  <td style={{textAlign: 'right'}}>
+                    <button type="button" className="videos-view-btn" onClick={e => { e.stopPropagation(); openViewModal(video); }} title="View">
+                      <FaEye style={{ fontSize: 16, verticalAlign: 'middle' }} />
+                    </button>
+                    <button type="button" className="videos-edit-btn" onClick={e => { e.stopPropagation(); openEditModal(video); }} title="Edit">
+                      <FaPencilAlt />
+                    </button>
+                    <button type="button" className="videos-delete-btn" onClick={e => { e.stopPropagation(); handleDeleteVideo(video); }} title="Delete">
+                      <FaTrash />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -258,60 +411,281 @@ const AdminVideosPage = () => {
             <h3>{modalMode === 'add' ? 'Add Video' : 'Edit Video'}</h3>
             <form className="modal-form" onSubmit={handleVideoFormSubmit}>
               <label>Video ID
-                <input name="videoId" value={videoForm.videoId} onChange={handleVideoFormChange} required />
+                <input name="uniqueId" value={videoForm.uniqueId} onChange={handleVideoFormChange} required />
               </label>
-              <label>Video Name
-                <input name="videoName" value={videoForm.videoName} onChange={handleVideoFormChange} required />
-              </label>
-              <div style={{ marginBottom: 16 }}>
-                {videoForm.preview ? (
-                  <div style={{ marginBottom: 8 }}>
-                    <video src={videoForm.preview} width={220} height={120} controls style={{ borderRadius: 8, background: '#eee' }}>
-                      Your browser does not support the video tag.
-                    </video>
-                    <button type="button" onClick={handleDeleteVideoFile} style={{ marginLeft: 12, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Delete Video</button>
-                  </div>
-                ) : null}
-                <label style={{ display: 'block', marginBottom: 4 }}>
-                  <span style={{ fontWeight: 500 }}>Upload Video</span>
-                  <input type="file" accept="video/*" onChange={handleVideoFileChange} style={{ display: 'block', marginTop: 4 }} />
-                </label>
-              </div>
-              <label>Video URL
-                <input name="preview" value={videoForm.preview} onChange={handleVideoFormChange} required placeholder="Paste video URL here or upload above" />
+              <label>Title
+                <input name="title" value={videoForm.title} onChange={handleVideoFormChange} required />
               </label>
               <label>Description
                 <textarea name="description" value={videoForm.description} onChange={handleVideoFormChange} required rows={3} />
               </label>
-              <label>Student Name
-                <input name="studentName" value={videoForm.studentName} onChange={handleVideoFormChange} required />
+              <label>Degree
+                <select name="degreeName" value={videoForm.degreeName} onChange={handleVideoFormChange} required>
+                  <option value="">Select Degree</option>
+                  {degrees.map(d => (
+                    <option key={d.code} value={d.name}>{d.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Year
+                <select name="year" value={videoForm.year} onChange={handleVideoFormChange} required>
+                  <option value="">Select Year</option>
+                  {yearOptions.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Semester
+                <select name="semester" value={videoForm.semester} onChange={handleVideoFormChange} required>
+                  <option value="">Select Semester</option>
+                  {semesterOptions.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Module
+                <select name="module" value={videoForm.module} onChange={e => {
+                  const val = e.target.value;
+                  setVideoForm(vf => {
+                    const mod = moduleOptions.find(m => m.code === val);
+                    return { ...vf, module: mod?.code || '', moduleName: mod?.name || '' };
+                  });
+                }} required>
+                  <option value="">Select Module</option>
+                  {moduleOptions.map(m => (
+                    <option key={m.code} value={m.code}>{m.name} ({m.code})</option>
+                  ))}
+                </select>
               </label>
               <label>Student ID
                 <input name="studentId" value={videoForm.studentId} onChange={handleVideoFormChange} required />
               </label>
-              <label>Degree Number
-                <input name="degreeNumber" value={videoForm.degreeNumber} onChange={handleVideoFormChange} required />
+              <label>Student Name
+                <input name="studentName" value={videoForm.studentName || ''} readOnly style={{ background: '#f3f4f6' }} />
               </label>
-              <label>Degree Name
-                <input name="degreeName" value={videoForm.degreeName} onChange={handleVideoFormChange} required />
-              </label>
-              <label>Year
-                <input name="year" value={videoForm.year} onChange={handleVideoFormChange} required />
-              </label>
-              <label>Module
-                <input name="module" value={videoForm.module} onChange={handleVideoFormChange} required />
-              </label>
-              <label>Semester
-                <input name="semester" value={videoForm.semester} onChange={handleVideoFormChange} required />
-              </label>
-              <label>Module Number
-                <input name="moduleNumber" value={videoForm.moduleNumber} onChange={handleVideoFormChange} required />
+              <label>Status
+                <select name="status" value={videoForm.status || ''} onChange={handleVideoFormChange}>
+                  <option value="">Select status</option>
+                  <option value="published">Published</option>
+                  <option value="unpublished">Unpublished</option>
+                  <option value="deleted">Deleted</option>
+                </select>
               </label>
               <label>Publish Date
                 <input name="publishDate" type="date" value={videoForm.publishDate} onChange={handleVideoFormChange} required />
               </label>
+              {/* Video File Preview and Upload */}
+              <div style={{ marginBottom: 16 }}>
+                {videoForm.videoFile && (
+                  <div style={{ marginBottom: 8 }}>
+                    <video src={getWebPath(videoForm.videoFile)} width={220} height={120} controls style={{ borderRadius: 8, background: '#eee' }}>
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                )}
+                <label style={{ display: 'block', marginBottom: 4 }}>
+                  <span style={{ fontWeight: 500 }}>Upload Video</span>
+                  <input type="file" accept="video/*" name="videoFile" onChange={handleVideoFileChange} style={{ display: 'block', marginTop: 4 }} />
+                </label>
+              </div>
+              {/* Thumbnail Preview and Upload */}
+              <div style={{ marginBottom: 16 }}>
+                {videoForm.thumbnail && (
+                  <div style={{ marginBottom: 8 }}>
+                    <img src={getWebPath(videoForm.thumbnail)} alt="Thumbnail" width={120} style={{ borderRadius: 8, background: '#eee' }} />
+                  </div>
+                )}
+                <label style={{ display: 'block', marginBottom: 4 }}>
+                  <span style={{ fontWeight: 500 }}>Upload Thumbnail</span>
+                  <input type="file" accept="image/*" name="thumbnail" onChange={e => setVideoForm({ ...videoForm, thumbnail: e.target.files[0] })} style={{ display: 'block', marginTop: 4 }} />
+                </label>
+              </div>
+              {/* AI Features */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ marginRight: 12 }}>
+                  <input type="checkbox" name="aiSummary" checked={!!videoForm.aiFeatures?.summary} onChange={e => setVideoForm({ ...videoForm, aiFeatures: { ...videoForm.aiFeatures, summary: e.target.checked } })} /> AI Summary
+                </label>
+                <label style={{ marginRight: 12 }}>
+                  <input type="checkbox" name="aiTimestamps" checked={!!videoForm.aiFeatures?.timestamps} onChange={e => setVideoForm({ ...videoForm, aiFeatures: { ...videoForm.aiFeatures, timestamps: e.target.checked } })} /> AI Timestamps
+                </label>
+                <label>
+                  <input type="checkbox" name="lecturerRecommended" checked={!!videoForm.aiFeatures?.lecturerRecommended} onChange={e => setVideoForm({ ...videoForm, aiFeatures: { ...videoForm.aiFeatures, lecturerRecommended: e.target.checked } })} /> Lecturer Recommended
+                </label>
+              </div>
+              {/* Read-only fields */}
+              {videoForm.fileSize && (
+                <div style={{ marginBottom: 8 }}><b>File Size:</b> {formatFileSize(videoForm.fileSize)}</div>
+              )}
+              {videoForm.uploadDate && (
+                <div style={{ marginBottom: 8 }}><b>Upload Date:</b> {formatDate(videoForm.uploadDate)}</div>
+              )}
+              {videoForm.summary && (
+                <div style={{ marginBottom: 8 }}><b>Summary:</b> {videoForm.summary}</div>
+              )}
+              {videoForm.timestamps && Array.isArray(videoForm.timestamps) && (
+                <div style={{ marginBottom: 8 }}><b>Timestamps:</b>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {videoForm.timestamps.map((ts, i) => (
+                      <li key={i}>{ts.time_start} - {ts.description}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <button type="submit" className="videos-save-btn" style={{ marginTop: 16 }}>{modalMode === 'add' ? 'Add' : 'Update'}</button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* View Modal */}
+      {showViewModal && viewVideo && (
+        <div className="modal-overlay">
+          <div className="modal-content wide">
+            <button className="modal-close" onClick={closeViewModal}>&times;</button>
+            <h3>Video Details</h3>
+            <div className="video-details-grid">
+              {/* Video ID */}
+              {viewVideo.uniqueId && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Video ID</span>
+                  <span className="video-detail-value">{viewVideo.uniqueId}</span>
+                </div>
+              )}
+              {/* Title */}
+              {viewVideo.title && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Title</span>
+                  <span className="video-detail-value">{viewVideo.title}</span>
+                </div>
+              )}
+              {/* Description */}
+              {viewVideo.description && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Description</span>
+                  <span className="video-detail-value">{viewVideo.description}</span>
+                </div>
+              )}
+              {/* Degree */}
+              {viewVideo.degreeName && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Degree</span>
+                  <span className="video-detail-value">{viewVideo.degreeName}</span>
+                </div>
+              )}
+              {/* Year */}
+              {viewVideo.year && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Year</span>
+                  <span className="video-detail-value">{viewVideo.year}</span>
+                </div>
+              )}
+              {/* Semester */}
+              {viewVideo.semester && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Semester</span>
+                  <span className="video-detail-value">{viewVideo.semester}</span>
+                </div>
+              )}
+              {/* Module */}
+              {(viewVideo.moduleName || viewVideo.module) && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Module</span>
+                  <span className="video-detail-value">{viewVideo.moduleName ? `${viewVideo.moduleName} (${viewVideo.module})` : viewVideo.module}</span>
+                </div>
+              )}
+              {/* Student ID */}
+              {viewVideo.studentId && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Student ID</span>
+                  <span className="video-detail-value">{viewVideo.studentId}</span>
+                </div>
+              )}
+              {/* Student Name */}
+              {(viewVideo.studentId || viewVideo.studentName) && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Student Name</span>
+                  <span className="video-detail-value">{getStudentName(viewVideo.studentId, viewVideo.studentName)}</span>
+                </div>
+              )}
+              {/* Status */}
+              {viewVideo.status && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Status</span>
+                  <span className="video-detail-value">
+                    <span className={`tag status-tag status-${viewVideo.status}`}>{viewVideo.status}</span>
+                  </span>
+                </div>
+              )}
+              {/* AI Features */}
+              {viewVideo.aiFeatures && typeof viewVideo.aiFeatures === 'object' && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">AI Features</span>
+                  <span className="video-detail-value">
+                    {viewVideo.aiFeatures.summary && <span className="tag ai-tag">AI Summary</span>}
+                    {viewVideo.aiFeatures.timestamps && <span className="tag ai-tag">AI Timestamps</span>}
+                    {viewVideo.aiFeatures.lecturerRecommended && <span className="tag lecturer-tag">Lecturer Recommended</span>}
+                  </span>
+                </div>
+              )}
+              {/* Video */}
+              {viewVideo.videoFile && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Video</span>
+                  <span className="video-detail-value">
+                    <ReactPlayer
+                      key={getWebPath(viewVideo.videoFile)}
+                      url={getWebPath(viewVideo.videoFile)}
+                      width={320}
+                      height={180}
+                      controls={true}
+                      config={{ file: { attributes: { controlsList: 'nodownload' } } }}
+                    />
+                  </span>
+                </div>
+              )}
+              {/* Thumbnail */}
+              {viewVideo.thumbnail && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Thumbnail</span>
+                  <span className="video-detail-value">
+                    <img src={getWebPath(viewVideo.thumbnail)} alt="Thumbnail" width={120} style={{ borderRadius: 8, background: '#eee' }} />
+                  </span>
+                </div>
+              )}
+              {/* File Size */}
+              {viewVideo.fileSize && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">File Size</span>
+                  <span className="video-detail-value">{formatFileSize(viewVideo.fileSize)}</span>
+                </div>
+              )}
+              {/* Upload Date */}
+              {viewVideo.uploadDate && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Upload Date</span>
+                  <span className="video-detail-value">{formatDate(viewVideo.uploadDate)}</span>
+                </div>
+              )}
+              {/* Summary */}
+              {viewVideo.summary && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Summary</span>
+                  <span className="video-detail-value">{viewVideo.summary}</span>
+                </div>
+              )}
+              {/* Timestamps */}
+              {viewVideo.timestamps && Array.isArray(viewVideo.timestamps) && (
+                <div className="video-detail-row">
+                  <span className="video-detail-label">Timestamps</span>
+                  <span className="video-detail-value">
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {viewVideo.timestamps.map((ts, i) => (
+                        <li key={i}>{ts.time_start} - {ts.description}</li>
+                      ))}
+                    </ul>
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

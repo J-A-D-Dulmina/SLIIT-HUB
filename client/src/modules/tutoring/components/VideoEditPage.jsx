@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaChevronLeft, FaChevronRight, FaRobot, FaExpand, FaDownload, FaTrash } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaRobot, FaExpand, FaDownload, FaTrash, FaCheckCircle } from 'react-icons/fa';
 import ReactPlayer from 'react-player';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
@@ -35,6 +35,10 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
   });
   const [showFullSummary, setShowFullSummary] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [degrees, setDegrees] = useState([]);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [publishLoading, setPublishLoading] = useState(false);
 
   // AI model hook
   const { 
@@ -90,6 +94,21 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     };
     fetchLatestVideo();
   }, [video]);
+
+  useEffect(() => {
+    fetch('/api/admin/degrees')
+      .then(res => res.json())
+      .then(data => setDegrees(data))
+      .catch(() => setDegrees([]));
+  }, []);
+
+  // Dynamic year/semester/module options
+  const selectedDegree = degrees.find(d => d._id === formData.degree);
+  const years = selectedDegree ? selectedDegree.years : [];
+  const selectedYear = years.find(y => String(y.yearNumber) === String(formData.year));
+  const semesters = selectedYear ? selectedYear.semesters : [];
+  const selectedSemester = semesters.find(s => String(s.semesterNumber) === String(formData.semester));
+  const modules = selectedSemester ? selectedSemester.modules : [];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -280,6 +299,26 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
   };
 
   console.log("Timestamps in formData:", formData.timestamps);
+
+  // Add a function to handle publish/unpublish
+  const handlePublishToggle = async () => {
+    setPublishLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/tutoring/videos/${video.id}/publish`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: formData.status === 'published' ? 'unpublished' : 'published' })
+      });
+      if (res.ok) {
+        setFormData(prev => ({ ...prev, status: prev.status === 'published' ? 'unpublished' : 'published' }));
+        setShowPublishConfirm(false);
+        setAgreeTerms(false);
+      }
+    } finally {
+      setPublishLoading(false);
+    }
+  };
 
   return (
     <div className="app-container">
@@ -485,6 +524,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
               <div className="form-group">
                 <label htmlFor="module">Module</label>
                 <div className="module-selection">
+                  {/* Degree Dropdown */}
                   <select
                     id="degree"
                     name="degree"
@@ -493,54 +533,58 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                     required
                   >
                     <option value="">Select Degree</option>
-                    <option value="BSc (Hons) in Information Technology">BSc (Hons) in Information Technology</option>
-                    <option value="BSc (Hons) in Computer Science">BSc (Hons) in Computer Science</option>
-                    <option value="BSc (Hons) in Software Engineering">BSc (Hons) in Software Engineering</option>
-                    <option value="BSc (Hons) in Data Science">BSc (Hons) in Data Science</option>
-                    <option value="BSc (Hons) in Cyber Security">BSc (Hons) in Cyber Security</option>
-                    <option value="BSc (Hons) in Business Information Systems">BSc (Hons) in Business Information Systems</option>
+                    {degrees.map(degree => (
+                      <option key={degree._id} value={degree._id}>{degree.name}</option>
+                    ))}
                   </select>
 
-                  <select
-                    id="year"
-                    name="year"
-                    value={formData.year}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select Year</option>
-                    <option value="1">Year 1</option>
-                    <option value="2">Year 2</option>
-                    <option value="3">Year 3</option>
-                    <option value="4">Year 4</option>
-                  </select>
+                  {/* Year Dropdown */}
+                  {selectedDegree && (
+                    <select
+                      id="year"
+                      name="year"
+                      value={formData.year}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select Year</option>
+                      {years.map(y => (
+                        <option key={y.yearNumber} value={y.yearNumber}>Year {y.yearNumber}</option>
+                      ))}
+                    </select>
+                  )}
 
-                  <select
-                    id="semester"
-                    name="semester"
-                    value={formData.semester}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select Semester</option>
-                    <option value="1">Semester 1</option>
-                    <option value="2">Semester 2</option>
-                  </select>
+                  {/* Semester Dropdown */}
+                  {selectedYear && (
+                    <select
+                      id="semester"
+                      name="semester"
+                      value={formData.semester}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select Semester</option>
+                      {semesters.map(s => (
+                        <option key={s.semesterNumber} value={s.semesterNumber}>Semester {s.semesterNumber}</option>
+                      ))}
+                    </select>
+                  )}
 
-                  <select
-                    id="module"
-                    name="module"
-                    value={formData.module}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select Module</option>
-                    <option value="IT1010">IT1010 - Introduction to Programming</option>
-                    <option value="IT1020">IT1020 - Data Structures</option>
-                    <option value="IT1030">IT1030 - Database Systems</option>
-                    <option value="IT1040">IT1040 - Web Development</option>
-                    <option value="IT1050">IT1050 - Software Engineering</option>
-                  </select>
+                  {/* Module Dropdown */}
+                  {selectedSemester && (
+                    <select
+                      id="module"
+                      name="module"
+                      value={formData.module}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select Module</option>
+                      {modules.map(m => (
+                        <option key={m.code} value={m.code}>{m.code} - {m.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -596,7 +640,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                 </ul>
               </div>
 
-              <div className="form-actions">
+              <div className="form-actions" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <button type="button" className="cancel-btn" onClick={onClose}>
                   Cancel
                 </button>

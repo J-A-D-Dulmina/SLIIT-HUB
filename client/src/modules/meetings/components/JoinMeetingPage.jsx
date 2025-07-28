@@ -32,6 +32,7 @@ const JoinMeetingPage = () => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [participatingMeetings, setParticipatingMeetings] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [degrees, setDegrees] = useState([]);
 
   const navigate = useNavigate();
 
@@ -76,6 +77,21 @@ const JoinMeetingPage = () => {
     
     return () => clearInterval(refreshInterval);
   }, []);
+
+  useEffect(() => {
+    fetch('/api/admin/degrees')
+      .then(res => res.json())
+      .then(data => setDegrees(data))
+      .catch(() => setDegrees([]));
+  }, []);
+
+  // Dynamic year/semester/module options for filters
+  const selectedDegreeObj = degrees.find(d => d._id === selectedDegree);
+  const years = selectedDegreeObj ? selectedDegreeObj.years : [];
+  const selectedYearObj = years.find(y => String(y.yearNumber) === String(selectedYear));
+  const semesters = selectedYearObj ? selectedYearObj.semesters : [];
+  const selectedSemesterObj = semesters.find(s => String(s.semesterNumber) === String(selectedSemester));
+  const modules = selectedSemesterObj ? selectedSemesterObj.modules : [];
 
   const fetchMeetings = async () => {
     try {
@@ -287,57 +303,67 @@ const JoinMeetingPage = () => {
 
             {showFilters && (
               <div className="filter-container">
+                {/* Degree Filter */}
                 <div className="filter-item">
                   <label>Degree</label>
                   <select
                     value={selectedDegree}
-                    onChange={(e) => setSelectedDegree(e.target.value)}
+                    onChange={e => setSelectedDegree(e.target.value)}
                   >
                     <option value="">All Degrees</option>
-                    {DEGREES.map(degree => (
-                      <option key={degree} value={degree}>{degree}</option>
+                    {degrees.map(degree => (
+                      <option key={degree._id} value={degree._id}>{degree.name}</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="filter-item">
-                  <label>Degree Year</label>
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(e.target.value)}
-                  >
-                    <option value="">All Years</option>
-                    {DEGREE_YEARS.map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Year Filter */}
+                {selectedDegreeObj && (
+                  <div className="filter-item">
+                    <label>Degree Year</label>
+                    <select
+                      value={selectedYear}
+                      onChange={e => setSelectedYear(e.target.value)}
+                    >
+                      <option value="">All Years</option>
+                      {years.map(y => (
+                        <option key={y.yearNumber} value={y.yearNumber}>Year {y.yearNumber}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-                <div className="filter-item">
-                  <label>Semester</label>
-                  <select
-                    value={selectedSemester}
-                    onChange={(e) => setSelectedSemester(e.target.value)}
-                  >
-                    <option value="">All Semesters</option>
-                    {SEMESTERS.map(semester => (
-                      <option key={semester} value={semester}>{semester}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Semester Filter */}
+                {selectedYearObj && (
+                  <div className="filter-item">
+                    <label>Semester</label>
+                    <select
+                      value={selectedSemester}
+                      onChange={e => setSelectedSemester(e.target.value)}
+                    >
+                      <option value="">All Semesters</option>
+                      {semesters.map(s => (
+                        <option key={s.semesterNumber} value={s.semesterNumber}>Semester {s.semesterNumber}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-                <div className="filter-item">
-                  <label>Module</label>
-                  <select
-                    value={selectedModule}
-                    onChange={(e) => setSelectedModule(e.target.value)}
-                  >
-                    <option value="">All Modules</option>
-                    {MODULES.map(module => (
-                      <option key={module} value={module}>{module}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Module Filter */}
+                {selectedSemesterObj && (
+                  <div className="filter-item">
+                    <label>Module</label>
+                    <select
+                      value={selectedModule}
+                      onChange={e => setSelectedModule(e.target.value)}
+                    >
+                      <option value="">All Modules</option>
+                      {modules.map(m => (
+                        <option key={m.code} value={m.code}>{m.code} - {m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="filter-item">
                   <label>Status</label>

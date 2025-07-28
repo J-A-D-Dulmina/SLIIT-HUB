@@ -1,3 +1,4 @@
+console.log('Tutoring routes loaded');
 const express = require('express');
 const router = express.Router();
 const { 
@@ -7,7 +8,8 @@ const {
   deleteVideo, 
   togglePublishStatus,
   streamVideo,
-  serveThumbnail
+  serveThumbnail,
+  getPublishedVideos
 } = require('./controller');
 const authenticateToken = require('../../middleware/auth');
 
@@ -37,5 +39,8 @@ router.delete('/videos/:videoId', deleteVideo);
 
 // Toggle publish status
 router.patch('/videos/:videoId/publish', togglePublishStatus);
+
+// Get published videos
+router.get('/videos/published', getPublishedVideos);
 
 module.exports = router; 

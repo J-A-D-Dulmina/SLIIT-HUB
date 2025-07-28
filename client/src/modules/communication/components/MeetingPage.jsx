@@ -49,6 +49,7 @@ const MeetingPage = () => {
   const screenStreamRef = useRef(null);
   const screenShareVideoRef = useRef(null);
   const preJoinVideoRef = useRef(null);
+  const preJoinStreamRef = useRef(null);
 
   useEffect(() => {
     initializeMeeting();
@@ -109,6 +110,7 @@ const MeetingPage = () => {
       navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         .then(stream => {
           console.log('Pre-join: Camera stream obtained:', stream);
+          preJoinStreamRef.current = stream; // Store the stream for reuse
           preJoinVideoRef.current.srcObject = stream;
           return preJoinVideoRef.current.play();
         })
@@ -127,6 +129,7 @@ const MeetingPage = () => {
       if (preJoinVideoRef.current && preJoinVideoRef.current.srcObject) {
         preJoinVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
         preJoinVideoRef.current.srcObject = null;
+        preJoinStreamRef.current = null;
       }
     };
   }, [showPreJoin, preJoinCam]);
@@ -141,6 +144,14 @@ const MeetingPage = () => {
       });
     }
   }, [showPreJoin, preJoinSettings]);
+
+  // After setting up webrtc.onLocalStream, add this effect:
+  useEffect(() => {
+    if (localVideoRef.current && webrtcService.current && webrtcService.current.localStream) {
+      console.log('Re-attaching local stream to video element', webrtcService.current.localStream, webrtcService.current.localStream.getTracks());
+      localVideoRef.current.srcObject = webrtcService.current.localStream;
+    }
+  }, [localVideoRef.current, webrtcService.current && webrtcService.current.localStream]);
 
   const initializeMeeting = async () => {
       try {
@@ -170,6 +181,21 @@ const MeetingPage = () => {
       
       // Initialize WebRTC service using the existing ref
       const webrtc = webrtcService.current;
+      
+      // Initialize WebRTC service
+      await webrtc.initialize(meetingId, userInfo.id, userInfo.name);
+
+      // Use pre-join stream if available (after initialize)
+      if (preJoinStreamRef.current) {
+        if (typeof webrtc.setLocalStream === 'function') {
+          webrtc.setLocalStream(preJoinStreamRef.current);
+        } else {
+          webrtc.localStream = preJoinStreamRef.current;
+          if (webrtc.onLocalStream) webrtc.onLocalStream(preJoinStreamRef.current);
+        }
+      } else {
+        await webrtc.getUserMedia();
+      }
       
       // Set up event handlers
       webrtc.onLocalStream = (stream) => {
@@ -267,7 +293,6 @@ const MeetingPage = () => {
       };
       
       // Initialize WebRTC service
-      await webrtc.initialize(meetingId, userInfo.id, userInfo.name);
       setConnectionStatus('connected');
 
     } catch (error) {

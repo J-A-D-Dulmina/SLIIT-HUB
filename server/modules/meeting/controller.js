@@ -1,5 +1,5 @@
 const Meeting = require('./model');
-const Student = require('../user/model');
+const { Student } = require('../user/model');
 const Lecturer = require('../lecturer/model');
 
 
@@ -41,6 +41,35 @@ const createMeeting = async (req, res) => {
     const durationNum = parseInt(duration);
     const endTime = new Date(startDateTime.getTime() + durationNum * 60000);
 
+    // Convert frontend format to backend format
+    let degreeName = degree;
+    let yearName = year;
+    let semesterName = semester;
+
+    // If degree is an ObjectId, we need to get the degree name from the database
+    if (degree && degree.length === 24) {
+      try {
+        const Degree = require('../admin/degree.model');
+        const degreeDoc = await Degree.findById(degree);
+        if (degreeDoc) {
+          degreeName = degreeDoc.name;
+        }
+      } catch (error) {
+        console.error('Error fetching degree:', error);
+        return res.status(400).json({ success: false, message: 'Invalid degree' });
+      }
+    }
+
+    // Convert year number to "Year X" format
+    if (year && !year.startsWith('Year ')) {
+      yearName = `Year ${year}`;
+    }
+
+    // Convert semester number to "Semester X" format
+    if (semester && !semester.startsWith('Semester ')) {
+      semesterName = `Semester ${semester}`;
+    }
+
     const meetingData = {
       title: title.trim(),
       description: description ? description.trim() : '',
@@ -51,9 +80,9 @@ const createMeeting = async (req, res) => {
       startTime: startDateTime,
       endTime: endTime,
       duration: durationNum,
-      degree: degree.trim(),
-      year: year.trim(),
-      semester: semester.trim(),
+      degree: degreeName,
+      year: yearName,
+      semester: semesterName,
       module: module.trim(),
       maxParticipants: 50,
       isPublic: true,
@@ -80,7 +109,7 @@ const createMeeting = async (req, res) => {
         duration: 0
       },
       notes: '',
-      tags: [degree, year, semester, module]
+      tags: [degreeName, yearName, semesterName, module]
     };
 
     let meeting = new Meeting(meetingData);
@@ -96,6 +125,7 @@ const createMeeting = async (req, res) => {
       data: meeting
     });
   } catch (error) {
+    console.error('Error creating meeting:', error);
     res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 };

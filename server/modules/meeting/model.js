@@ -46,18 +46,15 @@ const meetingSchema = new mongoose.Schema({
   },
   degree: {
     type: String,
-    required: true,
-    enum: ['BSc in Information Technology', 'BSc in Software Engineering', 'BSc in Computer Science', 'BSc in Data Science']
+    required: true
   },
   year: {
     type: String,
-    required: true,
-    enum: ['Year 1', 'Year 2', 'Year 3', 'Year 4']
+    required: true
   },
   semester: {
     type: String,
-    required: true,
-    enum: ['Semester 1', 'Semester 2']
+    required: true
   },
   module: {
     type: String,

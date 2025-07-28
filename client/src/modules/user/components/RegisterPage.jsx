@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/Register.css';
 import logo from '../../../assets/SLITT HUB logo.png';
@@ -12,15 +12,31 @@ const RegisterPage = () => {
     studentId: '',
     mobile: '',
     enrolYear: '',
-    degree: '',
+    degree: ''
   });
+  const [degrees, setDegrees] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    fetch('/api/admin/degrees')
+      .then(res => res.json())
+      .then(data => setDegrees(data))
+      .catch(() => setDegrees([]));
+  }, []);
+
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
+
+  // Dynamic year/semester/module options
+  const selectedDegree = degrees.find(d => d._id === form.degree);
+  const years = selectedDegree ? selectedDegree.years : [];
+  const selectedYear = years.find(y => String(y.yearNumber) === String(form.year));
+  const semesters = selectedYear ? selectedYear.semesters : [];
+  const selectedSemester = semesters.find(s => String(s.semesterNumber) === String(form.semester));
+  const modules = selectedSemester ? selectedSemester.modules : [];
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -37,6 +53,7 @@ const RegisterPage = () => {
         body: JSON.stringify({
           ...form,
           enrolYear: form.enrolYear ? Number(form.enrolYear) : undefined,
+          degree: form.degree // send _id
         }),
       });
       const data = await res.json();
@@ -121,6 +138,7 @@ const RegisterPage = () => {
             />
           </div>
           
+          {/* Degree Dropdown */}
           <div className="form-group">
             <label htmlFor="degree">Degree</label>
             <select
@@ -131,12 +149,9 @@ const RegisterPage = () => {
               required
             >
               <option value="">Select your degree</option>
-              <option value="BSc (Hons) in Information Technology">BSc (Hons) in Information Technology</option>
-              <option value="BSc (Hons) in Computer Science">BSc (Hons) in Computer Science</option>
-              <option value="BSc (Hons) in Software Engineering">BSc (Hons) in Software Engineering</option>
-              <option value="BSc (Hons) in Data Science">BSc (Hons) in Data Science</option>
-              <option value="BSc (Hons) in Cyber Security">BSc (Hons) in Cyber Security</option>
-              <option value="BSc (Hons) in Business Information Systems">BSc (Hons) in Business Information Systems</option>
+              {degrees.map(degree => (
+                <option key={degree._id} value={degree._id}>{degree.name}</option>
+              ))}
             </select>
           </div>
           

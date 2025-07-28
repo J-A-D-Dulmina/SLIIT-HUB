@@ -50,8 +50,10 @@ class WebRTCService {
     // Connect to WebSocket
     await this.connectWebSocket();
 
-    // Get user media
-    await this.getUserMedia();
+    // Only get user media if not already set
+    if (!this.localStream) {
+      await this.getUserMedia();
+    }
 
     return true;
   }
@@ -84,7 +86,11 @@ class WebRTCService {
 
       this.socket.onerror = (error) => {
         console.error('WebSocket error:', error);
-        console.error('WebSocket readyState:', this.socket.readyState);
+        if (this.socket) {
+          console.error('WebSocket readyState:', this.socket.readyState);
+        } else {
+          console.error('WebSocket socket is null');
+        }
         if (this.onError) this.onError('WebSocket connection failed');
         reject(error);
       };
@@ -783,6 +789,11 @@ class WebRTCService {
   sendMessage(message) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
+    } else {
+      console.warn('Cannot send message: WebSocket not connected', {
+        socketExists: !!this.socket,
+        readyState: this.socket ? this.socket.readyState : 'null'
+      });
     }
   }
 
@@ -837,7 +848,7 @@ class WebRTCService {
       localStream: this.localStream,
       remoteStreams: this.remoteStreams,
       peerConnections: this.peerConnections.size,
-      socketConnected: this.socket?.readyState === WebSocket.OPEN,
+      socketConnected: this.socket ? this.socket.readyState === WebSocket.OPEN : false,
       isRecording: this.isRecording
     };
   }
@@ -856,6 +867,13 @@ class WebRTCService {
     // Close WebSocket connection
     if (this.socket) {
       this.socket.close(1000, 'Meeting ended by host');
+    }
+  }
+
+  setLocalStream(stream) {
+    this.localStream = stream;
+    if (this.onLocalStream) {
+      this.onLocalStream(stream);
     }
   }
 }

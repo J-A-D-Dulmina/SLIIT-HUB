@@ -6,10 +6,19 @@ const path = require('path');
 const cors = require('cors');
 const http = require('http');
 const MeetingSocketServer = require('./websocket/meetingSocket');
+const { degreeRoutes } = require('./modules/admin');
+const videoRoutes = require('./modules/content/video.routes');
+const tutoringRoutes = require('./modules/tutoring');
 
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Log every request
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 
 // Initialize WebSocket server
 const meetingSocketServer = new MeetingSocketServer(server);
@@ -30,9 +39,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // User routes
 app.use('/api', require('./modules/user'));
 app.use('/api', require('./modules/lecturer'));
-app.use('/api/tutoring', require('./modules/tutoring'));
+app.use('/api/tutoring', tutoringRoutes);
 app.use('/api', require('./modules/ai'));
 app.use('/api', require('./modules/meeting'));
+app.use('/api/admin/degrees', degreeRoutes);
+app.use('/api/admin/videos', videoRoutes);
 
 // WebSocket status endpoint
 app.get('/api/websocket/status', (req, res) => {

@@ -7,6 +7,7 @@ const lecturerSchema = new mongoose.Schema({
   password: { type: String, required: true },
   mobile: { type: String },
   modules: [{ type: String }],
+  degrees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Degree' }], // New: degrees taught/managed
 }, { timestamps: true });
 
 module.exports = mongoose.model('Lecturer', lecturerSchema); 
