@@ -143,20 +143,69 @@ const LandingPage = () => {
     }
   };
 
-  // Combine for calendar
-  const allEvents = [...events, ...myMeetings];
-
-  // For UpcomingMeetings, filter for future meetings where user is host
-  const upcomingMine = myMeetings.filter(m => new Date(m.start) > new Date());
-
-  // For My Scheduled Meeting, show the next one
-  const nextScheduledMeeting = upcomingMine.sort((a, b) => new Date(a.start) - new Date(b.start))[0];
-
-  // Filter out ended meetings from calendar events
-  const filteredEvents = allEvents.filter(e => {
-    const status = e.resource?.status || e.status;
-    return status !== 'ended' && status !== 'completed';
+  // For UpcomingMeetings, filter for upcoming meetings from OTHER people (public meetings)
+  const upcomingOthers = events.filter(m => {
+    const status = m.resource?.computedStatus || m.resource?.status || m.status;
+    return status === 'upcoming' || status === 'starting-soon';
   });
+
+  // For My Scheduled Meeting, show the next one (my upcoming meetings only)
+  const upcomingMine = myMeetings.filter(m => {
+    const status = m.resource?.computedStatus || m.resource?.status || m.computedStatus || m.status;
+    return status === 'upcoming' || status === 'starting-soon' || status === 'scheduled';
+  });
+  const nextScheduledMeeting = upcomingMine.sort((a, b) => new Date(a.resource?.startTime || a.startTime) - new Date(b.resource?.startTime || b.startTime))[0];
+
+  // For calendar, show both my meetings (blue) and others' meetings (green)
+  const myCalendarEvents = myMeetings.filter(e => {
+    const status = e.resource?.computedStatus || e.resource?.status || e.computedStatus || e.status;
+    return status !== 'ended' && status !== 'completed' && status !== 'cancelled';
+  }).map(event => {
+    const startTime = new Date(event.start);
+    const endTime = new Date(startTime.getTime() + 30 * 60000); // 30 minutes duration for display
+    
+    // Ensure the event doesn't span multiple days
+    const sameDay = startTime.toDateString() === endTime.toDateString();
+    const finalEndTime = sameDay ? endTime : new Date(startTime.getTime() + 23 * 60 * 60000); // Max 23 hours if different day
+    
+    return {
+      ...event,
+      title: `${event.title} (${moment(startTime).format('HH:mm')})`, // Add time to title
+      start: startTime,
+      end: finalEndTime,
+      allDay: false,
+      isMyMeeting: true // Mark as my meeting for blue color
+    };
+  });
+
+  // Get my meeting IDs to avoid duplicates
+  const myMeetingIds = myMeetings.map(m => m._id || m.resource?._id);
+
+  const othersCalendarEvents = events.filter(e => {
+    const status = e.resource?.computedStatus || e.resource?.status || e.computedStatus || e.status;
+    const eventId = e._id || e.resource?._id;
+    
+    // Only include if not ended/completed/cancelled AND not already in my meetings
+    return status !== 'ended' && status !== 'completed' && status !== 'cancelled' && !myMeetingIds.includes(eventId);
+  }).map(event => {
+    const startTime = new Date(event.start);
+    const endTime = new Date(startTime.getTime() + 30 * 60000); // 30 minutes duration for display
+    
+    // Ensure the event doesn't span multiple days
+    const sameDay = startTime.toDateString() === endTime.toDateString();
+    const finalEndTime = sameDay ? endTime : new Date(startTime.getTime() + 23 * 60 * 60000); // Max 23 hours if different day
+    
+    return {
+      ...event,
+      title: `${event.title} (${moment(startTime).format('HH:mm')})`, // Add time to title
+      start: startTime,
+      end: finalEndTime,
+      allDay: false,
+      isMyMeeting: false // Mark as others' meeting for green color
+    };
+  });
+
+  const filteredEvents = [...myCalendarEvents, ...othersCalendarEvents];
 
   const handleSelectEvent = (event) => {
     setSelectedEvent(event);
@@ -170,26 +219,36 @@ const LandingPage = () => {
 
   const displayedAnnouncements = showAllAnnouncements ? ANNOUNCEMENTS : ANNOUNCEMENTS.slice(0, 3);
 
-  const canStartMeeting = (meeting) => {
-    const now = new Date();
-    const start = new Date(meeting.start);
-    const diff = (start - now) / 60000;
-    return diff <= 15 && diff >= -120;
-  };
-
   const formatMeetingTime = (date) => {
     return moment(date).format('MMM D, YYYY [at] HH:mm');
   };
 
   const handleStartMeeting = (meeting) => {
+    // Close the detail popup first
+    setShowEventModal(false);
+    setSelectedEvent(null);
+    
+    // Then show the confirmation popup
     setMeetingToStart(meeting);
     setShowConfirm(true);
   };
 
-  const confirmStartMeeting = () => {
-    setShowConfirm(false);
-    alert(`Meeting started: ${meetingToStart.topic}`);
-    setMeetingToStart(null);
+  const confirmStartMeeting = async () => {
+    try {
+      // Call the start meeting API
+      const response = await axios.post(`http://localhost:5000/api/meetings/${meetingToStart._id}/start`, {}, {
+        withCredentials: true
+      });
+      
+      setShowConfirm(false);
+      alert(`Meeting started: ${meetingToStart.title || meetingToStart.topic}`);
+      setMeetingToStart(null);
+      
+      // Refresh meetings data
+      await fetchMyMeetings();
+    } catch (error) {
+      alert(`Failed to start meeting: ${error.response?.data?.message || error.message}`);
+    }
   };
 
   const cancelStartMeeting = () => {
@@ -226,7 +285,7 @@ const LandingPage = () => {
                   style={{ height: 500 }}
                   onSelectEvent={handleSelectEvent}
                   eventPropGetter={(event) => ({
-                    className: event.resource?.isScheduledMeeting ? 'scheduled-meeting' : 'upcoming-meeting'
+                    className: event.isMyMeeting ? 'my-meeting' : 'others-meeting'
                   })}
                 />
               </div>
@@ -250,14 +309,14 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="right-sidebar">
-            <UpcomingMeetings events={upcomingMine} />
+            <UpcomingMeetings events={upcomingOthers} />
             <div className="my-scheduled-meetings">
               <h3>My Scheduled Meeting</h3>
               {!nextScheduledMeeting ? (
                 <>
-                  <div className="no-meetings">No scheduled meetings</div>
+                  <div className="dashboard-no-meetings">No scheduled meetings</div>
                   <button 
-                    className="action-btn" 
+                    className="dashboard-action-btn" 
                     onClick={() => navigate('/my-meetings')}
                   >
                     Schedule Meeting
@@ -265,35 +324,36 @@ const LandingPage = () => {
                 </>
               ) : (
                 <>
-                  <div className="meeting-list">
-                    <div className="meeting-item">
-                      <div className="meeting-header">
-                        <div className="meeting-details">
-                          <h4>{nextScheduledMeeting.topic}</h4>
-                          <div className="meeting-title"><strong>Title:</strong> {nextScheduledMeeting.title || nextScheduledMeeting.topic || 'N/A'}</div>
-                          <div className="meeting-description"><strong>Description:</strong> {nextScheduledMeeting.resource?.description || nextScheduledMeeting.description || 'N/A'}</div>
-                          <div className="meeting-meta">
+                  <div className="dashboard-meeting-list">
+                    <div className="dashboard-meeting-item">
+                      <div className="dashboard-meeting-header">
+                        <div className="dashboard-meeting-details">
+                          <h4 className="dashboard-meeting-title">{nextScheduledMeeting.resource?.title || nextScheduledMeeting.title || nextScheduledMeeting.topic}</h4>
+                          <div className="dashboard-meeting-description">
+                            {nextScheduledMeeting.resource?.description || nextScheduledMeeting.description || 'No description available'}
+                          </div>
+                          <div className="dashboard-meeting-meta">
                             <span>{nextScheduledMeeting.resource?.degree || nextScheduledMeeting.degree || 'N/A'}</span>
                             <span>{nextScheduledMeeting.resource?.year || nextScheduledMeeting.year || 'N/A'}</span>
                             <span>{nextScheduledMeeting.resource?.semester || nextScheduledMeeting.semester || 'N/A'}</span>
                             <span>{nextScheduledMeeting.resource?.module || nextScheduledMeeting.module || 'N/A'}</span>
                           </div>
-                          <div className="meeting-coordinator">
+                          <div className="dashboard-meeting-coordinator">
                             Coordinator: {nextScheduledMeeting.resource?.hostName || nextScheduledMeeting.hostName || 'N/A'}
                           </div>
-                          <div className="meeting-time">
-                            {formatMeetingTime(nextScheduledMeeting.start)}
+                          <div className="dashboard-meeting-time">
+                            {formatMeetingTime(nextScheduledMeeting.resource?.startTime || nextScheduledMeeting.startTime || nextScheduledMeeting.start)}
                           </div>
                         </div>
                         <button
-                          className="start-meeting-btn"
-                          disabled={!canStartMeeting(nextScheduledMeeting)}
-                          onClick={() => handleStartMeeting(nextScheduledMeeting)}
+                          className="dashboard-start-meeting-btn"
+                          disabled={!(nextScheduledMeeting.resource?.canStart || nextScheduledMeeting.canStart)}
+                          onClick={() => handleStartMeeting(nextScheduledMeeting.resource || nextScheduledMeeting)}
                         >
                           <FaPlay /> Start
                         </button>
                       </div>
-                      <div className="meeting-link">
+                      <div className="dashboard-meeting-link">
                         <FaLink />
                         <a href={nextScheduledMeeting.resource?.meetingLink || nextScheduledMeeting.meetingLink || '#'} target="_blank" rel="noopener noreferrer">
                           {nextScheduledMeeting.resource?.meetingLink || nextScheduledMeeting.meetingLink || 'N/A'}
@@ -302,7 +362,7 @@ const LandingPage = () => {
                     </div>
                   </div>
                   <button 
-                    className="view-all-meetings-btn" 
+                    className="dashboard-view-all-meetings-btn" 
                     onClick={() => navigate('/my-meetings')}
                   >
                     View All My Scheduled Meetings
@@ -314,12 +374,12 @@ const LandingPage = () => {
               <div className="meeting-confirm-overlay">
                 <div className="meeting-confirm-dialog">
                   <h4>Start Meeting</h4>
-                  <p>Are you sure you want to start the meeting "{meetingToStart.topic}"?</p>
+                  <p>Are you sure you want to start the meeting "{meetingToStart.title || meetingToStart.topic}"?</p>
                   <div className="meeting-confirm-actions">
-                    <button className="action-btn" onClick={confirmStartMeeting}>
+                    <button className="meeting-confirm-start-btn" onClick={confirmStartMeeting}>
                       Yes, Start
                     </button>
-                    <button className="action-btn" onClick={cancelStartMeeting}>
+                    <button className="meeting-confirm-cancel-btn" onClick={cancelStartMeeting}>
                       Cancel
                     </button>
                   </div>
@@ -341,14 +401,14 @@ const LandingPage = () => {
             <div><strong>Time:</strong> {formatMeetingTime(selectedEvent.start)}</div>
             <div><strong>Coordinator:</strong> {selectedEvent.resource?.hostName || 'N/A'}</div>
             <div className="event-modal-actions">
-              {selectedEvent.resource?.isScheduledMeeting || selectedEvent.resource?.hostStudentId === userInfo.studentId || selectedEvent.resource?.host === userInfo._id ? (
-                <button className="start-meeting-btn" onClick={() => handleStartMeeting(selectedEvent.resource)}>Start Meeting</button>
+              {selectedEvent.resource?.isHost ? (
+                <button className="event-modal-start-btn" onClick={() => handleStartMeeting(selectedEvent.resource)}>Start Meeting</button>
               ) : (
                 <a href={selectedEvent.resource?.meetingLink || '#'} target="_blank" rel="noopener noreferrer">
-                  <button className="join-meeting-btn">Join Meeting</button>
+                  <button className="event-modal-join-btn">Join Meeting</button>
                 </a>
               )}
-              <button className="close-modal-btn" onClick={closeEventModal}>Close</button>
+              <button className="event-modal-close-btn" onClick={closeEventModal}>Close</button>
             </div>
           </div>
         </div>

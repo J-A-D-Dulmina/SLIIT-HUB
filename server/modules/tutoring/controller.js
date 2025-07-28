@@ -101,7 +101,7 @@ exports.uploadVideo = async (req, res) => {
         await new Promise((resolve, reject) => {
           ffmpeg.on('close', (code) => {
             if (code === 0) {
-              thumbnail = thumbnailPath;
+              thumbnail = `uploads/thumbnails/thumb_${uniqueId}.jpg`;
             }
             resolve();
           });
@@ -117,6 +117,10 @@ exports.uploadVideo = async (req, res) => {
         return res.status(400).json({ message: 'Student not found.' });
       }
 
+      // Save relative paths instead of absolute paths
+      const videoFileName = path.basename(req.file.path);
+      const relativeVideoPath = `uploads/videos/${videoFileName}`;
+
       const video = new Video({
         uniqueId,
         title,
@@ -125,7 +129,7 @@ exports.uploadVideo = async (req, res) => {
         degree,
         year,
         semester,
-        videoFile: req.file.path,
+        videoFile: relativeVideoPath,
         thumbnail: thumbnail,
         fileSize: req.file.size,
         uploadedBy: req.user.id,
@@ -317,12 +321,19 @@ exports.deleteVideo = async (req, res) => {
     }
 
     // Delete video file
-    if (video.videoFile && fs.existsSync(video.videoFile)) {
-      fs.unlinkSync(video.videoFile);
+    if (video.videoFile) {
+      const absoluteVideoPath = path.join(__dirname, '../../', video.videoFile);
+      if (fs.existsSync(absoluteVideoPath)) {
+        fs.unlinkSync(absoluteVideoPath);
+      }
     }
+    
     // Delete thumbnail file
-    if (video.thumbnail && fs.existsSync(video.thumbnail)) {
-      fs.unlinkSync(video.thumbnail);
+    if (video.thumbnail) {
+      const absoluteThumbnailPath = path.join(__dirname, '../../', video.thumbnail);
+      if (fs.existsSync(absoluteThumbnailPath)) {
+        fs.unlinkSync(absoluteThumbnailPath);
+      }
     }
 
     video.deleteDate = new Date();
@@ -376,11 +387,18 @@ exports.streamVideo = async (req, res) => {
       return res.status(404).json({ message: 'Video not found' });
     }
 
-    if (!video.videoFile || !fs.existsSync(video.videoFile)) {
+    if (!video.videoFile) {
       return res.status(404).json({ message: 'Video file not found' });
     }
 
-    const stat = fs.statSync(video.videoFile);
+    // Convert relative path to absolute path
+    const absoluteVideoPath = path.join(__dirname, '../../', video.videoFile);
+    
+    if (!fs.existsSync(absoluteVideoPath)) {
+      return res.status(404).json({ message: 'Video file not found' });
+    }
+
+    const stat = fs.statSync(absoluteVideoPath);
     const fileSize = stat.size;
     const range = req.headers.range;
 
@@ -389,7 +407,7 @@ exports.streamVideo = async (req, res) => {
       const start = parseInt(parts[0], 10);
       const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
       const chunksize = (end - start) + 1;
-      const file = fs.createReadStream(video.videoFile, { start, end });
+      const file = fs.createReadStream(absoluteVideoPath, { start, end });
       const head = {
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
@@ -404,7 +422,7 @@ exports.streamVideo = async (req, res) => {
         'Content-Type': 'video/mp4',
       };
       res.writeHead(200, head);
-      fs.createReadStream(video.videoFile).pipe(res);
+      fs.createReadStream(absoluteVideoPath).pipe(res);
     }
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -422,12 +440,19 @@ exports.serveThumbnail = async (req, res) => {
       return res.status(404).json({ message: 'Video not found' });
     }
 
-    if (!video.thumbnail || !fs.existsSync(video.thumbnail)) {
+    if (!video.thumbnail) {
       // Return a default thumbnail or 404
       return res.status(404).json({ message: 'Thumbnail not found' });
     }
 
-    res.sendFile(path.resolve(video.thumbnail));
+    // Convert relative path to absolute path
+    const absoluteThumbnailPath = path.join(__dirname, '../../', video.thumbnail);
+    
+    if (!fs.existsSync(absoluteThumbnailPath)) {
+      return res.status(404).json({ message: 'Thumbnail not found' });
+    }
+
+    res.sendFile(path.resolve(absoluteThumbnailPath));
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

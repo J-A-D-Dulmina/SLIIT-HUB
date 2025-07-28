@@ -4,6 +4,7 @@ import '../styles/ProfilePage.css';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import profileImage from '../../../assets/main_deshan-img.png';
+import axios from 'axios';
 
 const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -36,29 +37,27 @@ const ProfilePage = () => {
   const [updateError, setUpdateError] = useState('');
 
   useEffect(() => {
-    fetch('/api/admin/degrees')
-      .then(res => res.json())
-      .then(data => setDegrees(data))
+    axios.get('/api/admin/degrees')
+      .then(res => setDegrees(res.data))
       .catch(() => setDegrees([]));
   }, []);
 
   useEffect(() => {
     // Fetch user data from backend
-    fetch('http://localhost:5000/api/protected', { credentials: 'include' })
-      .then(res => res.ok ? res.json() : Promise.reject(res))
-      .then(data => {
+    axios.get('http://localhost:5000/api/protected', { withCredentials: true })
+      .then(res => {
         setFormData(prev => ({
           ...prev,
-          name: data.user.name || '',
-          email: data.user.email || '',
-          phone: data.user.mobile || '',
-          degree: data.user.degree || '',
-          year: data.user.year || '',
-          semester: data.user.semester || '',
-          module: data.user.module || '',
-          userType: data.user.userType || '',
-          studentId: data.user.studentId || '',
-          lecturerId: data.user.lecturerId || ''
+          name: res.data.user.name || '',
+          email: res.data.user.email || '',
+          phone: res.data.user.mobile || '',
+          degree: res.data.user.degree || '',
+          year: res.data.user.year || '',
+          semester: res.data.user.semester || '',
+          module: res.data.user.module || '',
+          userType: res.data.user.userType || '',
+          studentId: res.data.user.studentId || '',
+          lecturerId: res.data.user.lecturerId || ''
         }));
         setLoading(false);
       })
@@ -114,33 +113,24 @@ const ProfilePage = () => {
         updateData.degree = formData.degree;
       }
       
-      const res = await fetch('http://localhost:5000/api/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(updateData)
+      const res = await axios.put('http://localhost:5000/api/profile', updateData, {
+        withCredentials: true
       });
       
-      const data = await res.json();
-      
-      if (res.ok) {
-        setUpdateMessage('Profile updated successfully!');
-        // Update the form data with the response
-        setFormData(prev => ({
-          ...prev,
-          name: data.user.name || prev.name,
-          email: data.user.email || prev.email,
-          phone: data.user.mobile || prev.phone,
-          degree: data.user.degree || prev.degree
-        }));
-    setIsEditing(false);
-        // Clear message after 3 seconds
-        setTimeout(() => setUpdateMessage(''), 3000);
-      } else {
-        setUpdateError(data.message || 'Failed to update profile');
-      }
+      setUpdateMessage('Profile updated successfully!');
+      // Update the form data with the response
+      setFormData(prev => ({
+        ...prev,
+        name: res.data.user.name || prev.name,
+        email: res.data.user.email || prev.email,
+        phone: res.data.user.mobile || prev.phone,
+        degree: res.data.user.degree || prev.degree
+      }));
+      setIsEditing(false);
+      // Clear message after 3 seconds
+      setTimeout(() => setUpdateMessage(''), 3000);
     } catch (err) {
-      setUpdateError('Server error. Please try again.');
+      setUpdateError(err.response?.data?.message || 'Server error. Please try again.');
     }
   };
 

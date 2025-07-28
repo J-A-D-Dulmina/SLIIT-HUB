@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/Register.css';
 import logo from '../../../assets/SLITT HUB logo.png';
+import axios from 'axios';
 
 const RegisterPage = () => {
   const [form, setForm] = useState({
@@ -20,9 +21,8 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin/degrees')
-      .then(res => res.json())
-      .then(data => setDegrees(data))
+    axios.get('/api/admin/degrees')
+      .then(res => setDegrees(res.data))
       .catch(() => setDegrees([]));
   }, []);
 
@@ -44,27 +44,17 @@ const RegisterPage = () => {
     setMessage('');
     setError('');
     try {
-      const res = await fetch('http://localhost:5000/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          ...form,
-          enrolYear: form.enrolYear ? Number(form.enrolYear) : undefined,
-          degree: form.degree // send _id
-        }),
+      const res = await axios.post('http://localhost:5000/api/register', {
+        ...form,
+        enrolYear: form.enrolYear ? Number(form.enrolYear) : undefined,
+        degree: form.degree // send _id
+      }, {
+        withCredentials: true
       });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage('Registration successful! You can now log in.');
-        setForm({ name: '', email: '', password: '', role: 'student', studentId: '', mobile: '', enrolYear: '', degree: '' });
-      } else {
-        setError(data.message || 'Registration failed');
-      }
+      setMessage('Registration successful! You can now log in.');
+      setForm({ name: '', email: '', password: '', role: 'student', studentId: '', mobile: '', enrolYear: '', degree: '' });
     } catch (err) {
-      setError('Server error');
+      setError(err.response?.data?.message || 'Server error');
     }
     setLoading(false);
   };

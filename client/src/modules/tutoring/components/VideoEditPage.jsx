@@ -376,7 +376,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
             <div className="video-player-wrapper">
               {video?.videoFile ? (
               <ReactPlayer
-                  url={`http://localhost:5000/api/tutoring/video/${video.id}`}
+                  url={`http://localhost:5000/${video.videoFile}`}
                 width="100%"
                 height="100%"
                 controls={true}

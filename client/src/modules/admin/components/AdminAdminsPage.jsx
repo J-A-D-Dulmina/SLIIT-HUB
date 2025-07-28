@@ -3,6 +3,7 @@ import '../styles/AdminAdminsPage.css';
 import { FaPencilAlt, FaTrash, FaEye, FaEyeSlash } from 'react-icons/fa';
 import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
 import Toast from '../../../shared/components/Toast';
+import axios from 'axios';
 
 const initialAdmins = [
   { id: 1, name: 'Super Admin', email: 'super@admin.com', mobile: '0711111111', password: 'admin123' },
@@ -29,10 +30,9 @@ const AdminAdminsPage = () => {
   // Fetch admins from backend
   useEffect(() => {
     setLoading(true);
-    fetch('/api/admins', { credentials: 'include' })
-      .then(res => res.ok ? res.json() : Promise.reject(res))
-      .then(data => {
-        setAdmins(data.admins || []);
+    axios.get('/api/admins', { withCredentials: true })
+      .then(res => {
+        setAdmins(res.data.admins || []);
         setLoading(false);
       })
       .catch(() => {
@@ -78,36 +78,16 @@ const AdminAdminsPage = () => {
     }
     try {
       if (modalMode === 'add') {
-        const res = await fetch('/api/admins', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(adminForm)
-        });
-        if (res.ok) {
-          const newAdmin = await res.json();
-          setAdmins([newAdmin, ...admins]);
-        } else {
-          setError('Failed to add admin');
-        }
+        const res = await axios.post('/api/admins', adminForm, { withCredentials: true });
+        setAdmins([res.data, ...admins]);
       } else if (modalMode === 'edit' && selectedAdmin) {
-        const res = await fetch(`/api/admins/${selectedAdmin._id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(adminForm)
-        });
-        if (res.ok) {
-          const updatedAdmin = await res.json();
-          setAdmins(admins.map(a => a._id === updatedAdmin._id ? updatedAdmin : a));
-          setToastMessage('Admin updated successfully!');
-          setTimeout(() => setToastMessage(''), 3000);
-        } else {
-          setError('Failed to update admin');
-        }
+        const res = await axios.put(`/api/admins/${selectedAdmin._id}`, adminForm, { withCredentials: true });
+        setAdmins(admins.map(a => a._id === res.data._id ? res.data : a));
+        setToastMessage('Admin updated successfully!');
+        setTimeout(() => setToastMessage(''), 3000);
       }
-    } catch {
-      setError('Server error');
+    } catch (error) {
+      setError(error.response?.data?.message || 'Server error');
     }
     closeModal();
   };
@@ -115,23 +95,13 @@ const AdminAdminsPage = () => {
   const confirmUpdateAdmin = async () => {
     setShowUpdateConfirm(false);
     try {
-      const res = await fetch(`/api/admins/${selectedAdmin._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(adminForm)
-      });
-      if (res.ok) {
-        const updatedAdmin = await res.json();
-        // Set password to blank in the list after update
-        setAdmins(admins.map(a => a._id === updatedAdmin._id ? { ...updatedAdmin, password: '' } : a));
-        setToastMessage('Admin updated successfully!');
-        setTimeout(() => setToastMessage(''), 3000);
-      } else {
-        setError('Failed to update admin');
-      }
-    } catch {
-      setError('Server error');
+      const res = await axios.put(`/api/admins/${selectedAdmin._id}`, adminForm, { withCredentials: true });
+      // Set password to blank in the list after update
+      setAdmins(admins.map(a => a._id === res.data._id ? { ...res.data, password: '' } : a));
+      setToastMessage('Admin updated successfully!');
+      setTimeout(() => setToastMessage(''), 3000);
+    } catch (error) {
+      setError(error.response?.data?.message || 'Server error');
     }
     closeModal();
   };
@@ -143,17 +113,10 @@ const AdminAdminsPage = () => {
   };
   const confirmDeleteAdmin = async () => {
     try {
-      const res = await fetch(`/api/admins/${selectedAdmin._id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      if (res.ok) {
-        setAdmins(admins.filter(a => a._id !== selectedAdmin._id));
-      } else {
-        setError('Failed to delete admin');
-      }
-    } catch {
-      setError('Server error');
+      const res = await axios.delete(`/api/admins/${selectedAdmin._id}`, { withCredentials: true });
+      setAdmins(admins.filter(a => a._id !== selectedAdmin._id));
+    } catch (error) {
+      setError(error.response?.data?.message || 'Server error');
     }
     setShowDeleteDialog(false);
     setSelectedAdmin(null);

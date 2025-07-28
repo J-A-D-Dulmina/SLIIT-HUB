@@ -10,6 +10,7 @@ import LecturerReviewDialog from './LecturerReviewDialog';
 import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
 import Toast from '../../../shared/components/Toast';
 import '../../../shared/styles/Toast.css';
+import axios from 'axios';
 
 const TutoringPage = () => {
   const navigate = useNavigate();
@@ -53,9 +54,8 @@ const TutoringPage = () => {
   }, []);
 
   useEffect(() => {
-    fetch('/api/admin/degrees')
-      .then(res => res.json())
-      .then(data => setDegrees(data))
+    axios.get('/api/admin/degrees')
+      .then(res => setDegrees(res.data))
       .catch(() => setDegrees([]));
   }, []);
 
@@ -67,6 +67,12 @@ const TutoringPage = () => {
   const selectedSemester = semesters.find(s => String(s.semesterNumber) === String(uploadFormData.semester));
   const modules = selectedSemester ? selectedSemester.modules : [];
 
+  // Helper function to get degree name from ID
+  const getDegreeName = (degreeId) => {
+    const degree = degrees.find(d => d._id === degreeId);
+    return degree ? degree.name : degreeId;
+  };
+
   // Fetch videos from backend
   useEffect(() => {
     fetchStudentVideos();
@@ -76,13 +82,8 @@ const TutoringPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('http://localhost:5000/api/tutoring/videos', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setVideos(data.videos);
-      } else {
-        setError('Failed to fetch videos');
-      }
+      const res = await axios.get('http://localhost:5000/api/tutoring/videos', { withCredentials: true });
+      setVideos(res.data.videos);
     } catch (error) {
       console.error('Error fetching videos:', error);
       setError('Network error. Please check your connection.');
@@ -105,22 +106,16 @@ const TutoringPage = () => {
   const handleConfirmDelete = async () => {
     if (selectedVideo) {
       try {
-        const res = await fetch(`http://localhost:5000/api/tutoring/videos/${selectedVideo.id}`, {
-          method: 'DELETE',
-          credentials: 'include'
+        const res = await axios.delete(`http://localhost:5000/api/tutoring/videos/${selectedVideo.id}`, {
+          withCredentials: true
         });
-        if (res.ok) {
-          // Remove from local state
-      const updatedVideos = videos.filter(v => v.id !== selectedVideo.id);
-      setVideos(updatedVideos);
-          setDeleteMessage('Video deleted successfully!');
-          setTimeout(() => setDeleteMessage(''), 3000);
-        } else {
-          const data = await res.json();
-          alert(data.message || 'Failed to delete video');
-        }
+        // Remove from local state
+        const updatedVideos = videos.filter(v => v.id !== selectedVideo.id);
+        setVideos(updatedVideos);
+        setDeleteMessage('Video deleted successfully!');
+        setTimeout(() => setDeleteMessage(''), 3000);
       } catch (error) {
-        alert('Server error. Please try again.');
+        alert(error.response?.data?.message || 'Server error. Please try again.');
       }
     }
     setShowDeleteConfirm(false);
@@ -169,30 +164,27 @@ const TutoringPage = () => {
     if (!publishTarget) return;
     setPublishLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/tutoring/videos/${publishTarget.id}/publish`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status: publishTarget.status === 'published' ? 'unpublished' : 'published' })
+      const res = await axios.patch(`http://localhost:5000/api/tutoring/videos/${publishTarget.id}/publish`, {
+        status: publishTarget.status === 'published' ? 'unpublished' : 'published'
+      }, {
+        withCredentials: true
       });
-      if (res.ok) {
-        setVideos(videos => videos.map(v => v.id === publishTarget.id ? { ...v, status: v.status === 'published' ? 'unpublished' : 'published' } : v));
-        setShowPublishConfirm(false);
-        setAgreeTerms(false);
-        setPublishTarget(null);
-      }
+      setVideos(videos => videos.map(v => v.id === publishTarget.id ? { ...v, status: v.status === 'published' ? 'unpublished' : 'published' } : v));
+      setShowPublishConfirm(false);
+      setAgreeTerms(false);
+      setPublishTarget(null);
     } finally {
       setPublishLoading(false);
     }
   };
 
   const fetchVideoById = async (videoId) => {
-    const res = await fetch('http://localhost:5000/api/tutoring/videos', { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
-      return data.videos.find(v => v.id === videoId);
+    try {
+      const res = await axios.get('http://localhost:5000/api/tutoring/videos', { withCredentials: true });
+      return res.data.videos.find(v => v.id === videoId);
+    } catch (error) {
+      return null;
     }
-    return null;
   };
 
   const handleEditClick = async (video) => {
@@ -224,35 +216,27 @@ const TutoringPage = () => {
       formData.append('semester', uploadFormData.semester);
       formData.append('videoFile', uploadFormData.videoFile);
 
-      const res = await fetch('http://localhost:5000/api/tutoring/upload', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData
+      const res = await axios.post('http://localhost:5000/api/tutoring/upload', formData, {
+        withCredentials: true
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setUploadMessage('Video uploaded successfully!');
-        setShowUploadDialog(false);
-        setUploadFormData({
-          title: '',
-          description: '',
-          module: '',
-          degree: '',
-          year: '',
-          semester: '',
-          videoFile: null
-        });
-        // Refresh videos list
-        fetchStudentVideos();
-        // Clear message after 3 seconds
-        setTimeout(() => setUploadMessage(''), 3000);
-      } else {
-        setUploadError(data.message || 'Upload failed');
-      }
+      setUploadMessage('Video uploaded successfully!');
+      setShowUploadDialog(false);
+      setUploadFormData({
+        title: '',
+        description: '',
+        module: '',
+        degree: '',
+        year: '',
+        semester: '',
+        videoFile: null
+      });
+      // Refresh videos list
+      fetchStudentVideos();
+      // Clear message after 3 seconds
+      setTimeout(() => setUploadMessage(''), 3000);
     } catch (error) {
-      setUploadError('Server error. Please try again.');
+      setUploadError(error.response?.data?.message || 'Server error. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -274,23 +258,13 @@ const TutoringPage = () => {
   const handleSaveVideo = async (formData) => {
     if (selectedVideo) {
       try {
-        const res = await fetch(`http://localhost:5000/api/tutoring/videos/${selectedVideo.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(formData)
+        const res = await axios.put(`http://localhost:5000/api/tutoring/videos/${selectedVideo.id}`, formData, {
+          withCredentials: true
         });
-        if (res.ok) {
-          const data = await res.json();
-          handleVideoUpdate(selectedVideo.id, data.video);
-          return true;
-        } else {
-          const data = await res.json();
-          alert(data.message || 'Failed to update video');
-          return false;
-        }
+        handleVideoUpdate(selectedVideo.id, res.data.video);
+        return true;
       } catch (error) {
-        alert('Server error. Please try again.');
+        alert(error.response?.data?.message || 'Server error. Please try again.');
         return false;
       }
     } else {
@@ -322,9 +296,8 @@ const TutoringPage = () => {
   };
 
   const handleVideoClick = (video) => {
-    if (video.status === 'published') {
-      navigate(`/video/${video.module}/${video.id}`);
-    }
+    // Navigate to VideoDetailsPage for all videos (published and unpublished)
+    navigate(`/video/${video.module}/${video.id}`);
   };
 
   if (showEditPage) {
@@ -400,56 +373,67 @@ const TutoringPage = () => {
                 {videos.map(video => (
                   <div 
                     key={video.id} 
-                    className={`video-item ${video.status === 'published' ? 'clickable' : ''}`}
+                    className="video-item clickable"
                     onClick={() => handleVideoClick(video)}
                   >
-                    <div className="video-thumbnail">
-                      {video.thumbnail ? (
-                        <img 
-                          src={`http://localhost:5000/api/tutoring/thumbnail/${video.id}`}
-                          alt={video.title}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'block';
-                          }}
-                        />
-                      ) : video.videoFile ? (
-                        <video 
-                          src={`http://localhost:5000/api/tutoring/video/${video.id}`}
-                          controls
-                          style={{ display: 'none' }}
-                        />
-                      ) : (
-                        <div className="video-placeholder">
-                          <div className="placeholder-icon">📹</div>
-                          <span>No Video</span>
-                        </div>
-                      )}
-                      <span className="duration">--:--</span>
-                      {!video.aiFeatures?.lecturerRecommended && (
-                        <button 
-                          className="lecturer-recommend-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReviewClick(video);
-                          }}
-                        >
-                          <FaUserGraduate /> Get Lecturer Review
-                        </button>
-                      )}
-                    </div>
+                                         <div className="video-thumbnail">
+                       {video.thumbnail ? (
+                         <img 
+                           src={`http://localhost:5000/${video.thumbnail}`}
+                           alt={video.title}
+                           onError={(e) => {
+                             e.target.style.display = 'none';
+                             e.target.nextSibling.style.display = 'block';
+                           }}
+                         />
+                       ) : video.videoFile ? (
+                         <video 
+                           src={`http://localhost:5000/${video.videoFile}`}
+                           controls
+                           style={{ display: 'none' }}
+                         />
+                       ) : (
+                         <div className="video-placeholder">
+                           <div className="placeholder-icon">📹</div>
+                           <span>No Video</span>
+                         </div>
+                       )}
+                       <span className="duration">--:--</span>
+                       <div className="thumbnail-overlay">
+                         <div className="publish-status-overlay">
+                           <span className={`status ${video.status}`}>
+                             {video.status === 'published' ? 'Published' : 'Unpublished'}
+                           </span>
+                         </div>
+                       </div>
+                       {!video.aiFeatures?.lecturerRecommended && (
+                         <button 
+                           className="lecturer-recommend-btn"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             handleReviewClick(video);
+                           }}
+                         >
+                           <FaUserGraduate /> Get Lecturer Review
+                         </button>
+                       )}
+                     </div>
                     <div className="video-content">
                       <div className="video-info">
                         <h3>{video.title}</h3>
                         <p>{video.description}</p>
                       </div>
-                      <div className="video-meta">
-                        <span className="module">{video.module}</span>
-                        <span className="semester">Semester {video.semester}</span>
-                        <span className={`status ${video.status}`}>
-                          {video.status === 'published' ? 'Published' : 'Unpublished'}
-                        </span>
-                      </div>
+                                             <div className="video-meta">
+                         <div className="degree-path">
+                           <span className="degree">{getDegreeName(video.degree)}</span>
+                           <span className="path-separator">/</span>
+                           <span className="year">Year {video.year}</span>
+                           <span className="path-separator">/</span>
+                           <span className="semester">Semester {video.semester}</span>
+                           <span className="path-separator">/</span>
+                           <span className="module">{video.module}</span>
+                         </div>
+                       </div>
                       <div className="ai-tags">
                         {video.aiFeatures?.summary && (
                           <span className="ai-tag summary">

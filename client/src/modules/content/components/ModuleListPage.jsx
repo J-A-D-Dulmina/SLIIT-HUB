@@ -22,35 +22,9 @@ import TopBar from '../../../shared/components/TopBar';
 import UpcomingMeetings from '../../../shared/components/UpcomingMeetings';
 import moment from 'moment';
 import * as FaIcons from 'react-icons/fa';
+import axios from 'axios';
 
-// Remove static YEARS, SEMESTERS, MODULES
-// Add the same meeting data structure as LandingPage
-const MY_SCHEDULED_MEETINGS = [
-  {
-    id: 1,
-    topic: 'Group Project Discussion',
-    start: new Date(new Date().setDate(new Date().getDate() + 1)), // Tomorrow
-    link: 'https://meet.sliit-hub.com/meeting/1',
-  }
-];
-
-// Add the same module details helper
-const getModuleDetails = (meetingId) => {
-  const moduleDetails = {
-    1: { 
-      year: 'Year 2', 
-      semester: 'Semester 2', 
-      module: 'IT2020',
-      coordinator: 'Dr. Jane Wilson'
-    }
-  };
-  return moduleDetails[meetingId] || { 
-    year: 'N/A', 
-    semester: 'N/A', 
-    module: 'N/A',
-    coordinator: 'N/A'
-  };
-};
+// Backend-connected meeting data structure
 
 const ModuleListPage = () => {
   const navigate = useNavigate();
@@ -61,73 +35,76 @@ const ModuleListPage = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [events, setEvents] = useState([]);
+  const [myMeetings, setMyMeetings] = useState([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [meetingToStart, setMeetingToStart] = useState(null);
   const [allPublishedVideos, setAllPublishedVideos] = useState([]);
+  
+  // Get user info from localStorage
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
 
   const fetchAllPublishedVideos = async () => {
-    const res = await fetch(`/api/tutoring/videos/published`);
-    if (res.ok) {
-      const data = await res.json();
-      setAllPublishedVideos(data.videos);
-    } else {
+    try {
+      const res = await axios.get(`/api/tutoring/videos/published`);
+      setAllPublishedVideos(res.data.videos);
+    } catch (error) {
       setAllPublishedVideos([]);
     }
   };
 
+  const fetchMeetings = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/meetings/public');
+      if (res.data && res.data.data) {
+        setEvents(res.data.data.map(m => ({
+          id: m._id,
+          title: m.title,
+          start: new Date(m.startTime),
+          end: new Date(new Date(m.startTime).getTime() + (m.duration || 60) * 60000),
+          allDay: false,
+          resource: { ...m, isUpcomingMeeting: true }
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch meetings:', err);
+    }
+  };
+
+  const fetchMyMeetings = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/meetings/my-meetings', { withCredentials: true });
+      if (res.data && res.data.data) {
+        setMyMeetings(res.data.data.map(m => ({
+          id: m._id,
+          title: m.title,
+          start: new Date(m.startTime),
+          end: new Date(new Date(m.startTime).getTime() + (m.duration || 60) * 60000),
+          allDay: false,
+          resource: { ...m, isScheduledMeeting: true }
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch my meetings:', err);
+    }
+  };
+
   useEffect(() => {
-    fetch('/api/admin/degrees')
-      .then(res => res.json())
-      .then(data => setDegrees(data))
+    axios.get('/api/admin/degrees')
+      .then(res => setDegrees(res.data))
       .catch(() => setDegrees([]));
     
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
     
-    // Add the same events setup as LandingPage
-    const calendarEvents = MY_SCHEDULED_MEETINGS.map(m => ({
-      id: m.id,
-      title: m.topic,
-      start: m.start,
-      end: new Date(m.start.getTime() + 60 * 60000),
-      allDay: false,
-      resource: { isScheduledMeeting: true },
-    }));
-
-    const upcomingMeetings = [
-      {
-        id: 101,
-        title: 'Research Discussion',
-        start: new Date(new Date().setDate(29)),
-        end: new Date(new Date().setDate(29) + 60 * 60000),
-        allDay: false,
-        resource: { isUpcomingMeeting: true },
-      },
-      {
-        id: 102,
-        title: 'Group Study Session',
-        start: new Date(new Date().setDate(29) + 3.5 * 60 * 60000),
-        end: new Date(new Date().setDate(29) + 5 * 60 * 60000),
-        allDay: false,
-        resource: { isUpcomingMeeting: true },
-      }
-    ];
-
-    setEvents([...calendarEvents, ...upcomingMeetings]);
+    fetchMeetings();
+    fetchMyMeetings();
     fetchAllPublishedVideos();
     
     return () => clearInterval(timer);
   }, []);
 
-  // Add the same meeting helper functions as LandingPage
-  const canStartMeeting = (meeting) => {
-    const now = new Date();
-    const start = new Date(meeting.start);
-    const diff = (start - now) / 60000;
-    return diff <= 15 && diff >= -120;
-  };
-
+  // Meeting helper functions
   const formatMeetingTime = (date) => {
     return moment(date).format('MMM D, YYYY [at] HH:mm');
   };
@@ -137,10 +114,22 @@ const ModuleListPage = () => {
     setShowConfirm(true);
   };
 
-  const confirmStartMeeting = () => {
-    setShowConfirm(false);
-    alert(`Meeting started: ${meetingToStart.topic}`);
-    setMeetingToStart(null);
+  const confirmStartMeeting = async () => {
+    try {
+      // Call the start meeting API
+      const response = await axios.post(`http://localhost:5000/api/meetings/${meetingToStart._id}/start`, {}, {
+        withCredentials: true
+      });
+      
+      setShowConfirm(false);
+      alert(`Meeting started: ${meetingToStart.title || meetingToStart.topic}`);
+      setMeetingToStart(null);
+      
+      // Refresh meetings data
+      await fetchMyMeetings();
+    } catch (error) {
+      alert(`Failed to start meeting: ${error.response?.data?.message || error.message}`);
+    }
   };
 
   const cancelStartMeeting = () => {
@@ -148,9 +137,20 @@ const ModuleListPage = () => {
     setMeetingToStart(null);
   };
 
-  // Get only the next scheduled meeting
-  const nextScheduledMeeting = MY_SCHEDULED_MEETINGS
-    .sort((a, b) => new Date(a.start) - new Date(b.start))[0];
+  // For UpcomingMeetings, filter for upcoming meetings from OTHER people (public meetings)
+  const upcomingOthers = events.filter(m => {
+    const status = m.resource?.computedStatus || m.resource?.status || m.status;
+    return status === 'upcoming' || status === 'starting-soon';
+  });
+
+  // For My Scheduled Meeting, show the next one (my upcoming meetings only)
+  const upcomingMine = myMeetings.filter(m => {
+    const status = m.resource?.computedStatus || m.resource?.status || m.computedStatus || m.status;
+    return status === 'upcoming' || status === 'starting-soon' || status === 'scheduled';
+  });
+  const nextScheduledMeeting = upcomingMine.sort((a, b) => new Date(a.resource?.startTime || a.startTime) - new Date(b.resource?.startTime || b.startTime))[0];
+
+
 
   const toggleDegree = (degreeId) => {
     setExpandedDegrees(prev => ({
@@ -179,7 +179,7 @@ const ModuleListPage = () => {
   };
 
   const handleModuleClick = (moduleId) => {
-    navigate(`/videos/${moduleId}`);
+    navigate(`/module/${moduleId}`);
   };
 
   // Remove static YEARS and SEMESTERS usage
@@ -342,14 +342,14 @@ const ModuleListPage = () => {
             </div>
           </div>
           <div className="right-sidebar">
-            <UpcomingMeetings events={events} />
+            <UpcomingMeetings events={upcomingOthers} />
             <div className="my-scheduled-meetings">
               <h3>My Scheduled Meeting</h3>
               {!nextScheduledMeeting ? (
                 <>
-                  <div className="no-meetings">No scheduled meetings</div>
+                  <div className="dashboard-no-meetings">No scheduled meetings</div>
                   <button 
-                    className="action-btn" 
+                    className="dashboard-action-btn" 
                     onClick={() => navigate('/my-meetings')}
                   >
                     Schedule Meeting
@@ -357,41 +357,45 @@ const ModuleListPage = () => {
                 </>
               ) : (
                 <>
-                  <div className="meeting-list">
-                    <div className="meeting-item">
-                      <div className="meeting-header">
-                        <div className="meeting-details">
-                          <h4>{nextScheduledMeeting.topic}</h4>
-                          <div className="meeting-meta">
-                            <span>{getModuleDetails(nextScheduledMeeting.id).year}</span>
-                            <span>{getModuleDetails(nextScheduledMeeting.id).semester}</span>
-                            <span>{getModuleDetails(nextScheduledMeeting.id).module}</span>
+                  <div className="dashboard-meeting-list">
+                    <div className="dashboard-meeting-item">
+                      <div className="dashboard-meeting-header">
+                        <div className="dashboard-meeting-details">
+                          <h4 className="dashboard-meeting-title">{nextScheduledMeeting.resource?.title || nextScheduledMeeting.title || nextScheduledMeeting.topic}</h4>
+                          <div className="dashboard-meeting-description">
+                            {nextScheduledMeeting.resource?.description || nextScheduledMeeting.description || 'No description available'}
                           </div>
-                          <div className="meeting-coordinator">
-                            Coordinator: {getModuleDetails(nextScheduledMeeting.id).coordinator}
+                          <div className="dashboard-meeting-meta">
+                            <span>{nextScheduledMeeting.resource?.degree || nextScheduledMeeting.degree || 'N/A'}</span>
+                            <span>{nextScheduledMeeting.resource?.year || nextScheduledMeeting.year || 'N/A'}</span>
+                            <span>{nextScheduledMeeting.resource?.semester || nextScheduledMeeting.semester || 'N/A'}</span>
+                            <span>{nextScheduledMeeting.resource?.module || nextScheduledMeeting.module || 'N/A'}</span>
                           </div>
-                          <div className="meeting-time">
-                            {formatMeetingTime(nextScheduledMeeting.start)}
+                          <div className="dashboard-meeting-coordinator">
+                            Coordinator: {nextScheduledMeeting.resource?.hostName || nextScheduledMeeting.hostName || 'N/A'}
+                          </div>
+                          <div className="dashboard-meeting-time">
+                            {formatMeetingTime(nextScheduledMeeting.resource?.startTime || nextScheduledMeeting.startTime || nextScheduledMeeting.start)}
                           </div>
                         </div>
                         <button
-                          className="start-meeting-btn"
-                          disabled={!canStartMeeting(nextScheduledMeeting)}
-                          onClick={() => handleStartMeeting(nextScheduledMeeting)}
+                          className="dashboard-start-meeting-btn"
+                          disabled={!(nextScheduledMeeting.resource?.canStart || nextScheduledMeeting.canStart)}
+                          onClick={() => handleStartMeeting(nextScheduledMeeting.resource || nextScheduledMeeting)}
                         >
                           <FaPlay /> Start
                         </button>
                       </div>
-                      <div className="meeting-link">
+                      <div className="dashboard-meeting-link">
                         <FaLink />
-                        <a href={nextScheduledMeeting.link} target="_blank" rel="noopener noreferrer">
-                          {nextScheduledMeeting.link}
+                        <a href={nextScheduledMeeting.resource?.meetingLink || nextScheduledMeeting.meetingLink || '#'} target="_blank" rel="noopener noreferrer">
+                          {nextScheduledMeeting.resource?.meetingLink || nextScheduledMeeting.meetingLink || 'N/A'}
                         </a>
                       </div>
                     </div>
                   </div>
                   <button 
-                    className="view-all-meetings-btn" 
+                    className="dashboard-view-all-meetings-btn" 
                     onClick={() => navigate('/my-meetings')}
                   >
                     View All My Scheduled Meetings
@@ -403,12 +407,12 @@ const ModuleListPage = () => {
               <div className="meeting-confirm-overlay">
                 <div className="meeting-confirm-dialog">
                   <h4>Start Meeting</h4>
-                  <p>Are you sure you want to start the meeting "{meetingToStart.topic}"?</p>
+                  <p>Are you sure you want to start the meeting "{meetingToStart.title || meetingToStart.topic}"?</p>
                   <div className="meeting-confirm-actions">
-                    <button className="action-btn" onClick={confirmStartMeeting}>
+                    <button className="meeting-confirm-start-btn" onClick={confirmStartMeeting}>
                       Yes, Start
                     </button>
-                    <button className="action-btn" onClick={cancelStartMeeting}>
+                    <button className="meeting-confirm-cancel-btn" onClick={cancelStartMeeting}>
                       Cancel
                     </button>
                   </div>

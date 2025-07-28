@@ -49,18 +49,17 @@ exports.getVideos = async (req, res) => {
           }
         }
       }
-      // Extract filename for preview
+      // Use relative path directly for preview
       let preview = '';
       if (obj.videoFile) {
-        const fileName = obj.videoFile.split(/\\|\//).pop();
-        preview = '/uploads/videos/' + fileName;
+        preview = `/${obj.videoFile}`;
       }
       return {
         ...obj,
         degreeName,
         moduleName,
         preview,
-        thumbnail: obj.thumbnail ? '/' + obj.thumbnail.replace(/\\/g, '/') : '',
+        thumbnail: obj.thumbnail ? `/${obj.thumbnail}` : '',
       };
     }));
     console.log('Mapped videos for frontend:', mapped);

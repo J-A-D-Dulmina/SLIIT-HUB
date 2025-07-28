@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner.jsx';
+import axios from 'axios';
 
 const ProtectedRoute = ({ children }) => {
   const [loading, setLoading] = useState(true);
@@ -9,12 +10,11 @@ const ProtectedRoute = ({ children }) => {
   const location = useLocation();
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/protected', { credentials: 'include' })
-      .then(res => res.ok ? res.json() : Promise.reject(res))
-      .then((data) => {
-        if (data.user && data.user.userType) {
-          localStorage.setItem('userType', data.user.userType);
-          setUserType(data.user.userType);
+    axios.get('http://localhost:5000/api/protected', { withCredentials: true })
+      .then((res) => {
+        if (res.data.user && res.data.user.userType) {
+          localStorage.setItem('userType', res.data.user.userType);
+          setUserType(res.data.user.userType);
         }
         setAuthenticated(true);
         setLoading(false);

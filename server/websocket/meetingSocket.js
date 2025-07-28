@@ -248,6 +248,51 @@ class MeetingSocketServer {
         }
       });
 
+      // Check if this is the original host rejoining
+      const isOriginalHostRejoining = meeting.originalHost && 
+        meeting.originalHost.userId.toString() === user._id.toString();
+
+      if (isOriginalHostRejoining) {
+        // Find temporary host to demote
+        const temporaryHost = meeting.participants.find(p => p.role === 'temporary-host');
+        
+        if (temporaryHost) {
+          // Demote temporary host back to participant
+          temporaryHost.role = 'participant';
+          delete temporaryHost.promotedAt;
+          
+          // Find and restore original host role
+          const originalHostParticipant = meeting.participants.find(p => p.userId.toString() === user._id.toString());
+          if (originalHostParticipant) {
+            originalHostParticipant.role = 'host';
+            originalHostParticipant.leftAt = null; // Clear left time
+          }
+          
+          // Clear original host info
+          delete meeting.originalHost;
+          
+          await meeting.save();
+          
+          // Notify all participants about host restoration
+          this.broadcastToRoom(meetingId, null, {
+            type: 'host-restored',
+            meetingId,
+            data: {
+              originalHost: {
+                userId: user._id,
+                name: user.name
+              },
+              previousTemporaryHost: {
+                userId: temporaryHost.userId,
+                name: temporaryHost.name
+              }
+            }
+          });
+          
+          console.log(`Host restored: ${user.name} rejoined as host, ${temporaryHost.name} demoted to participant`);
+        }
+      }
+
       // Notify other participants
       this.broadcastToRoom(meetingId, ws, {
         type: 'user-joined',
@@ -255,7 +300,8 @@ class MeetingSocketServer {
         data: {
           userId: user._id,
           name: user.name,
-          email: user.email
+          email: user.email,
+          isHostRestored: isOriginalHostRejoining
         }
       });
 
@@ -267,6 +313,17 @@ class MeetingSocketServer {
 
   async handleLeaveMeeting(ws, meetingId, user) {
     try {
+      // Get meeting data to check if host is leaving
+      const meeting = await Meeting.findById(meetingId);
+      if (!meeting) {
+        console.error('Meeting not found for host transfer check');
+        return;
+      }
+
+      // Check if the leaving user is the host
+      const leavingParticipant = meeting.participants.find(p => p.userId.toString() === user._id.toString());
+      const isHostLeaving = leavingParticipant && leavingParticipant.role === 'host';
+
       // Remove from room
       const room = this.rooms.get(meetingId);
       if (room) {
@@ -282,7 +339,66 @@ class MeetingSocketServer {
         delete connection.meetingId;
       }
 
-      // Notify other participants
+      // If host is leaving and meeting is in progress, handle host transfer
+      if (isHostLeaving && (meeting.status === 'in-progress' || meeting.computedStatus === 'in-progress')) {
+        const activeParticipants = meeting.participants.filter(p => !p.leftAt);
+        
+        if (activeParticipants.length > 1) { // More than just the leaving host
+          // Find the next participant to promote as temporary host
+          const nextHost = activeParticipants.find(p => p.userId.toString() !== user._id.toString());
+          
+          if (nextHost) {
+            // Promote next participant as temporary host
+            nextHost.role = 'temporary-host';
+            nextHost.promotedAt = new Date();
+            
+            // Store original host info
+            meeting.originalHost = {
+              userId: leavingParticipant.userId,
+              email: leavingParticipant.email,
+              name: leavingParticipant.name,
+              leftAt: new Date()
+            };
+            
+            await meeting.save();
+            
+            // Notify all participants about host transfer
+            this.broadcastToRoom(meetingId, null, {
+              type: 'host-transferred',
+              meetingId,
+              data: {
+                previousHost: {
+                  userId: leavingParticipant.userId,
+                  name: leavingParticipant.name
+                },
+                newHost: {
+                  userId: nextHost.userId,
+                  name: nextHost.name
+                }
+              }
+            });
+            
+            console.log(`Host transfer: ${leavingParticipant.name} left, ${nextHost.name} promoted as temporary host`);
+          }
+        } else {
+          // No other participants, end the meeting
+          meeting.status = 'completed';
+          meeting.endedAt = new Date();
+          await meeting.save();
+          
+          // Notify remaining participants that meeting ended
+          this.broadcastToRoom(meetingId, null, {
+            type: 'meeting-ended',
+            meetingId,
+            data: {
+              reason: 'Host left and no other participants remain'
+            }
+          });
+          
+          console.log(`Meeting ended: Host left and no other participants`);
+        }
+      } else {
+        // Regular participant leaving
       this.broadcastToRoom(meetingId, ws, {
         type: 'user-left',
         meetingId,
@@ -292,6 +408,7 @@ class MeetingSocketServer {
           email: user.email
         }
       });
+      }
 
     } catch (error) {
       console.error('Error leaving meeting:', error);

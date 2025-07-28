@@ -18,6 +18,7 @@ import {
   FaSignInAlt,
   FaList
 } from 'react-icons/fa';
+import axios from 'axios';
 
 const SideMenu = ({ collapsed }) => {
   const location = useLocation();
@@ -29,10 +30,9 @@ const SideMenu = ({ collapsed }) => {
 
   useEffect(() => {
     // Fetch user details from backend
-    fetch('http://localhost:5000/api/protected', { credentials: 'include' })
-      .then(res => res.ok ? res.json() : Promise.reject(res))
-      .then(data => {
-        setUser(data.user || {});
+    axios.get('http://localhost:5000/api/protected', { withCredentials: true })
+      .then(res => {
+        setUser(res.data.user || {});
         setLoading(false);
       })
       .catch(() => {
@@ -47,7 +47,7 @@ const SideMenu = ({ collapsed }) => {
 
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:5000/api/logout', { method: 'POST', credentials: 'include' });
+      await axios.post('http://localhost:5000/api/logout', {}, { withCredentials: true });
       localStorage.clear();
       navigate('/login');
     } catch (error) {

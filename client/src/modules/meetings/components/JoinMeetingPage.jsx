@@ -5,6 +5,7 @@ import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import moment from 'moment';
 import '../styles/JoinMeetingPage.css';
+import axios from 'axios';
 
 const DEGREES = [
   'BSc in Information Technology',
@@ -48,13 +49,10 @@ const JoinMeetingPage = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/protected', { 
-          credentials: 'include' 
+        const response = await axios.get('http://localhost:5000/api/protected', { 
+          withCredentials: true 
         });
-        if (response.ok) {
-          const data = await response.json();
-          setCurrentUser(data.user);
-        }
+        setCurrentUser(response.data.user);
       } catch (error) {
         console.error('Error fetching user data:', error);
       }
@@ -79,9 +77,8 @@ const JoinMeetingPage = () => {
   }, []);
 
   useEffect(() => {
-    fetch('/api/admin/degrees')
-      .then(res => res.json())
-      .then(data => setDegrees(data))
+    axios.get('/api/admin/degrees')
+      .then(res => setDegrees(res.data))
       .catch(() => setDegrees([]));
   }, []);
 
@@ -96,22 +93,25 @@ const JoinMeetingPage = () => {
   const fetchMeetings = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/meetings/public', {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
+      const response = await axios.get('http://localhost:5000/api/meetings/public', {
+        withCredentials: true
       });
-      if (!response.ok) {
-        throw new Error('Failed to fetch meetings');
-      }
-      const result = await response.json();
       
       // Filter out meetings where current user is the host
-      let filteredMeetings = result.data || [];
-      if (currentUser && currentUser.studentId) {
-        filteredMeetings = filteredMeetings.filter(meeting => 
-          meeting.hostStudentId !== currentUser.studentId
-        );
-        console.log('Filtered out user meetings. Original count:', result.data?.length, 'Filtered count:', filteredMeetings.length);
+      let filteredMeetings = response.data.data || [];
+      if (currentUser) {
+        filteredMeetings = filteredMeetings.filter(meeting => {
+          // For students, check hostStudentId
+          if (currentUser.studentId) {
+            return meeting.hostStudentId !== currentUser.studentId;
+          }
+          // For lecturers, check host ObjectId
+          if (currentUser._id) {
+            return meeting.host !== currentUser._id;
+          }
+          return true; // If no user info, show all meetings
+        });
+        console.log('Filtered out user meetings. Original count:', response.data.data?.length, 'Filtered count:', filteredMeetings.length);
       }
       
       setMeetings(filteredMeetings);
@@ -172,42 +172,24 @@ const JoinMeetingPage = () => {
       
       if (isCurrentlyParticipating) {
         // Leave participation
-        const response = await fetch(`http://localhost:5000/api/meetings/${meetingId}/leave-participation`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
+        const response = await axios.post(`http://localhost:5000/api/meetings/${meetingId}/leave-participation`, {}, {
+          withCredentials: true
         });
 
-        if (response.ok) {
-          setParticipatingMeetings(prev => prev.filter(id => id !== meetingId));
-          localStorage.setItem('participatingMeetings', JSON.stringify(participatingMeetings.filter(id => id !== meetingId)));
-          // Refresh meetings to get updated participant count
-          fetchMeetings();
-        } else {
-          const errorData = await response.json();
-          alert(errorData.message || 'Failed to leave participation');
-        }
+        setParticipatingMeetings(prev => prev.filter(id => id !== meetingId));
+        localStorage.setItem('participatingMeetings', JSON.stringify(participatingMeetings.filter(id => id !== meetingId)));
+        // Refresh meetings to get updated participant count
+        fetchMeetings();
       } else {
         // Join participation
-        const response = await fetch(`http://localhost:5000/api/meetings/${meetingId}/participate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
+        const response = await axios.post(`http://localhost:5000/api/meetings/${meetingId}/participate`, {}, {
+          withCredentials: true
         });
 
-        if (response.ok) {
-          setParticipatingMeetings(prev => [...prev, meetingId]);
-          localStorage.setItem('participatingMeetings', JSON.stringify([...participatingMeetings, meetingId]));
-          // Refresh meetings to get updated participant count
-          fetchMeetings();
-        } else {
-          const errorData = await response.json();
-          alert(errorData.message || 'Failed to join participation');
-        }
+        setParticipatingMeetings(prev => [...prev, meetingId]);
+        localStorage.setItem('participatingMeetings', JSON.stringify([...participatingMeetings, meetingId]));
+        // Refresh meetings to get updated participant count
+        fetchMeetings();
       }
     } catch (error) {
       console.error('Error toggling participation:', error);
@@ -390,64 +372,61 @@ const JoinMeetingPage = () => {
                 return (
                   <div key={meeting._id} className={`meeting-card ${meeting.status}`}>
                     <div className="meeting-content">
-                      <div>
-                        <div className="meeting-header">
-                          <h3>{meeting.title}</h3>
-                          <p className="meeting-brief">{meeting.description}</p>        
-                        </div>
+                      <div className="meeting-header">
+                        <h3>{meeting.title}</h3>
+                        <p className="meeting-brief">{meeting.description}</p>        
                       </div>
-                      <div>
-                        <div className="meeting-tags">
-                          <span className="tag-degree">{meeting.degree}</span>
-                          <span className="tag-module">{meeting.module}</span>
-                          <span className="tag-year">{meeting.year}</span>
-                          <span className="tag-semester">{meeting.semester}</span>
-                          <span className="tag-time">
-                            <FaClock /> {formatMeetingTime(meeting.startTime)}
-                          </span>
+                      
+                      <div className="meeting-tags">
+                        <span className="tag-degree">{meeting.degree}</span>
+                        <span className="tag-module">{meeting.module}</span>
+                        <span className="tag-year">{meeting.year}</span>
+                        <span className="tag-semester">{meeting.semester}</span>
+                        <span className="tag-time">
+                          <FaClock /> {formatMeetingTime(meeting.startTime)}
+                        </span>
+                      </div>
+                      
+                      <div className="meeting-info">
+                        <div className="info-row">
+                          <FaUsers />
+                          <span>Host: {meeting.hostName}</span>
                         </div>
-                        <div className="meeting-info">
-                          <div className="info-row">
-                            <FaUsers />
-                            <span>Host: {meeting.hostName}</span>
-                          </div>
-                          <div className="info-row">
-                            <FaUsers />
-                            <span>{participantCount} {participantCount === 1 ? 'participant' : 'participants'}</span>
-                          </div>
+                        <div className="info-row">
+                          <FaUsers />
+                          <span>{participantCount} {participantCount === 1 ? 'participant' : 'participants'}</span>
                         </div>
                       </div>
 
-                      <div>
-                        <div className="action-panel">
-                          <span className={`status-tag ${meeting.status}`}>{meeting.status}</span>
+                      <div className="action-panel">
+                        <span className={`status-tag ${meeting.status}`}>{meeting.status}</span>
+                        <button
+                          className={`toggle-participate ${isParticipating ? 'active' : ''}`}
+                          onClick={() => handleParticipateToggle(meeting._id)}
+                          disabled={meeting.status === 'ended'}
+                        >
+                          {isParticipating ? <FaCheckSquare /> : <FaSquare />}
+                          {isParticipating ? 'Participating' : 'Participate'}
+                        </button>
+                        {/* Show join button for all non-ended meetings */}
+                        {meeting.status !== 'ended' && meeting.status !== 'completed' && (
                           <button
-                            className={`toggle-participate ${isParticipating ? 'active' : ''}`}
-                            onClick={() => handleParticipateToggle(meeting._id)}
+                            className={`join-meeting ${meeting.status === 'in-progress' ? 'in-progress' : ''}`}
+                            onClick={() => handleJoinMeeting(meeting)}
                             disabled={meeting.status === 'ended'}
+                            title={meeting.status === 'in-progress' ? 'Join ongoing meeting' : 
+                                   meeting.status === 'starting-soon' ? 'Join meeting starting soon' :
+                                   meeting.status === 'upcoming' ? 'Join upcoming meeting' : 'Join meeting'}
                           >
-                            {isParticipating ? <FaCheckSquare /> : <FaSquare />}
-                            {isParticipating ? 'Participating' : 'Participate'}
+                            <FaPlay /> 
+                            {meeting.status === 'in-progress' ? 'Join Meeting' :
+                             meeting.status === 'starting-soon' ? 'Join Soon' :
+                             meeting.status === 'upcoming' ? 'Join Later' : 'Join Meeting'}
                           </button>
-                          {/* Show join button for all non-ended meetings */}
-                          {meeting.status !== 'ended' && meeting.status !== 'completed' && (
-                            <button
-                              className={`join-meeting ${meeting.status === 'in-progress' ? 'in-progress' : ''}`}
-                              onClick={() => handleJoinMeeting(meeting)}
-                              disabled={meeting.status === 'ended'}
-                              title={meeting.status === 'in-progress' ? 'Join ongoing meeting' : 
-                                     meeting.status === 'starting-soon' ? 'Join meeting starting soon' :
-                                     meeting.status === 'upcoming' ? 'Join upcoming meeting' : 'Join meeting'}
-                            >
-                              <FaPlay /> 
-                              {meeting.status === 'in-progress' ? 'Join Meeting' :
-                               meeting.status === 'starting-soon' ? 'Join Soon' :
-                               meeting.status === 'upcoming' ? 'Join Later' : 'Join Meeting'}
-                            </button>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </div>
+                    
                     <div className="meeting-url">
                       <FaLink />
                       <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer">

@@ -260,8 +260,8 @@ const getMeetings = async (req, res) => {
       
       meetingObj.computedStatus = status;
       meetingObj.isHost = isHost;
-      meetingObj.canStart = isHost && (status === 'starting-soon' || status === 'upcoming');
-      meetingObj.canJoin = status === 'in-progress';
+      meetingObj.canStart = isHost && meeting.canStart();
+      meetingObj.canJoin = status === 'in-progress' || status === 'starting-soon';
       meetingsWithStatus.push(meetingObj);
     }
 
@@ -332,8 +332,8 @@ const getMeetingById = async (req, res) => {
     
     meetingObj.computedStatus = status;
     meetingObj.isHost = isHost;
-    meetingObj.canStart = isHost && (status === 'starting-soon' || status === 'upcoming');
-    meetingObj.canJoin = status === 'in-progress';
+    meetingObj.canStart = isHost && meeting.canStart();
+    meetingObj.canJoin = status === 'in-progress' || status === 'starting-soon';
 
     res.json({
       success: true,
@@ -502,19 +502,45 @@ const joinMeeting = async (req, res) => {
     );
 
     if (existingParticipant) {
-      // Update join time if not already joined
-      if (!existingParticipant.joinedAt) {
-        existingParticipant.joinedAt = new Date();
-        await meeting.save();
+      // Check if this is the original host rejoining
+      const isOriginalHostRejoining = meeting.originalHost && 
+        meeting.originalHost.userId.toString() === req.user.id;
+
+      if (isOriginalHostRejoining) {
+        // Find temporary host to demote
+        const temporaryHost = meeting.participants.find(p => p.role === 'temporary-host');
+        
+        if (temporaryHost) {
+          // Demote temporary host back to participant
+          temporaryHost.role = 'participant';
+          delete temporaryHost.promotedAt;
+          
+          // Restore original host role
+          existingParticipant.role = 'host';
+          existingParticipant.leftAt = null; // Clear left time
+          
+          // Clear original host info
+          delete meeting.originalHost;
+          
+          console.log(`Host restored: ${existingParticipant.name} rejoined as host, ${temporaryHost.name} demoted to participant`);
+        }
+      } else {
+        // Regular participant rejoining
+        existingParticipant.leftAt = null; // Clear left time
       }
+
+      // Update join time
+      existingParticipant.joinedAt = new Date();
+      await meeting.save();
 
       return res.json({
         success: true,
-        message: 'Already joined the meeting',
+        message: isOriginalHostRejoining ? 'Host rejoined the meeting' : 'Already joined the meeting',
         data: {
           meetingId: meeting._id,
           meetingLink: meeting.meetingLink,
-          role: existingParticipant.role
+          role: existingParticipant.role,
+          hostRestored: isOriginalHostRejoining
         }
       });
     }
@@ -584,14 +610,53 @@ const leaveMeeting = async (req, res) => {
       });
     }
 
+    const leavingParticipant = meeting.participants[participantIndex];
+    const isHostLeaving = leavingParticipant.role === 'host';
+
     // Update left time
     meeting.participants[participantIndex].leftAt = new Date();
+
+    // If host is leaving and meeting is in progress, handle host transfer
+    if (isHostLeaving && (meeting.status === 'in-progress' || meeting.computedStatus === 'in-progress')) {
+      // Find active participants (not left)
+      const activeParticipants = meeting.participants.filter(p => !p.leftAt);
+      
+      if (activeParticipants.length > 1) { // More than just the leaving host
+        // Find the next participant to promote as temporary host
+        const nextHost = activeParticipants.find(p => p.userId.toString() !== req.user.id);
+        
+        if (nextHost) {
+          // Promote next participant as temporary host
+          nextHost.role = 'temporary-host';
+          nextHost.promotedAt = new Date();
+          
+          // Store original host info for when they rejoin
+          meeting.originalHost = {
+            userId: leavingParticipant.userId,
+            email: leavingParticipant.email,
+            name: leavingParticipant.name,
+            leftAt: new Date()
+          };
+          
+          console.log(`Host transfer: ${leavingParticipant.name} left, ${nextHost.name} promoted as temporary host`);
+        }
+      } else {
+        // No other participants, end the meeting
+        meeting.status = 'completed';
+        meeting.endedAt = new Date();
+        console.log(`Meeting ended: Host left and no other participants`);
+      }
+    }
 
     await meeting.save();
 
     res.json({
       success: true,
-      message: 'Successfully left the meeting'
+      message: 'Successfully left the meeting',
+      data: {
+        hostTransferred: isHostLeaving && meeting.participants.some(p => p.role === 'temporary-host'),
+        meetingEnded: meeting.status === 'completed'
+      }
     });
 
   } catch (error) {
@@ -1226,8 +1291,8 @@ const getMyMeetings = async (req, res) => {
       
       meetingObj.computedStatus = status;
       meetingObj.isHost = isHost;
-      meetingObj.canStart = isHost && (status === 'starting-soon' || status === 'upcoming');
-      meetingObj.canJoin = status === 'in-progress';
+      meetingObj.canStart = isHost && meeting.canStart();
+      meetingObj.canJoin = status === 'in-progress' || status === 'starting-soon';
       meetingsWithStatus.push(meetingObj);
     }
 
@@ -1496,23 +1561,8 @@ const leaveParticipation = async (req, res) => {
 };
 
 function getMeetingStatus(meeting) {
-  const now = new Date();
-  const start = new Date(meeting.startTime);
-  const end = new Date(meeting.endTime);
-  
-  // If meeting has been manually started, prioritize that status
-  if (meeting.status === 'in-progress') {
-    return 'in-progress';
-  }
-  
-  if (meeting.status === 'completed' || meeting.status === 'ended') return 'ended';
-  if (now < start) {
-    const diff = (start - now) / 60000;
-    if (diff <= 15) return 'starting-soon';
-    return 'upcoming';
-  }
-  if (now >= start && now <= end) return 'in-progress';
-  return 'ended';
+  // Use the model's getStatus method which has the correct logic
+  return meeting.getStatus();
 }
 
 module.exports = {

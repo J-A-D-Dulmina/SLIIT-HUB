@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { FaChevronLeft, FaChevronRight, FaClock, FaUsers, FaLink, FaPlay, FaEdit, FaTrash, FaPlus, FaEnvelope, FaSearch, FaFilter } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
+import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
 import moment from 'moment';
 import '../styles/MyMeetingsPage.css';
+import axios from 'axios';
 
 const MyMeetingsPage = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -30,8 +32,18 @@ const MyMeetingsPage = () => {
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [meetingToDelete, setMeetingToDelete] = useState(null);
+  const [showEndMeetingConfirm, setShowEndMeetingConfirm] = useState(false);
+  const [meetingToEnd, setMeetingToEnd] = useState(null);
+  const [showEndSuccess, setShowEndSuccess] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [filterData, setFilterData] = useState({
+    degree: '',
+    year: '',
+    semester: '',
+    module: '',
+    status: ''
+  });
   const [degrees, setDegrees] = useState([]);
   const navigate = useNavigate();
 
@@ -48,9 +60,8 @@ const MyMeetingsPage = () => {
   }, []);
 
   useEffect(() => {
-    fetch('/api/admin/degrees')
-      .then(res => res.json())
-      .then(data => setDegrees(data))
+    axios.get('/api/admin/degrees')
+      .then(res => setDegrees(res.data))
       .catch(() => setDegrees([]));
   }, []);
 
@@ -59,17 +70,11 @@ const MyMeetingsPage = () => {
       setLoading(true);
       
       // Use the my-meetings endpoint
-      const response = await fetch('http://localhost:5000/api/meetings/my-meetings', {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
+      const response = await axios.get('http://localhost:5000/api/meetings/my-meetings', {
+        withCredentials: true
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error('Failed to fetch meetings');
-      }
-      const result = await response.json();
-      setMeetings(result.data || []);
+      setMeetings(response.data.data || []);
     } catch (error) {
       setError('Failed to load meetings');
     } finally {
@@ -109,16 +114,9 @@ const MyMeetingsPage = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://localhost:5000/api/meetings/${editingMeeting._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(scheduleFormData)
+      const response = await axios.put(`http://localhost:5000/api/meetings/${editingMeeting._id}`, scheduleFormData, {
+        withCredentials: true
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update meeting');
-      }
 
       alert('Meeting Updated Successfully!');
     setShowEditForm(false);
@@ -155,22 +153,10 @@ const MyMeetingsPage = () => {
       return;
     }
     try {
-      const response = await fetch('http://localhost:5000/api/meetings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
+      const response = await axios.post('http://localhost:5000/api/meetings', payload, {
+        withCredentials: true
       });
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          alert('Session expired. Please log in again.');
-          navigate('/login');
-          return;
-        }
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create meeting');
-      }
-      const data = await response.json();
+      
       // Show success message and close form
       setShowSuccessMessage(true);
       setShowScheduleForm(false);
@@ -181,11 +167,16 @@ const MyMeetingsPage = () => {
       }, 3000);
       fetchMeetings();
       // Don't navigate to meeting page - let user see the start button
-      // if (data && data.data && data.data._id) {
-      //   navigate(`/meeting/${data.data._id}`);
+      // if (response.data && response.data.data && response.data.data._id) {
+      //   navigate(`/meeting/${response.data.data._id}`);
       // }
     } catch (error) {
-      alert(`Failed to schedule meeting: ${error.message}`);
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        alert('Session expired. Please log in again.');
+        navigate('/login');
+        return;
+      }
+      alert(`Failed to schedule meeting: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -205,22 +196,52 @@ const MyMeetingsPage = () => {
   };
 
   const filteredMeetings = meetings.filter(meeting => {
-    const matchesSearch =
+    const matchesSearch = !searchQuery || 
       meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDegree = !scheduleFormData.degree || meeting.degree === scheduleFormData.degree;
-    const matchesYear = !scheduleFormData.year || meeting.year === scheduleFormData.year;
-    const matchesSemester = !scheduleFormData.semester || meeting.semester === scheduleFormData.semester;
-    const matchesModule = !scheduleFormData.module || meeting.module === scheduleFormData.module;
-    const matchesStatus = !scheduleFormData.status || meeting.status === scheduleFormData.status;
+    
+    // Use separate filter data and fix comparison logic
+    const matchesDegree = !filterData.degree || meeting.degree === filterData.degree;
+    const matchesYear = !filterData.year || String(meeting.year) === String(filterData.year);
+    const matchesSemester = !filterData.semester || String(meeting.semester) === String(filterData.semester);
+    const matchesModule = !filterData.module || meeting.module === filterData.module;
+    const matchesStatus = !filterData.status || meeting.status === filterData.status;
+    
+    // Debug logging
+    if (filterData.degree || filterData.year || filterData.semester || filterData.module || filterData.status) {
+      console.log('Filtering meeting:', meeting.title, {
+        meeting: {
+          degree: meeting.degree,
+          year: meeting.year,
+          semester: meeting.semester,
+          module: meeting.module,
+          status: meeting.status
+        },
+        filter: filterData,
+        matches: {
+          degree: matchesDegree,
+          year: matchesYear,
+          semester: matchesSemester,
+          module: matchesModule,
+          status: matchesStatus
+        }
+      });
+    }
+    
     return matchesSearch && matchesDegree && matchesYear && matchesSemester && matchesModule && matchesStatus;
   });
 
   const clearFilters = () => {
-    setScheduleFormData(prev => ({ ...prev, degree: '', year: '', semester: '', module: '', status: '' }));
+    setFilterData({
+      degree: '',
+      year: '',
+      semester: '',
+      module: '',
+      status: ''
+    });
   };
 
-  const hasActiveFilters = scheduleFormData.degree || scheduleFormData.year || scheduleFormData.semester || scheduleFormData.module || scheduleFormData.status;
+  const hasActiveFilters = filterData.degree || filterData.year || filterData.semester || filterData.module || filterData.status;
 
   const handleDeleteClick = (meeting) => {
     setMeetingToDelete(meeting);
@@ -230,20 +251,9 @@ const MyMeetingsPage = () => {
   const confirmDelete = async () => {
     if (meetingToDelete) {
       try {
-        const response = await fetch(`http://localhost:5000/api/meetings/${meetingToDelete._id}`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include'
+        const response = await axios.delete(`http://localhost:5000/api/meetings/${meetingToDelete._id}`, {
+          withCredentials: true
         });
-
-        if (!response.ok) {
-          let errorMsg = 'Failed to delete meeting.';
-          try {
-            const errorData = await response.json();
-            if (errorData && errorData.message) errorMsg = errorData.message;
-          } catch (e) {}
-          throw new Error(errorMsg);
-        }
 
         alert('Meeting deleted successfully!');
         setMeetings(prevMeetings => prevMeetings.filter(m => m._id !== meetingToDelete._id));
@@ -251,7 +261,7 @@ const MyMeetingsPage = () => {
         setMeetingToDelete(null);
       } catch (error) {
         console.error('Error deleting meeting:', error);
-        alert('Error deleting meeting: ' + error.message);
+        alert('Error deleting meeting: ' + (error.response?.data?.message || error.message));
       }
     }
   };
@@ -265,36 +275,62 @@ const MyMeetingsPage = () => {
     return moment(date).format('MMM D, YYYY [at] HH:mm');
   };
 
-  const handleStartMeeting = (meeting) => {
-    // Extract meeting ID from the link or use the meeting ID directly
-    const meetingId = meeting._id || meeting.link.split('/').pop();
-    navigate(`/meeting/${meetingId}`);
+  const handleStartMeeting = async (meeting) => {
+    try {
+      // First call the start meeting API
+      const response = await axios.post(`http://localhost:5000/api/meetings/${meeting._id}/start`, {}, {
+        withCredentials: true
+      });
+      
+      // If successful, navigate to the meeting page
+      navigate(`/meeting/${meeting._id}`);
+    } catch (error) {
+      alert(`Failed to start meeting: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const handleRejoinMeeting = async (meeting) => {
+    try {
+      // Navigate directly to the meeting page for rejoining
+      navigate(`/meeting/${meeting._id}`);
+    } catch (error) {
+      alert(`Failed to rejoin meeting: ${error.response?.data?.message || error.message}`);
+    }
   };
 
   // Add this function to refresh meetings after ending
   const handleEndMeeting = async (meetingId) => {
-    if (window.confirm('Are you sure you want to end this meeting for everyone? This action cannot be undone.')) {
+    const meeting = meetings.find(m => m._id === meetingId);
+    setMeetingToEnd(meeting);
+    setShowEndMeetingConfirm(true);
+  };
+
+  const confirmEndMeeting = async () => {
+    if (meetingToEnd) {
       try {
-        const response = await fetch(`http://localhost:5000/api/meetings/${meetingId}/end`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include'
+        const response = await axios.post(`http://localhost:5000/api/meetings/${meetingToEnd._id}/end`, {}, {
+          withCredentials: true
         });
-        if (response.ok) {
-          alert('Meeting ended successfully!');
+        setShowEndMeetingConfirm(false);
+        setMeetingToEnd(null);
+        setShowEndSuccess(true);
           await fetchMeetings(); // Refresh meetings list
-        } else {
-          let errorMsg = 'Failed to end meeting.';
-          try {
-            const errorData = await response.json();
-            if (errorData && errorData.message) errorMsg = errorData.message;
-          } catch (e) {}
-          alert(errorMsg);
-        }
+        
+        // Hide success message after 3 seconds
+        setTimeout(() => {
+          setShowEndSuccess(false);
+        }, 3000);
       } catch (error) {
         alert('Failed to end meeting. Please try again.');
+        setShowEndMeetingConfirm(false);
+        setMeetingToEnd(null);
       }
     }
+  };
+
+  const cancelEndMeeting = () => {
+    setShowEndMeetingConfirm(false);
+    setMeetingToEnd(null);
   };
 
   const renderMeetingForm = (isEdit = false) => {
@@ -499,11 +535,11 @@ const MyMeetingsPage = () => {
     );
   };
 
-  const selectedDegreeFilter = degrees.find(d => d._id === scheduleFormData.degree);
+  const selectedDegreeFilter = degrees.find(d => d._id === filterData.degree);
   const years = selectedDegreeFilter ? selectedDegreeFilter.years : [];
-  const selectedYearFilter = years.find(y => String(y.yearNumber) === String(scheduleFormData.year));
+  const selectedYearFilter = years.find(y => String(y.yearNumber) === String(filterData.year));
   const semesters = selectedYearFilter ? selectedYearFilter.semesters : [];
-  const selectedSemesterFilter = semesters.find(s => String(s.semesterNumber) === String(scheduleFormData.semester));
+  const selectedSemesterFilter = semesters.find(s => String(s.semesterNumber) === String(filterData.semester));
   const modules = selectedSemesterFilter ? selectedSemesterFilter.modules : [];
 
   if (loading) {
@@ -545,13 +581,23 @@ const MyMeetingsPage = () => {
         <TopBar currentTime={currentTime} />
 
         <main className="my-meetings-page">
-          {/* Success Message */}
+          {/* Success Messages */}
           {showSuccessMessage && (
             <div className="success-message-overlay">
               <div className="success-message-card">
                 <div className="success-icon">✓</div>
                 <h3>Meeting Scheduled Successfully!</h3>
                 <p>Your meeting has been created and is now available in your meetings list.</p>
+              </div>
+            </div>
+          )}
+
+          {showEndSuccess && (
+            <div className="success-message-overlay">
+              <div className="success-message-card">
+                <div className="success-icon">✓</div>
+                <h3>Meeting Ended Successfully!</h3>
+                <p>The meeting has been ended and all participants have been notified.</p>
               </div>
             </div>
           )}
@@ -600,8 +646,8 @@ const MyMeetingsPage = () => {
                 <div className="filter-item">
                   <label>Degree</label>
                   <select
-                    value={scheduleFormData.degree}
-                    onChange={(e) => setScheduleFormData(prev => ({ ...prev, degree: e.target.value }))}
+                    value={filterData.degree}
+                    onChange={(e) => setFilterData(prev => ({ ...prev, degree: e.target.value }))}
                   >
                     <option value="">All Degrees</option>
                     {degrees.map(degree => (
@@ -613,8 +659,8 @@ const MyMeetingsPage = () => {
                 <div className="filter-item">
                   <label>Degree Year</label>
                   <select
-                    value={scheduleFormData.year}
-                    onChange={(e) => setScheduleFormData(prev => ({ ...prev, year: e.target.value }))}
+                    value={filterData.year}
+                    onChange={(e) => setFilterData(prev => ({ ...prev, year: e.target.value }))}
                   >
                     <option value="">All Years</option>
                     {years.map(y => (
@@ -626,8 +672,8 @@ const MyMeetingsPage = () => {
                 <div className="filter-item">
                   <label>Semester</label>
                   <select
-                    value={scheduleFormData.semester}
-                    onChange={(e) => setScheduleFormData(prev => ({ ...prev, semester: e.target.value }))}
+                    value={filterData.semester}
+                    onChange={(e) => setFilterData(prev => ({ ...prev, semester: e.target.value }))}
                   >
                     <option value="">All Semesters</option>
                     {semesters.map(s => (
@@ -639,8 +685,8 @@ const MyMeetingsPage = () => {
                 <div className="filter-item">
                   <label>Module</label>
                   <select
-                    value={scheduleFormData.module}
-                    onChange={(e) => setScheduleFormData(prev => ({ ...prev, module: e.target.value }))}
+                    value={filterData.module}
+                    onChange={(e) => setFilterData(prev => ({ ...prev, module: e.target.value }))}
                   >
                     <option value="">All Modules</option>
                     {modules.map(m => (
@@ -652,8 +698,8 @@ const MyMeetingsPage = () => {
                 <div className="filter-item">
                   <label>Status</label>
                   <select
-                    value={scheduleFormData.status}
-                    onChange={(e) => setScheduleFormData(prev => ({ ...prev, status: e.target.value }))}
+                    value={filterData.status}
+                    onChange={(e) => setFilterData(prev => ({ ...prev, status: e.target.value }))}
                   >
                     <option value="">All Status</option>
                     <option value="starting-soon">Starting Soon</option>
@@ -754,28 +800,25 @@ const MyMeetingsPage = () => {
                   <p className="my-meeting-description">{meeting.description}</p>
 
                   <div className="my-meeting-footer">
-                    <span className={`my-status-badge ${meeting.status}`}>{meeting.status}</span>
+                    <span className={`my-status-badge ${meeting.computedStatus || meeting.status}`}>{meeting.computedStatus || meeting.status}</span>
                     <div className="meeting-actions">
-                      {/* Show start button for upcoming or starting-soon meetings if user is host */}
-                      {meeting.isHost && (meeting.status === 'upcoming' || meeting.status === 'starting-soon') && (
+                      {/* Use backend-computed properties */}
+                      {meeting.isHost && meeting.canStart && (
                         <button className="strt-meeting-btn" onClick={() => handleStartMeeting(meeting)}>
                           <FaPlay /> Start Meeting
                         </button>
                       )}
-                      {/* Show start button if canStart is true (backup logic) */}
-                      {meeting.canStart && meeting.isHost && (
-                        <button className="strt-meeting-btn" onClick={() => handleStartMeeting(meeting)}>
-                          <FaPlay /> Start Meeting
+                      {meeting.isHost && (meeting.computedStatus === 'in-progress' || meeting.status === 'in-progress') && (
+                        <button className="rejoin-meeting-btn" onClick={() => handleRejoinMeeting(meeting)}>
+                          <FaPlay /> Rejoin
                         </button>
                       )}
-                      {/* Show join button for non-hosts when meeting is in progress */}
                       {meeting.canJoin && !meeting.isHost && (
                         <button className="strt-meeting-btn" onClick={() => handleStartMeeting(meeting)}>
                           <FaPlay /> Join Now
                         </button>
                       )}
-                      {/* Show end button for hosts when meeting is in progress */}
-                      {meeting.status === 'in-progress' && meeting.isHost && (
+                      {(meeting.computedStatus === 'in-progress' || meeting.status === 'in-progress') && meeting.isHost && (
                         <button className="end-meeting-btn" onClick={() => handleEndMeeting(meeting._id)}>
                           End Meeting
                         </button>
@@ -796,6 +839,31 @@ const MyMeetingsPage = () => {
           </div>
         </main>
       </div>
+
+      {/* Confirmation Dialogs */}
+      <ConfirmationDialog
+        isOpen={showDeleteConfirm}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        title="Delete Meeting"
+        message="Are you sure you want to delete this meeting? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
+
+      <ConfirmationDialog
+        isOpen={showEndMeetingConfirm}
+        onClose={cancelEndMeeting}
+        onConfirm={confirmEndMeeting}
+        title="End Meeting"
+        message={`Are you sure you want to end "${meetingToEnd?.title}" for everyone? This action cannot be undone.`}
+        confirmText="End Meeting"
+        cancelText="Cancel"
+        type="danger"
+      />
+
+
     </div>
   );
 };

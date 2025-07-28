@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState('');
@@ -14,22 +15,14 @@ const AdminLoginPage = () => {
       return;
     }
     try {
-      const response = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password })
+      const response = await axios.post('/api/admin/login', { email, password }, {
+        withCredentials: true
       });
-      if (response.ok) {
-        localStorage.setItem('role', 'admin');
-        setError('');
-        navigate('/admin-dashboard');
-      } else {
-        const data = await response.json();
-        setError(data.message || 'Invalid admin credentials.');
-      }
+      localStorage.setItem('role', 'admin');
+      setError('');
+      navigate('/admin-dashboard');
     } catch (err) {
-      setError('Server error.');
+      setError(err.response?.data?.message || 'Server error.');
     }
   };
 

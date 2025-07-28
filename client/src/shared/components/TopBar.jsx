@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/TopBar.css';
 import { FaBell, FaSearch, FaEnvelope, FaSave, FaUser, FaSignOutAlt } from 'react-icons/fa';
+import axios from 'axios';
 
 const TopBar = ({ currentTime }) => {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -64,9 +65,8 @@ const TopBar = ({ currentTime }) => {
   const handleLogout = async () => {
     try {
       // Call logout endpoint to clear cookie
-      await fetch('http://localhost:5000/api/logout', {
-        method: 'POST',
-        credentials: 'include',
+      await axios.post('http://localhost:5000/api/logout', {}, {
+        withCredentials: true
       });
       
       // Clear all localStorage data

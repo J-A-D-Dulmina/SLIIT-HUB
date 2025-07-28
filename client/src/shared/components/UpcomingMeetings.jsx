@@ -7,38 +7,26 @@ import '../styles/UpcomingMeetings.css';
 const UpcomingMeetings = ({ events }) => {
   const navigate = useNavigate();
 
-  // Filter only upcoming meetings and get the first one
+  // Filter only upcoming meetings based on backend status and get the first one
   const upcomingMeeting = events
-    .filter(event => event.resource?.isUpcomingMeeting)
-    .sort((a, b) => new Date(a.start) - new Date(b.start))[0];
+    .filter(event => {
+      const status = event.computedStatus || event.status;
+      return status === 'upcoming' || status === 'starting-soon';
+    })
+    .sort((a, b) => new Date(a.startTime || a.start) - new Date(b.startTime || b.start))[0];
 
   // Format meeting time
   const formatMeetingTime = (date) => {
     return moment(date).format('MMM D, YYYY [at] HH:mm');
   };
 
-  // Get module details (this would come from your actual data)
-  const getModuleDetails = (meetingId) => {
-    // This is dummy data - replace with actual data from your backend
-    const moduleDetails = {
-      101: { 
-        year: 'Year 1', 
-        semester: 'Semester 1', 
-        module: 'IT1010',
-        coordinator: 'Dr. John Smith'
-      },
-      102: { 
-        year: 'Year 2', 
-        semester: 'Semester 2', 
-        module: 'IT2020',
-        coordinator: 'Prof. Sarah Johnson'
-      },
-    };
-    return moduleDetails[meetingId] || { 
-      year: 'N/A', 
-      semester: 'N/A', 
-      module: 'N/A',
-      coordinator: 'N/A'
+  // Get module details from backend data
+  const getModuleDetails = (meeting) => {
+    return {
+      year: meeting.resource?.year || meeting.year || 'N/A',
+      semester: meeting.resource?.semester || meeting.semester || 'N/A',
+      module: meeting.resource?.module || meeting.module || 'N/A',
+      coordinator: meeting.resource?.hostName || meeting.hostName || 'N/A'
     };
   };
 
@@ -53,13 +41,16 @@ const UpcomingMeetings = ({ events }) => {
             <div className="meeting-header">
               <div className="meeting-details">
                 <h4 className="meeting-title">{upcomingMeeting.title}</h4>
+                <div className="meeting-description">
+                  {upcomingMeeting.resource?.description || upcomingMeeting.description || 'No description available'}
+                </div>
                 <div className="meeting-meta">
-                  <span>{getModuleDetails(upcomingMeeting.id).year}</span>
-                  <span>{getModuleDetails(upcomingMeeting.id).semester}</span>
-                  <span>{getModuleDetails(upcomingMeeting.id).module}</span>
+                  <span>{getModuleDetails(upcomingMeeting).year}</span>
+                  <span>{getModuleDetails(upcomingMeeting).semester}</span>
+                  <span>{getModuleDetails(upcomingMeeting).module}</span>
                 </div>
                 <div className="meeting-coordinator">
-                  Coordinator: {getModuleDetails(upcomingMeeting.id).coordinator}
+                  Coordinator: {getModuleDetails(upcomingMeeting).coordinator}
                 </div>
                 <div className="meeting-time">
                   {formatMeetingTime(upcomingMeeting.start)}
@@ -74,8 +65,8 @@ const UpcomingMeetings = ({ events }) => {
             </div>
             <div className="meeting-link">
               <FaLink style={{ marginRight: 4 }} />
-              <a href={`https://meet.sliit-hub.com/meeting/${upcomingMeeting.id}`} target="_blank" rel="noopener noreferrer">
-                meet.sliit-hub.com/meeting/{upcomingMeeting.id}
+              <a href={upcomingMeeting.resource?.meetingLink || upcomingMeeting.meetingLink || '#'} target="_blank" rel="noopener noreferrer">
+                {upcomingMeeting.resource?.meetingLink || upcomingMeeting.meetingLink || 'N/A'}
               </a>
             </div>
           </div>

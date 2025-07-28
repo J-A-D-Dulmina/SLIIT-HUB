@@ -4,6 +4,7 @@ import logo from '../../../assets/SLITT HUB logo.png';
 import '../styles/loginpage.css';
 import '../../../styles/main.css';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import axios from 'axios';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -24,34 +25,23 @@ const LoginPage = () => {
     setError('');
     
     try {
-      const res = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
+      const res = await axios.post('http://localhost:5000/api/login', { email, password }, {
+        withCredentials: true
       });
       
-      const data = await res.json();
-      
-      if (res.ok) {
-        // Store user info in localStorage for the frontend to use
-        localStorage.setItem('userType', data.userType);
-        localStorage.setItem('userName', data.name);
-        if (data.userType === 'student') {
-          localStorage.setItem('studentId', data.studentId);
-        } else if (data.userType === 'lecturer') {
-          localStorage.setItem('lecturerId', data.lecturerId);
-        }
-        
-        // Navigate to dashboard
-        navigate('/dashboard');
-      } else {
-        setError(data.message || 'Invalid credentials.');
+      // Store user info in localStorage for the frontend to use
+      localStorage.setItem('userType', res.data.userType);
+      localStorage.setItem('userName', res.data.name);
+      if (res.data.userType === 'student') {
+        localStorage.setItem('studentId', res.data.studentId);
+      } else if (res.data.userType === 'lecturer') {
+        localStorage.setItem('lecturerId', res.data.lecturerId);
       }
+      
+      // Navigate to dashboard
+      navigate('/dashboard');
     } catch (err) {
-      setError('Server error. Please try again.');
+      setError(err.response?.data?.message || 'Server error. Please try again.');
     } finally {
       setLoading(false);
     }

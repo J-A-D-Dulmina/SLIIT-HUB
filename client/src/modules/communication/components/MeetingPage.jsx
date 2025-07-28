@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash, FaDesktop, FaComments, FaUsers, FaEllipsisH, FaHandPaper, FaRecordVinyl, FaStop, FaPhoneSlash, FaCog, FaDownload, FaCamera, FaTimes } from 'react-icons/fa';
 import WebRTCService from '../../../services/WebRTCService';
 import '../styles/MeetingPage.css';
+import axios from 'axios';
 
 const MeetingPage = () => {
   const { meetingId } = useParams();
@@ -284,6 +285,34 @@ const MeetingPage = () => {
         addChatMessage('system', `${data.name} stopped screen sharing`);
       };
 
+      // Handle host transfer
+      webrtc.onHostTransferred = (data) => {
+        console.log('Host transferred:', data);
+        const { previousHost, newHost } = data;
+        alert(`${previousHost.name} left the meeting. Host control has been transferred to ${newHost.name}.`);
+        
+        // Update local state if current user is the new host
+        const currentUserId = localStorage.getItem('studentId') || localStorage.getItem('lecturerId');
+        if (newHost.userId === currentUserId) {
+          setIsHost(true);
+        }
+        addChatMessage('system', `Host control transferred from ${previousHost.name} to ${newHost.name}`);
+      };
+
+      // Handle host restoration
+      webrtc.onHostRestored = (data) => {
+        console.log('Host restored:', data);
+        const { originalHost, previousTemporaryHost } = data;
+        alert(`${originalHost.name} has rejoined the meeting. Host control has been restored.`);
+        
+        // Update local state if current user is the original host
+        const currentUserId = localStorage.getItem('studentId') || localStorage.getItem('lecturerId');
+        if (originalHost.userId === currentUserId) {
+          setIsHost(true);
+        }
+        addChatMessage('system', `Host control restored to ${originalHost.name}`);
+      };
+
       // Handle meeting ended by host
       webrtc.onMeetingEnded = (data) => {
         console.log('Meeting ended by host:', data);
@@ -304,46 +333,40 @@ const MeetingPage = () => {
 
   const fetchMeetingData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/meetings/${meetingId}`, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
+      const response = await axios.get(`http://localhost:5000/api/meetings/${meetingId}`, {
+        withCredentials: true
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setMeetingData(data.data);
-        
-        // Don't load participants from database - they will be managed in memory via WebSocket
-        // setParticipants([]); // Start with empty participants list
-        
-        // Use the backend's isHost flag
-        setIsHost(data.data.isHost);
-        console.log('Host detection from backend:', { isHost: data.data.isHost });
-        
-        // Check if meeting is currently recording
-        if (data.data.status === 'recording') {
-          setIsRecording(true);
-          setRecordingStatus('recording');
-        }
-        
-        // Don't load chat history from database - it will be managed in memory during meeting
-        // if (data.data.chatHistory) {
-        //   setMessages(data.data.chatHistory.map(msg => ({
-        //     id: msg._id,
-        //     type: 'user',
-        //     sender: msg.senderName,
-        //     message: msg.message,
-        //     timestamp: new Date(msg.timestamp)
-        //   })));
-        // }
-        
-        // Don't automatically start the meeting - let user click start button
-        // if (data.data.isHost && data.data.status !== 'in-progress') {
-        //   await startMeeting();
-        // }
+      setMeetingData(response.data.data);
+      
+      // Don't load participants from database - they will be managed in memory via WebSocket
+      // setParticipants([]); // Start with empty participants list
+      
+      // Use the backend's isHost flag
+      setIsHost(response.data.data.isHost);
+      console.log('Host detection from backend:', { isHost: response.data.data.isHost });
+      
+      // Check if meeting is currently recording
+      if (response.data.data.status === 'recording') {
+        setIsRecording(true);
+        setRecordingStatus('recording');
       }
+      
+      // Don't load chat history from database - it will be managed in memory during meeting
+      // if (response.data.data.chatHistory) {
+      //   setMessages(response.data.data.chatHistory.map(msg => ({
+      //     id: msg._id,
+      //     type: 'user',
+      //     sender: msg.senderName,
+      //     message: msg.message,
+      //     timestamp: new Date(msg.timestamp)
+      //   })));
+      // }
+      
+      // Don't automatically start the meeting - let user click start button
+      // if (response.data.data.isHost && response.data.data.status !== 'in-progress') {
+      //   await startMeeting();
+      // }
     } catch (error) {
       console.error('Error fetching meeting data:', error);
     }
@@ -527,10 +550,32 @@ const MeetingPage = () => {
     webrtcService.current.raiseHand();
   };
 
-  const leaveMeeting = () => {
+  const leaveMeeting = async () => {
     if (window.confirm('Are you sure you want to leave the meeting? You can rejoin later.')) {
-      cleanup();
-      navigate('/my-meetings');
+      try {
+        // Call the backend to leave the meeting
+        const response = await axios.post(`http://localhost:5000/api/meetings/${meetingId}/leave`, {}, {
+          withCredentials: true
+        });
+
+        const { hostTransferred, meetingEnded } = response.data.data || {};
+
+        if (hostTransferred) {
+          alert('You left the meeting. Host control has been transferred to another participant.');
+        } else if (meetingEnded) {
+          alert('You left the meeting. The meeting has ended as no participants remain.');
+        } else {
+          alert('You left the meeting successfully.');
+        }
+
+        cleanup();
+        navigate('/my-meetings');
+      } catch (error) {
+        console.error('Error leaving meeting:', error);
+        alert('Failed to leave meeting properly. Please try again.');
+        cleanup();
+        navigate('/my-meetings');
+      }
     }
   };
 
@@ -546,25 +591,12 @@ const MeetingPage = () => {
         }
 
         // Call the backend to end the meeting
-        const response = await fetch(`http://localhost:5000/api/meetings/${meetingId}/end`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
+        const response = await axios.post(`http://localhost:5000/api/meetings/${meetingId}/end`, {}, {
+          withCredentials: true
         });
 
-        if (response.ok) {
-          cleanup();
-          navigate('/my-meetings');
-        } else {
-          let errorMsg = 'Failed to end meeting. Please try again.';
-          try {
-            const errorData = await response.json();
-            if (errorData && errorData.message) errorMsg = errorData.message;
-          } catch (e) {}
-          alert(errorMsg);
-        }
+        cleanup();
+        navigate('/my-meetings');
       } catch (error) {
         console.error('Error ending meeting:', error);
         alert('Failed to end meeting. Please try again.');
@@ -575,37 +607,21 @@ const MeetingPage = () => {
   const startMeeting = async () => {
     try {
       // Call the backend to start the meeting
-      const response = await fetch(`http://localhost:5000/api/meetings/${meetingId}/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
+      const response = await axios.post(`http://localhost:5000/api/meetings/${meetingId}/start`, {}, {
+        withCredentials: true
       });
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Meeting started successfully:', data.message);
-        // Update local meeting data
-        if (meetingData) {
-          setMeetingData(prev => ({
-            ...prev,
-            status: 'in-progress',
-            startedAt: new Date()
-          }));
-        }
-      } else {
-        let errorMsg = 'Failed to start meeting.';
-        try {
-          const errorData = await response.json();
-          if (errorData && errorData.message) errorMsg = errorData.message;
-        } catch (e) {
-          errorMsg = response.statusText || errorMsg;
-        }
-        alert(errorMsg);
+      console.log('Meeting started successfully:', response.data.message);
+      // Update local meeting data
+      if (meetingData) {
+        setMeetingData(prev => ({
+          ...prev,
+          status: 'in-progress',
+          startedAt: new Date()
+        }));
       }
     } catch (error) {
       console.error('Error starting meeting:', error);
-      alert('Failed to start meeting. Please try again.');
+      alert(error.response?.data?.message || 'Failed to start meeting. Please try again.');
     }
   };
 
@@ -687,29 +703,39 @@ const MeetingPage = () => {
         )}
         {isHost ? (
           <button className="start-meeting-btn" onClick={async () => {
-            // Start the meeting as host
-            try {
-              const response = await fetch(`http://localhost:5000/api/meetings/${meetingId}/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-              });
-              if (response.ok) {
-                setIsMuted(!preJoinMic);
-                setIsVideoOff(!preJoinCam);
-                setShowPreJoin(false);
-              } else {
-                let errorMsg = 'Failed to start meeting.';
-                try {
-                  const errorData = await response.json();
-                  if (errorData && errorData.message) errorMsg = errorData.message;
-                } catch (e) {}
-                alert(errorMsg);
+            // Check if meeting is already in progress and we're rejoining
+            // We should show "Rejoin" only if the meeting was actually started and we're coming back
+            const isRejoining = (meetingData?.status === 'in-progress' || meetingData?.computedStatus === 'in-progress') && 
+                               meetingData?.startedAt;
+            
+            if (!isRejoining) {
+              // Start the meeting as host
+              try {
+                const response = await axios.post(`http://localhost:5000/api/meetings/${meetingId}/start`, {}, {
+                  withCredentials: true
+                });
+                if (response.status === 200) {
+                  setIsMuted(!preJoinMic);
+                  setIsVideoOff(!preJoinCam);
+                  setShowPreJoin(false);
+                } else {
+                  let errorMsg = 'Failed to start meeting.';
+                  try {
+                    if (response.data && response.data.message) errorMsg = response.data.message;
+                  } catch (e) {}
+                  alert(errorMsg);
+                }
+              } catch (error) {
+                alert('Failed to start meeting. Please try again.');
               }
-            } catch (error) {
-              alert('Failed to start meeting. Please try again.');
+            } else {
+              // Rejoin the meeting (no need to call start API again)
+              setIsMuted(!preJoinMic);
+              setIsVideoOff(!preJoinCam);
+              setShowPreJoin(false);
             }
-          }}>Start Meeting</button>
+          }}>{(meetingData?.status === 'in-progress' || meetingData?.computedStatus === 'in-progress') && 
+               meetingData?.startedAt ? 'Rejoin' : 'Start Meeting'}</button>
         ) : (
           <button className="join-meeting-btn" onClick={() => {
             setIsMuted(!preJoinMic);

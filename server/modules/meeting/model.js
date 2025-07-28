@@ -79,11 +79,12 @@ const meetingSchema = new mongoose.Schema({
     name: String,
     role: {
       type: String,
-      enum: ['host', 'participant', 'co-host'],
+      enum: ['host', 'participant', 'co-host', 'temporary-host'],
       default: 'participant'
     },
     joinedAt: Date,
-    leftAt: Date
+    leftAt: Date,
+    promotedAt: Date
   }],
   maxParticipants: {
     type: Number,
@@ -118,6 +119,15 @@ const meetingSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  },
+  originalHost: {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Student'
+    },
+    email: String,
+    name: String,
+    leftAt: Date
   },
   password: {
     type: String,
@@ -248,30 +258,32 @@ meetingSchema.methods.isActive = function() {
 
 // Method to check if meeting can be started
 meetingSchema.methods.canStart = function() {
-  const now = new Date();
-  const timeDiff = (this.startTime - now) / (1000 * 60); // minutes
+  // Don't allow starting if meeting is cancelled, completed, or already in progress
+  if (this.status === 'cancelled' || this.status === 'completed' || this.status === 'in-progress') {
+    return false;
+  }
   
-  // Allow starting if:
-  // 1. Meeting is within 15 minutes before start time, OR
-  // 2. Meeting is within 2 hours after start time, OR
-  // 3. Meeting is scheduled for the future (for testing purposes)
-  return timeDiff <= 15 && timeDiff >= -120 || timeDiff > 0;
+  // Allow starting at any time for scheduled meetings
+  return true;
 };
 
 // Method to get meeting status based on time
 meetingSchema.methods.getStatus = function() {
   const now = new Date();
   
+  // Respect manually set statuses
   if (this.status === 'cancelled') return 'cancelled';
   if (this.status === 'completed') return 'completed';
+  if (this.status === 'in-progress') return 'in-progress';
   
+  // Only calculate status based on time if no manual status is set
   if (now < this.startTime) {
     const timeDiff = (this.startTime - now) / (1000 * 60);
     return timeDiff <= 15 ? 'starting-soon' : 'upcoming';
   }
   
   if (now >= this.startTime && now <= this.endTime) {
-    return 'in-progress';
+    return 'upcoming'; // Don't auto-set to in-progress, only manual start should do that
   }
   
   return 'ended';
@@ -291,7 +303,7 @@ meetingSchema.methods.stopRecording = function() {
   this.recordingStatus.isRecording = false;
   this.recordingStatus.stoppedAt = new Date();
   this.recordingStatus.duration = this.currentRecordingDuration;
-  this.status = 'in-progress';
+  this.status = 'scheduled'; // Don't auto-set to in-progress, only manual start should do that
   return this.save();
 };
 

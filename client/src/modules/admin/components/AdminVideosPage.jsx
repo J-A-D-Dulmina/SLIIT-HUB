@@ -3,6 +3,7 @@ import '../styles/AdminVideosPage.css';
 import { FaPencilAlt, FaTrash, FaEye } from 'react-icons/fa';
 import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
 import ReactPlayer from 'react-player';
+import axios from 'axios';
 
 const emptyVideo = {
   uniqueId: '',
@@ -92,9 +93,8 @@ const AdminVideosPage = () => {
 
   // Fetch degrees for select options
   useEffect(() => {
-    fetch('/api/admin/degrees')
-      .then(res => res.json())
-      .then(data => setDegrees(data));
+    axios.get('/api/admin/degrees')
+      .then(res => setDegrees(res.data));
   }, []);
 
   // Update year options when degree changes
@@ -153,11 +153,8 @@ const AdminVideosPage = () => {
 
   const fetchVideos = async () => {
     try {
-      const res = await fetch('/api/admin/videos');
-      if (res.ok) {
-        const data = await res.json();
-        setVideos(data);
-      }
+      const res = await axios.get('/api/admin/videos');
+      setVideos(res.data);
     } catch (err) {
       // Optionally handle error
     }
@@ -168,14 +165,14 @@ const AdminVideosPage = () => {
     if (!studentId) return fallbackName || 'Unknown Student';
     if (studentNameCache.current[studentId]) return studentNameCache.current[studentId];
     // Fetch and cache
-    fetch(`/api/students/by-id/${studentId}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data && data.name) {
-          studentNameCache.current[studentId] = data.name;
+    axios.get(`/api/students/by-id/${studentId}`)
+      .then(res => {
+        if (res.data && res.data.name) {
+          studentNameCache.current[studentId] = res.data.name;
           forceUpdate(n => n + 1); // trigger re-render
         }
-      });
+      })
+      .catch(() => {});
     return fallbackName || 'Unknown Student';
   };
 
@@ -225,26 +222,18 @@ const AdminVideosPage = () => {
     if (!videoForm.uniqueId.trim() || !videoForm.title.trim() || !videoForm.preview.trim() || !videoForm.studentName.trim() || !videoForm.studentId.trim() || !videoForm.module.trim() || !videoForm.moduleNumber.trim() || !videoForm.degreeName.trim() || !videoForm.semester.trim() || !videoForm.publishDate.trim() || !videoForm.description.trim()) return;
     if (modalMode === 'add') {
       try {
-        const res = await fetch('/api/admin/videos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(videoForm)
-        });
-        if (res.ok) {
-          await fetchVideos();
-        }
-      } catch {}
+        const res = await axios.post('/api/admin/videos', videoForm);
+        await fetchVideos();
+      } catch (error) {
+        console.error('Error adding video:', error);
+      }
     } else if (modalMode === 'edit' && selectedVideo && selectedVideo._id) {
       try {
-        const res = await fetch(`/api/admin/videos/${selectedVideo._id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(videoForm)
-        });
-        if (res.ok) {
-          await fetchVideos();
-        }
-      } catch {}
+        const res = await axios.put(`/api/admin/videos/${selectedVideo._id}`, videoForm);
+        await fetchVideos();
+      } catch (error) {
+        console.error('Error updating video:', error);
+      }
     }
     closeModal();
   };
@@ -257,9 +246,11 @@ const AdminVideosPage = () => {
   const confirmDeleteVideo = async () => {
     if (videoToDelete && videoToDelete._id) {
       try {
-        await fetch(`/api/admin/videos/${videoToDelete._id}`, { method: 'DELETE' });
+        await axios.delete(`/api/admin/videos/${videoToDelete._id}`);
         await fetchVideos();
-      } catch {}
+      } catch (error) {
+        console.error('Error deleting video:', error);
+      }
     }
     setShowDeleteDialog(false);
     setVideoToDelete(null);
@@ -357,7 +348,7 @@ const AdminVideosPage = () => {
                   <td>{video.title || ''}</td>
                   <td>
                     {video.videoFile ? (
-                      <video src={getWebPath(video.videoFile)} width={80} height={48} controls style={{ borderRadius: 6, background: '#eee' }}>
+                      <video src={`http://localhost:5000/${video.videoFile}`} width={80} height={48} controls style={{ borderRadius: 6, background: '#eee' }}>
                         Your browser does not support the video tag.
                       </video>
                     ) : (
@@ -478,7 +469,7 @@ const AdminVideosPage = () => {
               <div style={{ marginBottom: 16 }}>
                 {videoForm.videoFile && (
                   <div style={{ marginBottom: 8 }}>
-                    <video src={getWebPath(videoForm.videoFile)} width={220} height={120} controls style={{ borderRadius: 8, background: '#eee' }}>
+                    <video src={`http://localhost:5000/${videoForm.videoFile}`} width={220} height={120} controls style={{ borderRadius: 8, background: '#eee' }}>
                       Your browser does not support the video tag.
                     </video>
                   </div>
@@ -647,7 +638,7 @@ const AdminVideosPage = () => {
                 <div className="video-detail-row">
                   <span className="video-detail-label">Thumbnail</span>
                   <span className="video-detail-value">
-                    <img src={getWebPath(viewVideo.thumbnail)} alt="Thumbnail" width={120} style={{ borderRadius: 8, background: '#eee' }} />
+                    <img src={`http://localhost:5000/${viewVideo.thumbnail}`} alt="Thumbnail" style={{ maxWidth: 200, borderRadius: 8 }} />
                   </span>
                 </div>
               )}

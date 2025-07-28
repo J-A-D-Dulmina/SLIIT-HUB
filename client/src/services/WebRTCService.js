@@ -39,6 +39,8 @@ class WebRTCService {
     this.onScreenShareStart = null;
     this.onScreenShareStop = null;
     this.onMeetingEnded = null;
+    this.onHostTransferred = null;
+    this.onHostRestored = null;
   }
 
   // Initialize WebRTC service
@@ -203,6 +205,14 @@ class WebRTCService {
         this.handleUserLeft(data);
         break;
 
+      case 'host-transferred':
+        this.handleHostTransferred(data);
+        break;
+
+      case 'host-restored':
+        this.handleHostRestored(data);
+        break;
+
       case 'rtc-offer':
         this.handleRTCOffer(data);
         break;
@@ -339,6 +349,22 @@ class WebRTCService {
 
     if (this.onUserLeft) {
       this.onUserLeft(data);
+    }
+  }
+
+  // Handle host transfer
+  handleHostTransferred(data) {
+    console.log('Host transferred:', data);
+    if (this.onHostTransferred) {
+      this.onHostTransferred(data);
+    }
+  }
+
+  // Handle host restoration
+  handleHostRestored(data) {
+    console.log('Host restored:', data);
+    if (this.onHostRestored) {
+      this.onHostRestored(data);
     }
   }
 

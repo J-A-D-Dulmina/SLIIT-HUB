@@ -30,7 +30,7 @@ export const useAIModel = () => {
         throw new Error(errorData.error || 'Failed to generate summary');
       }
       const data = await response.json();
-      return data;
+      return data.summary; // Return just the summary text
     } catch (error) {
       setError(error.message);
       throw error;
@@ -59,7 +59,7 @@ export const useAIModel = () => {
         throw new Error(errorData.error || 'Failed to generate description');
       }
       const data = await response.json();
-      return data;
+      return data.description; // Return just the description text
     } catch (error) {
       setError(error.message);
       throw error;
@@ -88,7 +88,7 @@ export const useAIModel = () => {
         throw new Error(errorData.error || 'Failed to generate timestamps');
       }
       const data = await response.json();
-      return data;
+      return data.timestamps; // Return just the timestamps array
     } catch (error) {
       setError(error.message);
       throw error;

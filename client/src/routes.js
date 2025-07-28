@@ -6,6 +6,7 @@ import RegisterPage from './modules/user/components/RegisterPage.jsx';
 import LandingPage from './modules/user/components/LandingPage.jsx';
 import ProfilePage from './modules/user/components/ProfilePage.jsx';
 import ModuleListPage from './modules/content/components/ModuleListPage.jsx';
+import ModulePage from './modules/content/components/ModulePage.jsx';
 import VideoListPage from './modules/content/components/VideoListPage.jsx';
 import VideoDetailsPage from './modules/content/components/VideoDetailsPage.jsx';
 import TutoringPage from './modules/tutoring/components/TutoringPage.jsx';
@@ -61,6 +62,11 @@ const AppRoutes = () => {
       <Route path="/modules/:degreeId/:yearId" element={
         <ProtectedRoute>
           <ModuleListPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/module/:moduleCode" element={
+        <ProtectedRoute>
+          <ModulePage />
         </ProtectedRoute>
       } />
       <Route path="/videos/:moduleId" element={

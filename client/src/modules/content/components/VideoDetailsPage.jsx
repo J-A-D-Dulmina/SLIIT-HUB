@@ -27,69 +27,26 @@ import {
 } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
+import axios from 'axios';
 
-// Dummy data for video details
-const VIDEO_DETAILS = {
-  'IT1010': {
-    1: {
-      id: 1,
-      title: 'Introduction to Python Programming',
-      description: 'Learn the basics of Python programming language and its applications.',
-      duration: '45:30',
-      date: '2024-03-15',
-      videoUrl: 'https://example.com/video1',
-      publisher: 'Dr. John Smith',
-      isRecommended: true,
-      hasAISummary: true,
-      hasAITimestamps: true,
-      uploadTime: '10:30 AM',
-      views: 1234,
-      likes: 89,
-      aiSummary: 'This lecture covers the fundamental concepts of Python programming, including variables, data types, and basic syntax. The instructor demonstrates practical examples and best practices for beginners.',
-      timestamps: [
-        { time: '00:00', title: 'Introduction' },
-        { time: '05:30', title: 'Setting up Python' },
-        { time: '12:45', title: 'Variables and Data Types' },
-        { time: '25:15', title: 'Basic Operations' },
-        { time: '35:20', title: 'Practice Examples' }
-      ],
-      comments: [
-        {
-          id: 1,
-          user: 'Dr. Sarah Johnson',
-          role: 'Lecturer',
-          content: 'Important correction: When using floating-point numbers, always be careful with precision. Use the decimal module for financial calculations.',
-          isPinned: true,
-          timestamp: '2024-03-15 11:30 AM'
-        },
-        {
-          id: 2,
-          user: 'Student123',
-          role: 'Student',
-          content: 'Great explanation! The examples really helped me understand the concepts.',
-          isPinned: false,
-          timestamp: '2024-03-15 02:15 PM'
-        },
-        {
-          id: 3,
-          user: 'Alex Chen',
-          role: 'Student',
-          content: 'I have a question about the data types section. Could someone explain the difference between lists and tuples in more detail?',
-          isPinned: false,
-          timestamp: '2024-03-15 03:45 PM',
-          replies: [
-            {
-              id: 1,
-              user: 'Emma Wilson',
-              role: 'Student',
-              content: 'Lists are mutable (can be changed) while tuples are immutable (cannot be changed). Lists use square brackets [] and tuples use parentheses (). For example: my_list = [1, 2, 3] can be modified, but my_tuple = (1, 2, 3) cannot.',
-              timestamp: '2024-03-15 04:20 PM'
-            }
-          ]
-        }
-      ]
-    }
-  }
+// Default video structure
+const DEFAULT_VIDEO = {
+  id: '',
+  title: '',
+  description: '',
+  duration: '00:00',
+  date: '',
+  videoUrl: '',
+  publisher: '',
+  isRecommended: false,
+  hasAISummary: false,
+  hasAITimestamps: false,
+  uploadTime: '',
+  views: 0,
+  likes: 0,
+  aiSummary: '',
+  timestamps: [],
+  comments: []
 };
 
 const VideoDetailsPage = () => {
@@ -98,7 +55,9 @@ const VideoDetailsPage = () => {
   const playerRef = useRef(null);
   const [collapsed, setCollapsed] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [video, setVideo] = useState(null);
+  const [video, setVideo] = useState(DEFAULT_VIDEO);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('summary');
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
@@ -111,11 +70,54 @@ const VideoDetailsPage = () => {
       setCurrentTime(new Date());
     }, 60000);
 
-    // Simulate fetching video details
-    setVideo(VIDEO_DETAILS[moduleId]?.[videoId] || null);
+    // Fetch video details from API
+    fetchVideoDetails();
     
     return () => clearInterval(timer);
   }, [moduleId, videoId]);
+
+  const fetchVideoDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await axios.get(`http://localhost:5000/api/tutoring/videos/${videoId}`, {
+        withCredentials: true
+      });
+      
+      const videoData = response.data.video;
+      
+      // Transform the API data to match our component structure
+      const transformedVideo = {
+        id: videoData.id,
+        title: videoData.title,
+        description: videoData.description,
+        duration: '00:00', // Duration not available in API
+        date: new Date(videoData.uploadDate).toLocaleDateString(),
+        videoUrl: videoData.videoFile ? `http://localhost:5000/${videoData.videoFile}` : '',
+        publisher: 'Student', // Videos are uploaded by students
+        isRecommended: videoData.aiFeatures?.lecturerRecommended || false,
+        hasAISummary: videoData.aiFeatures?.summary || false,
+        hasAITimestamps: videoData.aiFeatures?.timestamps || false,
+        uploadTime: new Date(videoData.uploadDate).toLocaleTimeString(),
+        views: videoData.views || 0,
+        likes: 0, // Likes not implemented yet
+        aiSummary: videoData.summary || '',
+        timestamps: videoData.timestamps?.map(ts => ({
+          time: ts.time_start || '00:00',
+          title: ts.description || 'Untitled'
+        })) || [],
+        comments: [] // Comments not implemented yet
+      };
+      
+      setVideo(transformedVideo);
+    } catch (error) {
+      console.error('Error fetching video details:', error);
+      setError('Failed to load video details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBackClick = () => {
     navigate(`/videos/${moduleId}`);
@@ -187,20 +189,63 @@ const VideoDetailsPage = () => {
     </form>
   );
 
-  if (!video) {
-    return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="video-details-page">
+        <div className="loading-container">
+          <div className="loading-spinner">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="video-details-page">
+        <div className="error-container">
+          <h2>Error</h2>
+          <p>{error}</p>
+          <button onClick={fetchVideoDetails}>Try Again</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!video || !video.id) {
+    return (
+      <div className="video-details-page">
+        <div className="error-container">
+          <h2>Video Not Found</h2>
+          <p>The video you're looking for doesn't exist.</p>
+          <button onClick={() => navigate(`/videos/${moduleId}`)}>Back to Videos</button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="video-details-page">
-      <div className="page-header">
-        <button className="back-button" onClick={() => window.history.back()}>
-          <FaChevronLeft /> Back
-        </button>
-        <h1>{video.title}</h1>
-      </div>
+    <div className="app-container">
+      <SideMenu collapsed={collapsed} setCollapsed={setCollapsed} />
+      <div className="main-content">
+        <div className="sidebar-toggle-btn-wrapper">
+          <button
+            className="sidebar-toggle-btn"
+            onClick={() => setCollapsed((v) => !v)}
+            aria-label="Toggle sidebar"
+          >
+            {collapsed ? <FaChevronRight /> : <FaChevronLeft />}
+          </button>
+        </div>
+        <TopBar currentTime={currentTime} />
+        <div className="video-details-page">
+          <div className="page-header">
+            <button className="back-button" onClick={() => window.history.back()}>
+              <FaChevronLeft /> Back
+            </button>
+            <h1>{video.title}</h1>
+          </div>
 
-      <div className="content-wrapper">
+          <div className="content-wrapper">
         <div className="video-section">
           <div className="video-player-container">
             <div className="video-player">
@@ -390,6 +435,8 @@ const VideoDetailsPage = () => {
               </div>
             ))}
           </div>
+        </div>
+      </div>
         </div>
       </div>
     </div>

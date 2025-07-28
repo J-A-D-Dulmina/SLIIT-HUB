@@ -4,6 +4,7 @@ import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
 import { FaPencilAlt, FaTrash, FaTimes } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import Toast from '../../../shared/components/Toast';
+import axios from 'axios';
 
 const API_URL = '/api/admin/degrees';
 
@@ -80,9 +81,8 @@ const AdminDegreesPage = () => {
 
   // Fetch degrees from backend on mount
   useEffect(() => {
-    fetch(API_URL)
-      .then(res => res.json())
-      .then(data => setDegrees(data))
+    axios.get(API_URL)
+      .then(res => setDegrees(res.data))
       .catch(() => setDegrees([]));
   }, []);
 
@@ -263,22 +263,13 @@ const AdminDegreesPage = () => {
     if (modalMode === 'add') {
       // Add new degree
       try {
-        const res = await fetch(`/api/admin/degrees`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(degreeForm)
-        });
-        if (res.ok) {
-          const newDegree = await res.json();
-          setDegrees(degrees => [...degrees, newDegree]);
-          setShowUpdateToast(true);
-          setTimeout(() => setShowUpdateToast(false), 2500);
-          closeModal();
-        } else {
-          alert('Failed to add degree to database');
-        }
-      } catch {
-        alert('Server error');
+        const res = await axios.post(`/api/admin/degrees`, degreeForm);
+        setDegrees(degrees => [...degrees, res.data]);
+        setShowUpdateToast(true);
+        setTimeout(() => setShowUpdateToast(false), 2500);
+        closeModal();
+      } catch (error) {
+        alert(error.response?.data?.message || 'Server error');
       }
       return;
     }
@@ -288,27 +279,16 @@ const AdminDegreesPage = () => {
       return;
     }
     try {
-      const res = await fetch(`/api/admin/degrees/${degreeForm._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(degreeForm)
-      });
-      if (res.ok) {
-        // Fetch latest degree data from backend
-        const updated = await fetch(`/api/admin/degrees/${degreeForm._id}`);
-        if (updated.ok) {
-          const updatedDegree = await updated.json();
-          setDegreeForm(updatedDegree);
-          setDegrees(degrees => degrees.map(d => (d._id === updatedDegree._id ? updatedDegree : d)));
-        }
-        setShowUpdateToast(true);
-        setTimeout(() => setShowUpdateToast(false), 2500);
-        closeModal();
-      } else {
-        alert('Failed to update degree in database');
-      }
-    } catch {
-      alert('Server error');
+      const res = await axios.put(`/api/admin/degrees/${degreeForm._id}`, degreeForm);
+      // Fetch latest degree data from backend
+      const updated = await axios.get(`/api/admin/degrees/${degreeForm._id}`);
+      setDegreeForm(updated.data);
+      setDegrees(degrees => degrees.map(d => (d._id === updated.data._id ? updated.data : d)));
+      setShowUpdateToast(true);
+      setTimeout(() => setShowUpdateToast(false), 2500);
+      closeModal();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Server error');
     }
   };
 
@@ -326,12 +306,8 @@ const AdminDegreesPage = () => {
       closeModal();
       return;
     }
-    const res = await fetch(`${API_URL}/${degreeId}`, {
-      method: 'DELETE'
-    });
-    if (res.ok) {
-      setDegrees(degrees.filter(d => (d._id || d.id) !== degreeId));
-    }
+    const res = await axios.delete(`${API_URL}/${degreeId}`);
+    setDegrees(degrees.filter(d => (d._id || d.id) !== degreeId));
     setShowDeleteDialog(false);
     closeModal();
   };

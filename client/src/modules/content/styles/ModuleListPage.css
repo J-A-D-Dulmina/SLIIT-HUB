@@ -312,4 +312,281 @@ h2 {
   .module-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Dashboard-specific meeting styles to avoid conflicts */
+.my-scheduled-meetings .dashboard-meeting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.my-scheduled-meetings .dashboard-meeting-item {
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.my-scheduled-meetings .dashboard-meeting-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.my-scheduled-meetings .dashboard-meeting-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.my-scheduled-meetings .dashboard-meeting-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.my-scheduled-meetings .dashboard-meeting-details h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #334155;
+  margin: 0;
+  line-height: 1.4;
+  width: 100%;
+}
+
+.my-scheduled-meetings .dashboard-meeting-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #64748b;
+  width: 100%;
+}
+
+.my-scheduled-meetings .dashboard-meeting-meta span {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 3px 10px;
+  border-radius: 4px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.my-scheduled-meetings .dashboard-meeting-coordinator {
+  font-size: 0.9rem;
+  color: #475569;
+  padding: 4px 0;
+  border-bottom: 1px solid #e2e8f0;
+  width: 100%;
+  font-weight: 500;
+}
+
+.my-scheduled-meetings .dashboard-meeting-time {
+  font-size: 0.9rem;
+  color: #64748b;
+  width: 100%;
+  font-weight: 500;
+}
+
+.my-scheduled-meetings .dashboard-meeting-link {
+  font-size: 0.85rem;
+  color: #64748b;
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid #e2e8f0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  word-break: break-all;
+}
+
+.my-scheduled-meetings .dashboard-meeting-link a {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+  word-break: break-all;
+  max-width: 100%;
+}
+
+.my-scheduled-meetings .dashboard-meeting-link a:hover {
+  text-decoration: underline;
+}
+
+.my-scheduled-meetings .dashboard-start-meeting-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: 32px;
+  min-width: 70px;
+  margin-left: auto;
+  position: relative;
+  z-index: 10;
+}
+
+.my-scheduled-meetings .dashboard-start-meeting-btn:disabled {
+  background: #b7e0c2;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.my-scheduled-meetings .dashboard-start-meeting-btn:not(:disabled):hover {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.my-scheduled-meetings .dashboard-view-all-meetings-btn {
+  width: 100%;
+  background: #f1f5f9;
+  color: #3498db;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 10px;
+}
+
+.my-scheduled-meetings .dashboard-view-all-meetings-btn:hover {
+  background: #e2e8f0;
+}
+
+.my-scheduled-meetings .dashboard-no-meetings {
+  color: #7f8c8d;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.my-scheduled-meetings .dashboard-action-btn {
+  width: 100%;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 10px;
+}
+
+.my-scheduled-meetings .dashboard-action-btn:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* Meeting Confirmation Dialog */
+.my-scheduled-meetings .meeting-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.my-scheduled-meetings .meeting-confirm-dialog {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  max-width: 90vw;
+  text-align: center;
+}
+
+.my-scheduled-meetings .meeting-confirm-dialog h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #2c3e50;
+}
+
+.my-scheduled-meetings .meeting-confirm-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+/* Meeting Confirmation Dialog Buttons */
+.meeting-confirm-start-btn {
+  min-width: 100px;
+  background-color: #3b82f6;
+  color: white;
+  border: 1px solid #2563eb;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.meeting-confirm-start-btn:hover {
+  background-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.meeting-confirm-start-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.meeting-confirm-cancel-btn {
+  min-width: 100px;
+  background-color: #f9fafb;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.meeting-confirm-cancel-btn:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.meeting-confirm-cancel-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 } 
