@@ -4,12 +4,18 @@ import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import moment from 'moment';
 import '../styles/CalendarPage.css';
+import axios from 'axios';
 
 const TASK_TYPES = {
   ACADEMIC: { label: 'Academic', color: '#10b981', icon: <FaGraduationCap /> },
   TASK: { label: 'Task', color: '#f59e0b', icon: <FaTasks /> },
   REMINDER: { label: 'Reminder', color: '#ef4444', icon: <FaBell /> }
 };
+
+const MEETINGS_API = 'http://localhost:5000/api/meetings/public';
+
+const MY_MEETING_TYPE = { label: 'My Meeting', color: '#f59e0b', icon: <FaCalendarAlt /> };
+const OTHER_MEETING_TYPE = { label: 'Meeting', color: '#10b981', icon: <FaCalendarAlt /> };
 
 const CalendarPage = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -43,13 +49,35 @@ const CalendarPage = () => {
       description: 'Team meeting to discuss project progress'
     }
   ]);
+  const [meetings, setMeetings] = useState([]);
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
+    fetchMeetings();
     return () => clearInterval(timer);
   }, []);
+
+  const fetchMeetings = async () => {
+    try {
+      const res = await axios.get(MEETINGS_API);
+      if (res.data && res.data.data) {
+        setMeetings(res.data.data.map(m => ({
+          id: m._id,
+          title: m.title,
+          type: 'MEETING',
+          date: moment(m.startTime).format('YYYY-MM-DD'),
+          time: moment(m.startTime).format('HH:mm'),
+          description: m.description || '',
+          isMine: userInfo && (m.hostStudentId === userInfo.studentId || m.host === userInfo._id)
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch meetings:', err);
+    }
+  };
 
   const handlePrevMonth = () => {
     setCurrentDate(moment(currentDate).subtract(1, 'month').toDate());
@@ -85,8 +113,8 @@ const CalendarPage = () => {
       const isToday = currentDay.isSame(moment(), 'day');
       const isSelected = selectedDate && currentDay.isSame(selectedDate, 'day');
       
-      const dayTasks = tasks.filter(task => 
-        moment(task.date).isSame(currentDay, 'day')
+      const dayTasks = [...tasks, ...meetings].filter(item => 
+        moment(item.date).isSame(currentDay, 'day')
       );
 
       days.push(
@@ -98,17 +126,20 @@ const CalendarPage = () => {
         >
           <span className="day-number">{currentDay.date()}</span>
           <div className="day-tasks">
-            {dayTasks.map(task => (
-              <div
-                key={task.id}
-                className="task-indicator"
-                style={{ backgroundColor: TASK_TYPES[task.type].color }}
-                title={`${task.title} (${task.time})`}
-              >
-                {TASK_TYPES[task.type].icon}
-                <span>{task.title}</span>
-              </div>
-            ))}
+            {dayTasks.map(item => {
+              const taskType = item.type === 'MEETING' ? (item.isMine ? MY_MEETING_TYPE : OTHER_MEETING_TYPE) : TASK_TYPES[item.type];
+              return (
+                <div
+                  key={item.id}
+                  className="task-indicator"
+                  style={{ backgroundColor: taskType.color }}
+                  title={`${item.title} (${item.time})`}
+                >
+                  {taskType.icon}
+                  <span>{item.title}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       );

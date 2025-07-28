@@ -8,6 +8,7 @@ import TopBar from '../../../shared/components/TopBar';
 import UpcomingMeetings from '../../../shared/components/UpcomingMeetings';
 import { FaChevronLeft, FaChevronRight, FaPlay, FaLink } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const localizer = momentLocalizer(moment);
 
@@ -86,54 +87,85 @@ const getModuleDetails = (meetingId) => {
 
 const LandingPage = () => {
   const [events, setEvents] = useState([]);
+  const [myMeetings, setMyMeetings] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [meetingToStart, setMeetingToStart] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [showEventModal, setShowEventModal] = useState(false);
   const navigate = useNavigate();
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
 
   useEffect(() => {
-    // Add scheduled meetings
-    const calendarEvents = MY_SCHEDULED_MEETINGS.map(m => ({
-      id: m.id,
-      title: m.topic,
-      start: m.start,
-      end: new Date(m.start.getTime() + 60 * 60000),
-      allDay: false,
-      resource: { isScheduledMeeting: true },
-    }));
-
-    // Add upcoming meetings
-    const upcomingMeetings = [
-      {
-        id: 101,
-        title: 'Research Discussion',
-        start: getDateAt(get29thDate(), 10, 30),
-        end: new Date(getDateAt(get29thDate(), 10, 30).getTime() + 60 * 60000),
-        allDay: false,
-        resource: { isUpcomingMeeting: true },
-      },
-      {
-        id: 102,
-        title: 'Group Study Session',
-        start: getDateAt(get29thDate(), 14, 0),
-        end: new Date(getDateAt(get29thDate(), 14, 0).getTime() + 90 * 60000),
-        allDay: false,
-        resource: { isUpcomingMeeting: true },
-      }
-    ];
-
-    setEvents([...calendarEvents, ...upcomingMeetings]);
-
+    fetchMeetings();
+    fetchMyMeetings();
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
     return () => clearInterval(timer);
   }, []);
 
+  const fetchMeetings = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/meetings/public');
+      if (res.data && res.data.data) {
+        setEvents(res.data.data.map(m => ({
+          id: m._id,
+          title: m.title,
+          start: new Date(m.startTime),
+          end: new Date(new Date(m.startTime).getTime() + (m.duration || 60) * 60000),
+          allDay: false,
+          resource: { ...m, isUpcomingMeeting: true }
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch meetings:', err);
+    }
+  };
+
+  const fetchMyMeetings = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/meetings/my-meetings', { withCredentials: true });
+      if (res.data && res.data.data) {
+        setMyMeetings(res.data.data.map(m => ({
+          id: m._id,
+          title: m.title,
+          start: new Date(m.startTime),
+          end: new Date(new Date(m.startTime).getTime() + (m.duration || 60) * 60000),
+          allDay: false,
+          resource: { ...m, isScheduledMeeting: true }
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch my meetings:', err);
+    }
+  };
+
+  // Combine for calendar
+  const allEvents = [...events, ...myMeetings];
+
+  // For UpcomingMeetings, filter for future meetings where user is host
+  const upcomingMine = myMeetings.filter(m => new Date(m.start) > new Date());
+
+  // For My Scheduled Meeting, show the next one
+  const nextScheduledMeeting = upcomingMine.sort((a, b) => new Date(a.start) - new Date(b.start))[0];
+
+  // Filter out ended meetings from calendar events
+  const filteredEvents = allEvents.filter(e => {
+    const status = e.resource?.status || e.status;
+    return status !== 'ended' && status !== 'completed';
+  });
+
   const handleSelectEvent = (event) => {
-    alert(`Event: ${event.title}`);
+    setSelectedEvent(event);
+    setShowEventModal(true);
+  };
+
+  const closeEventModal = () => {
+    setShowEventModal(false);
+    setSelectedEvent(null);
   };
 
   const displayedAnnouncements = showAllAnnouncements ? ANNOUNCEMENTS : ANNOUNCEMENTS.slice(0, 3);
@@ -165,9 +197,6 @@ const LandingPage = () => {
     setMeetingToStart(null);
   };
 
-  const nextScheduledMeeting = MY_SCHEDULED_MEETINGS
-    .sort((a, b) => new Date(a.start) - new Date(b.start))[0];
-
   return (
     <div className="landing-page">
       <SideMenu collapsed={collapsed} />
@@ -191,7 +220,7 @@ const LandingPage = () => {
                 <h3>Academic Calendar</h3>
                 <Calendar
                   localizer={localizer}
-                  events={events}
+                  events={filteredEvents}
                   startAccessor="start"
                   endAccessor="end"
                   style={{ height: 500 }}
@@ -221,7 +250,7 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="right-sidebar">
-            <UpcomingMeetings events={events} />
+            <UpcomingMeetings events={upcomingMine} />
             <div className="my-scheduled-meetings">
               <h3>My Scheduled Meeting</h3>
               {!nextScheduledMeeting ? (
@@ -241,13 +270,16 @@ const LandingPage = () => {
                       <div className="meeting-header">
                         <div className="meeting-details">
                           <h4>{nextScheduledMeeting.topic}</h4>
+                          <div className="meeting-title"><strong>Title:</strong> {nextScheduledMeeting.title || nextScheduledMeeting.topic || 'N/A'}</div>
+                          <div className="meeting-description"><strong>Description:</strong> {nextScheduledMeeting.resource?.description || nextScheduledMeeting.description || 'N/A'}</div>
                           <div className="meeting-meta">
-                            <span>{getModuleDetails(nextScheduledMeeting.id).year}</span>
-                            <span>{getModuleDetails(nextScheduledMeeting.id).semester}</span>
-                            <span>{getModuleDetails(nextScheduledMeeting.id).module}</span>
+                            <span>{nextScheduledMeeting.resource?.degree || nextScheduledMeeting.degree || 'N/A'}</span>
+                            <span>{nextScheduledMeeting.resource?.year || nextScheduledMeeting.year || 'N/A'}</span>
+                            <span>{nextScheduledMeeting.resource?.semester || nextScheduledMeeting.semester || 'N/A'}</span>
+                            <span>{nextScheduledMeeting.resource?.module || nextScheduledMeeting.module || 'N/A'}</span>
                           </div>
                           <div className="meeting-coordinator">
-                            Coordinator: {getModuleDetails(nextScheduledMeeting.id).coordinator}
+                            Coordinator: {nextScheduledMeeting.resource?.hostName || nextScheduledMeeting.hostName || 'N/A'}
                           </div>
                           <div className="meeting-time">
                             {formatMeetingTime(nextScheduledMeeting.start)}
@@ -263,8 +295,8 @@ const LandingPage = () => {
                       </div>
                       <div className="meeting-link">
                         <FaLink />
-                        <a href={nextScheduledMeeting.link} target="_blank" rel="noopener noreferrer">
-                          {nextScheduledMeeting.link}
+                        <a href={nextScheduledMeeting.resource?.meetingLink || nextScheduledMeeting.meetingLink || '#'} target="_blank" rel="noopener noreferrer">
+                          {nextScheduledMeeting.resource?.meetingLink || nextScheduledMeeting.meetingLink || 'N/A'}
                         </a>
                       </div>
                     </div>
@@ -297,6 +329,30 @@ const LandingPage = () => {
           </div>
         </div>
       </div>
+      {showEventModal && selectedEvent && (
+        <div className="event-modal-overlay">
+          <div className="event-modal-content">
+            <h3>{selectedEvent.title || selectedEvent.resource?.title}</h3>
+            <div><strong>Description:</strong> {selectedEvent.resource?.description || selectedEvent.description || 'N/A'}</div>
+            <div><strong>Degree:</strong> {selectedEvent.resource?.degree || 'N/A'}</div>
+            <div><strong>Year:</strong> {selectedEvent.resource?.year || 'N/A'}</div>
+            <div><strong>Semester:</strong> {selectedEvent.resource?.semester || 'N/A'}</div>
+            <div><strong>Module:</strong> {selectedEvent.resource?.module || 'N/A'}</div>
+            <div><strong>Time:</strong> {formatMeetingTime(selectedEvent.start)}</div>
+            <div><strong>Coordinator:</strong> {selectedEvent.resource?.hostName || 'N/A'}</div>
+            <div className="event-modal-actions">
+              {selectedEvent.resource?.isScheduledMeeting || selectedEvent.resource?.hostStudentId === userInfo.studentId || selectedEvent.resource?.host === userInfo._id ? (
+                <button className="start-meeting-btn" onClick={() => handleStartMeeting(selectedEvent.resource)}>Start Meeting</button>
+              ) : (
+                <a href={selectedEvent.resource?.meetingLink || '#'} target="_blank" rel="noopener noreferrer">
+                  <button className="join-meeting-btn">Join Meeting</button>
+                </a>
+              )}
+              <button className="close-modal-btn" onClick={closeEventModal}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

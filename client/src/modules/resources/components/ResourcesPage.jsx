@@ -40,6 +40,9 @@ const ResourcesPage = () => {
   const [selectedResource, setSelectedResource] = useState(null);
   const [shareLink, setShareLink] = useState('');
   const [degreeOptions, setDegreeOptions] = useState([]);
+  const [yearOptions, setYearOptions] = useState([]);
+  const [semesterOptions, setSemesterOptions] = useState([]);
+  const [moduleOptions, setModuleOptions] = useState([]);
 
   // Set constant uploader name
   const UPLOADER_NAME = "J A D Dulmina";
@@ -54,6 +57,64 @@ const ResourcesPage = () => {
     fetchDegrees();
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!uploadFormData.degree) {
+      setYearOptions([]);
+      setSemesterOptions([]);
+      setModuleOptions([]);
+      return;
+    }
+    const selectedDegree = degreeOptions.find(d => d._id === uploadFormData.degree);
+    if (selectedDegree) {
+      setYearOptions(selectedDegree.years || []);
+      // Reset year/semester/module if degree changes
+      if (!selectedDegree.years.some(y => String(y.yearNumber) === String(uploadFormData.year))) {
+        setUploadFormData(prev => ({ ...prev, year: '', semester: '', module: '' }));
+      }
+    } else {
+      setYearOptions([]);
+      setSemesterOptions([]);
+      setModuleOptions([]);
+    }
+  }, [uploadFormData.degree, degreeOptions]);
+
+  useEffect(() => {
+    if (!uploadFormData.degree || !uploadFormData.year) {
+      setSemesterOptions([]);
+      setModuleOptions([]);
+      return;
+    }
+    const selectedDegree = degreeOptions.find(d => d._id === uploadFormData.degree);
+    const selectedYear = selectedDegree?.years.find(y => String(y.yearNumber) === String(uploadFormData.year));
+    if (selectedYear) {
+      setSemesterOptions(selectedYear.semesters || []);
+      if (!selectedYear.semesters.some(s => String(s.semesterNumber) === String(uploadFormData.semester))) {
+        setUploadFormData(prev => ({ ...prev, semester: '', module: '' }));
+      }
+    } else {
+      setSemesterOptions([]);
+      setModuleOptions([]);
+    }
+  }, [uploadFormData.degree, uploadFormData.year, degreeOptions]);
+
+  useEffect(() => {
+    if (!uploadFormData.degree || !uploadFormData.year || !uploadFormData.semester) {
+      setModuleOptions([]);
+      return;
+    }
+    const selectedDegree = degreeOptions.find(d => d._id === uploadFormData.degree);
+    const selectedYear = selectedDegree?.years.find(y => String(y.yearNumber) === String(uploadFormData.year));
+    const selectedSemester = selectedYear?.semesters.find(s => String(s.semesterNumber) === String(uploadFormData.semester));
+    if (selectedSemester) {
+      setModuleOptions(selectedSemester.modules || []);
+      if (!selectedSemester.modules.some(m => m.code === uploadFormData.module)) {
+        setUploadFormData(prev => ({ ...prev, module: '' }));
+      }
+    } else {
+      setModuleOptions([]);
+    }
+  }, [uploadFormData.degree, uploadFormData.year, uploadFormData.semester, degreeOptions]);
 
   const fetchResources = async () => {
     try {
@@ -437,8 +498,8 @@ const ResourcesPage = () => {
                         onChange={handleUploadChange}
                       >
                         <option value="">Select Year</option>
-                        {DEGREE_YEARS.filter(year => year !== 'All').map(year => (
-                          <option key={year} value={year}>{year}</option>
+                        {yearOptions.map(year => (
+                          <option key={year.yearNumber} value={year.yearNumber}>Year {year.yearNumber}</option>
                         ))}
                       </select>
                     </div>
@@ -452,8 +513,8 @@ const ResourcesPage = () => {
                         onChange={handleUploadChange}
                       >
                         <option value="">Select Semester</option>
-                        {SEMESTERS.filter(semester => semester !== 'All').map(semester => (
-                          <option key={semester} value={semester}>{semester}</option>
+                        {semesterOptions.map(sem => (
+                          <option key={sem.semesterNumber} value={sem.semesterNumber}>Semester {sem.semesterNumber}</option>
                         ))}
                       </select>
                     </div>
@@ -468,8 +529,8 @@ const ResourcesPage = () => {
                       onChange={handleUploadChange}
                     >
                       <option value="">Select Module</option>
-                      {MODULES.filter(module => module !== 'All').map(module => (
-                        <option key={module} value={module}>{module}</option>
+                      {moduleOptions.map(mod => (
+                        <option key={mod.code} value={mod.code}>{mod.name}</option>
                       ))}
                     </select>
                   </div>
