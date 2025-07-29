@@ -283,13 +283,13 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     });
 
     try {
-      // Step 1: Generate Summary
+      // Step 1: Generate Summary (0-33%)
       console.log('Step 1: Generating Summary...');
       setGenerationProgress(prev => ({ ...prev, summary: 10 }));
       
       // Simulate processing time for summary
       await new Promise(resolve => setTimeout(resolve, 1000));
-      setGenerationProgress(prev => ({ ...prev, summary: 50 }));
+      setGenerationProgress(prev => ({ ...prev, summary: 25 }));
       
       const summaryResult = await generateSummary(video.id, { videoTitle: formData.title });
       
@@ -298,7 +298,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
         ...prev,
         summary: summaryResult
       }));
-      setGenerationProgress(prev => ({ ...prev, summary: 100 }));
+      setGenerationProgress(prev => ({ ...prev, summary: 33 }));
       
       // Show visual feedback
       showUpdateSuccess('summary');
@@ -308,13 +308,13 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
         showNotification('Summary generated successfully!', 'success');
       }, 300);
       
-      // Step 2: Generate Description
+      // Step 2: Generate Description (33-66%)
       console.log('Step 2: Generating Description...');
-      setGenerationProgress(prev => ({ ...prev, description: 30 }));
+      setGenerationProgress(prev => ({ ...prev, description: 10 }));
       
       // Simulate processing time for description
       await new Promise(resolve => setTimeout(resolve, 800));
-      setGenerationProgress(prev => ({ ...prev, description: 70 }));
+      setGenerationProgress(prev => ({ ...prev, description: 25 }));
       
       const descriptionResult = await generateDescription(video.id, { videoTitle: formData.title });
       
@@ -323,7 +323,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
         ...prev,
         description: descriptionResult
       }));
-      setGenerationProgress(prev => ({ ...prev, description: 100 }));
+      setGenerationProgress(prev => ({ ...prev, description: 33 }));
       
       // Show visual feedback
       showUpdateSuccess('description');
@@ -333,13 +333,13 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
         showNotification('Description generated successfully!', 'success');
       }, 300);
       
-      // Step 3: Generate Timestamps
+      // Step 3: Generate Timestamps (66-100%)
       console.log('Step 3: Generating Timestamps...');
-      setGenerationProgress(prev => ({ ...prev, timestamps: 60 }));
+      setGenerationProgress(prev => ({ ...prev, timestamps: 10 }));
       
       // Simulate processing time for timestamps
       await new Promise(resolve => setTimeout(resolve, 1200));
-      setGenerationProgress(prev => ({ ...prev, timestamps: 85 }));
+      setGenerationProgress(prev => ({ ...prev, timestamps: 25 }));
       
       const timestampsResult = await generateTimestamps(video.id, { videoTitle: formData.title });
       
@@ -348,7 +348,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
         ...prev,
         timestamps: timestampsResult
       }));
-      setGenerationProgress(prev => ({ ...prev, timestamps: 100 }));
+      setGenerationProgress(prev => ({ ...prev, timestamps: 33 }));
       
       // Show visual feedback
       showUpdateSuccess('timestamps');
@@ -477,23 +477,22 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
             <h1>{video ? 'Edit Video' : 'Upload New Video'}</h1>
           </div>
 
-          {/* AI Generation Controls */}
-          <div className="ai-controls-section">
-            <div className="ai-controls-header">
+          {/* AI Content Generation Section */}
+          <div className="ai-content-section">
+            <div className="ai-content-header">
               <h3>AI Content Generation</h3>
-              <p>Use AI to automatically generate video content using OpenAI Whisper and GPT-4</p>
-            </div>
-            <div className="ai-controls-buttons">
               <button
                 type="button"
-                className="ai-generate-all-btn"
+                className="generate-all-btn"
                 onClick={generateAllAIContent}
                 disabled={isGenerating.summary || isGenerating.description || isGenerating.timestamps}
               >
                 <FaRobot /> Generate All Content with AI
               </button>
             </div>
-            {(isGenerating.summary || isGenerating.description || isGenerating.timestamps) && (
+            
+            {/* Progress Bar for Generate All Content */}
+            {(isGenerating.summary && isGenerating.description && isGenerating.timestamps) && (
               <div className="ai-progress-overview">
                 <div className="progress-container">
                   <div className="progress-header">
@@ -513,29 +512,24 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                     ></div>
                   </div>
                   <div className="progress-steps">
-                    <div className={`step ${generationProgress.summary >= 10 ? 'completed' : ''}`}>
+                    <div className={`step ${generationProgress.summary >= 33 ? 'completed' : ''}`}>
                       <span className="step-icon">1</span>
                       <span className="step-text">Generate Summary</span>
                     </div>
-                    <div className={`step ${generationProgress.description >= 30 ? 'completed' : ''}`}>
+                    <div className={`step ${generationProgress.description >= 33 ? 'completed' : ''}`}>
                       <span className="step-icon">2</span>
                       <span className="step-text">Generate Description</span>
                     </div>
-                    <div className={`step ${generationProgress.timestamps >= 60 ? 'completed' : ''}`}>
+                    <div className={`step ${generationProgress.timestamps >= 33 ? 'completed' : ''}`}>
                       <span className="step-icon">3</span>
                       <span className="step-text">Generate Timestamps</span>
                     </div>
-                    <div className={`step ${(generationProgress.summary + generationProgress.description + generationProgress.timestamps) / 3 >= 90 ? 'completed' : ''}`}>
+                    <div className={`step ${(generationProgress.summary + generationProgress.description + generationProgress.timestamps) / 3 >= 99 ? 'completed' : ''}`}>
                       <span className="step-icon">4</span>
                       <span className="step-text">Finalizing Results</span>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-            {aiError && (
-              <div className="ai-error-message">
-                <p>Error: {aiError}</p>
               </div>
             )}
           </div>

@@ -197,37 +197,43 @@ class SceneDetector:
     def combine_with_gpt_timestamps(self, scene_timestamps, gpt_timestamps, video_title=""):
         """
         Combine scene detection timestamps with GPT-generated descriptions
+        Preserve PySceneDetect timestamps and only use GPT for descriptions
         """
         try:
             combined_timestamps = []
             
-            # If we have GPT timestamps, use them as base and add scene info
-            if gpt_timestamps:
-                for gpt_ts in gpt_timestamps:
-                    # Find the closest scene timestamp
-                    closest_scene = self._find_closest_scene(gpt_ts, scene_timestamps)
-                    
-                    if closest_scene:
-                        combined_timestamps.append({
-                            "time_start": gpt_ts["time_start"] if "time_start" in gpt_ts else gpt_ts["time"],
-                            "description": gpt_ts["description"],
-                            "scene_info": f"Scene {closest_scene['scene_number']}",
-                            "duration": closest_scene["duration"]
-                        })
-                    else:
-                        combined_timestamps.append({
-                            "time_start": gpt_ts["time_start"] if "time_start" in gpt_ts else gpt_ts["time"],
-                            "description": gpt_ts["description"]
-                        })
-            
-            # If no GPT timestamps, use scene timestamps with generic descriptions
-            else:
+            # Use PySceneDetect timestamps as the base (they are more accurate)
+            # Only use GPT for generating better descriptions
+            if scene_timestamps:
                 for i, scene_ts in enumerate(scene_timestamps):
+                    # Use the exact PySceneDetect timestamp
+                    time_start = scene_ts["time_start"] if "time_start" in scene_ts else scene_ts["time"]
+                    
+                    # Try to find a matching GPT description if available
+                    matching_gpt_description = None
+                    if gpt_timestamps:
+                        matching_gpt_description = self._find_matching_gpt_description(
+                            scene_ts["start_time"], gpt_timestamps
+                        )
+                    
+                    # Use GPT description if found, otherwise use scene description
+                    description = matching_gpt_description if matching_gpt_description else scene_ts["description"]
+                    
                     combined_timestamps.append({
-                        "time_start": scene_ts["time_start"] if "time_start" in scene_ts else scene_ts["time"],
-                        "description": f"Scene {i+1} - {video_title}",
+                        "time_start": time_start,
+                        "description": description,
                         "scene_info": f"Scene {i+1}",
-                        "duration": scene_ts["duration"]
+                        "duration": scene_ts["duration"],
+                        "start_time": scene_ts["start_time"],
+                        "end_time": scene_ts["end_time"]
+                    })
+            
+            # If no scene timestamps, fall back to GPT timestamps
+            elif gpt_timestamps:
+                for gpt_ts in gpt_timestamps:
+                    combined_timestamps.append({
+                        "time_start": gpt_ts["time_start"] if "time_start" in gpt_ts else gpt_ts["time"],
+                        "description": gpt_ts["description"]
                     })
             
             return combined_timestamps
@@ -263,6 +269,27 @@ class SceneDetector:
             
         except Exception as e:
             logger.error(f"Error finding closest scene: {str(e)}")
+            return None
+    
+    def _find_matching_gpt_description(self, scene_start_time, gpt_timestamps):
+        """
+        Find a GPT description that matches the scene timestamp
+        Returns the GPT description if found, otherwise None
+        """
+        try:
+            for gpt_ts in gpt_timestamps:
+                gpt_time = self._timestamp_to_seconds(
+                    gpt_ts["time_start"] if "time_start" in gpt_ts else gpt_ts["time"]
+                )
+                
+                # Check if GPT timestamp is within 10 seconds of scene timestamp
+                if abs(gpt_time - scene_start_time) <= 10:
+                    return gpt_ts["description"]
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding matching GPT description: {str(e)}")
             return None
     
     def _timestamp_to_seconds(self, timestamp):

@@ -143,30 +143,15 @@ class AIController {
         });
       }
       
-      // Get video file path
-      const videoFilePath = await this.getVideoFile(videoId, videoTitle);
-      console.log('Video file path: ' + videoFilePath);
+      console.log('Sending request to Python service for summary generation...');
       
-      // Check if file exists and is readable
-      if (!fs.existsSync(videoFilePath)) {
-        throw new Error('Video file not found at path: ' + videoFilePath);
-      }
-      
-      const stats = fs.statSync(videoFilePath);
-      console.log('Video file size: ' + stats.size + ' bytes');
-      
-      // Create form data for Python service
-      const formData = new FormData();
-      formData.append('video', fs.createReadStream(videoFilePath));
-      formData.append('title', videoTitle || '');
-      formData.append('type', 'summary');
-      
-      console.log('Sending request to Python service...');
-      
-      // Send to Python service
-      const response = await axios.post(`${PYTHON_SERVICE_URL}/process-video`, formData, {
+      // Send to Python service using new individual endpoint
+      const response = await axios.post(`${PYTHON_SERVICE_URL}/api/ai/generate-summary`, {
+        videoId,
+        videoTitle: videoTitle || ''
+      }, {
         headers: {
-          ...formData.getHeaders(),
+          'Content-Type': 'application/json',
         },
         timeout: 300000, // 5 minutes timeout
       });
@@ -177,10 +162,6 @@ class AIController {
       // Check if the Python service returned an error in the response
       if (response.data.error) {
         throw new Error(response.data.error);
-      }
-      
-      if (response.data.summary && response.data.summary.includes('failed')) {
-        throw new Error(response.data.summary);
       }
       
       res.json({ 
@@ -218,6 +199,9 @@ class AIController {
   // Generate AI Description
   async generateDescription(req, res) {
     try {
+      console.log('Server generateDescription called');
+      console.log('Request body:', req.body);
+      
       const { videoId, videoTitle } = req.body;
       
       if (!videoId) {
@@ -226,23 +210,39 @@ class AIController {
 
       console.log('Generating AI description for video: ' + videoId);
       
-      // Get video file path
-      const videoFilePath = await this.getVideoFile(videoId, videoTitle);
+      // First check if Python service is running
+      try {
+        const healthResponse = await axios.get(`${PYTHON_SERVICE_URL}/health`, {
+          timeout: 5000
+        });
+        console.log('Python AI service is running');
+      } catch (healthError) {
+        console.error('Python AI service is not running:', healthError.message);
+        return res.status(503).json({ 
+          error: 'AI service is not available',
+          details: 'Please make sure the Python AI service is running on port 5001'
+        });
+      }
       
-      // Create form data for Python service
-      const formData = new FormData();
-      formData.append('video', fs.createReadStream(videoFilePath));
-      formData.append('title', videoTitle || '');
+      console.log('Sending request to Python service for description generation...');
       
-      // Send to Python service
-      const response = await axios.post(`${PYTHON_SERVICE_URL}/generate-description`, formData, {
+      // Send to Python service using new individual endpoint
+      const response = await axios.post(`${PYTHON_SERVICE_URL}/api/ai/generate-description`, {
+        videoId,
+        videoTitle: videoTitle || ''
+      }, {
         headers: {
-          ...formData.getHeaders(),
+          'Content-Type': 'application/json',
         },
-        timeout: 120000, // 2 minutes timeout
+        timeout: 300000, // 5 minutes timeout
       });
       
       console.log('AI description generated successfully');
+      
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+      
       res.json({ 
         success: true, 
         description: response.data.description,
@@ -251,9 +251,21 @@ class AIController {
       
     } catch (error) {
       console.error('Error generating AI description:', error.message);
+      
+      let errorMessage = 'Failed to generate AI description';
+      let errorDetails = error.message;
+      
+      if (error.code === 'ECONNREFUSED') {
+        errorMessage = 'AI service is not running';
+        errorDetails = 'Please start the Python AI service on port 5001';
+      } else if (error.response) {
+        errorMessage = 'AI service error: ' + error.response.status;
+        errorDetails = error.response.data?.error || error.message;
+      }
+      
       res.status(500).json({ 
-        error: 'Failed to generate AI description',
-        details: error.message 
+        error: errorMessage,
+        details: errorDetails 
       });
     }
   }
@@ -261,7 +273,10 @@ class AIController {
   // Generate AI Timestamps
   async generateTimestamps(req, res) {
     try {
-      const { videoId, videoTitle, useSceneDetection = true } = req.body;
+      console.log('Server generateTimestamps called');
+      console.log('Request body:', req.body);
+      
+      const { videoId, videoTitle } = req.body;
       
       if (!videoId) {
         return res.status(400).json({ error: 'Video ID is required' });
@@ -269,28 +284,39 @@ class AIController {
 
       console.log('Generating AI timestamps for video: ' + videoId);
       
-      // Get video file path
-      const videoFilePath = await this.getVideoFile(videoId, videoTitle);
-      
-      // Create form data for Python service
-      const formData = new FormData();
-      formData.append('video', fs.createReadStream(videoFilePath));
-      formData.append('title', videoTitle || '');
-      formData.append('type', useSceneDetection ? 'all' : 'timestamps');
-      if (useSceneDetection) {
-        formData.append('scene_method', 'content');
-        formData.append('threshold', '27.0');
+      // First check if Python service is running
+      try {
+        const healthResponse = await axios.get(`${PYTHON_SERVICE_URL}/health`, {
+          timeout: 5000
+        });
+        console.log('Python AI service is running');
+      } catch (healthError) {
+        console.error('Python AI service is not running:', healthError.message);
+        return res.status(503).json({ 
+          error: 'AI service is not available',
+          details: 'Please make sure the Python AI service is running on port 5001'
+        });
       }
       
-      // Send to Python service
-      const response = await axios.post(`${PYTHON_SERVICE_URL}/process-video`, formData, {
+      console.log('Sending request to Python service for timestamps generation...');
+      
+      // Send to Python service using new individual endpoint
+      const response = await axios.post(`${PYTHON_SERVICE_URL}/api/ai/generate-timestamps`, {
+        videoId,
+        videoTitle: videoTitle || ''
+      }, {
         headers: {
-          ...formData.getHeaders(),
+          'Content-Type': 'application/json',
         },
         timeout: 300000, // 5 minutes timeout
       });
       
       console.log('AI timestamps generated successfully');
+      
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+      
       res.json({ 
         success: true, 
         timestamps: response.data.timestamps,
@@ -299,9 +325,21 @@ class AIController {
       
     } catch (error) {
       console.error('Error generating AI timestamps:', error.message);
+      
+      let errorMessage = 'Failed to generate AI timestamps';
+      let errorDetails = error.message;
+      
+      if (error.code === 'ECONNREFUSED') {
+        errorMessage = 'AI service is not running';
+        errorDetails = 'Please start the Python AI service on port 5001';
+      } else if (error.response) {
+        errorMessage = 'AI service error: ' + error.response.status;
+        errorDetails = error.response.data?.error || error.message;
+      }
+      
       res.status(500).json({ 
-        error: 'Failed to generate AI timestamps',
-        details: error.message 
+        error: errorMessage,
+        details: errorDetails 
       });
     }
   }

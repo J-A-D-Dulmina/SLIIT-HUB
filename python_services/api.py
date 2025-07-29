@@ -49,32 +49,113 @@ NODE_SERVER_URL = "http://localhost:5000"
 def get_video_from_database(video_id):
     """Fetch video information from the Node.js server"""
     try:
+        # Try to get video from Node.js server
         response = requests.get(f"{NODE_SERVER_URL}/api/tutoring/videos/{video_id}", 
                               headers={'Content-Type': 'application/json'})
+        
         if response.status_code == 200:
             return response.json().get('video')
+        elif response.status_code == 401 or response.status_code == 403:
+            # Authentication failed, try to find video file directly
+            logger.warning(f"Authentication failed for video {video_id}, trying direct file access")
+            return get_video_directly(video_id)
         else:
             logger.error(f"Failed to fetch video {video_id}: {response.status_code}")
-            return None
+            return get_video_directly(video_id)
     except Exception as e:
         logger.error(f"Error fetching video from database: {str(e)}")
+        return get_video_directly(video_id)
+
+def get_video_directly(video_id):
+    """Try to find video file directly in the uploads directory"""
+    try:
+        # Look for video files in the server uploads directory
+        uploads_dir = os.path.join(os.path.dirname(__file__), '..', 'server', 'uploads', 'videos')
+        
+        if not os.path.exists(uploads_dir):
+            logger.error(f"Uploads directory not found: {uploads_dir}")
+            return None
+        
+        # List all video files
+        video_files = [f for f in os.listdir(uploads_dir) if f.endswith(('.mp4', '.avi', '.mov', '.mkv'))]
+        
+        if not video_files:
+            logger.error("No video files found in uploads directory")
+            return None
+        
+        # If only one video file exists, use it
+        if len(video_files) == 1:
+            video_file = video_files[0]
+            video_path = os.path.join(uploads_dir, video_file)
+            logger.info(f"Using single video file: {video_file}")
+            return {
+                'videoFile': f'uploads/videos/{video_file}',
+                'title': f'Video {video_id}',
+                'id': video_id
+            }
+        
+        # Try to find a file that might match the video ID
+        for video_file in video_files:
+            if video_id in video_file or 'videoFile' in video_file:
+                video_path = os.path.join(uploads_dir, video_file)
+                logger.info(f"Found matching video file: {video_file}")
+                return {
+                    'videoFile': f'uploads/videos/{video_file}',
+                    'title': f'Video {video_id}',
+                    'id': video_id
+                }
+        
+        # Use the first available video file as fallback
+        video_file = video_files[0]
+        video_path = os.path.join(uploads_dir, video_file)
+        logger.info(f"Using first available video file: {video_file}")
+        return {
+            'videoFile': f'uploads/videos/{video_file}',
+            'title': f'Video {video_id}',
+            'id': video_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting video directly: {str(e)}")
         return None
 
 def get_video_file_path(video_data):
     """Get the full path to the video file"""
     if not video_data or not video_data.get('videoFile'):
+        logger.error("No video data or videoFile found")
         return None
     
     video_file = video_data['videoFile']
-    # Remove any leading slashes and construct the full path
-    video_file = video_file.lstrip('/')
-    full_path = os.path.join(os.path.dirname(__file__), '..', 'server', video_file)
     
-    if os.path.exists(full_path):
-        return full_path
-    else:
-        logger.error(f"Video file not found: {full_path}")
-        return None
+    # Try multiple possible paths
+    possible_paths = [
+        # Path relative to Python service
+        os.path.join(os.path.dirname(__file__), '..', 'server', video_file),
+        # Path relative to server root
+        os.path.join(os.path.dirname(__file__), '..', 'server', 'uploads', 'videos', os.path.basename(video_file)),
+        # Absolute path if video_file is already absolute
+        video_file if os.path.isabs(video_file) else None,
+        # Path in current directory
+        os.path.join(os.getcwd(), video_file)
+    ]
+    
+    for path in possible_paths:
+        if path and os.path.exists(path):
+            logger.info(f"Found video file at: {path}")
+            return path
+    
+    # If no file found, try to find any video file in uploads directory
+    uploads_dir = os.path.join(os.path.dirname(__file__), '..', 'server', 'uploads', 'videos')
+    if os.path.exists(uploads_dir):
+        video_files = [f for f in os.listdir(uploads_dir) if f.endswith(('.mp4', '.avi', '.mov', '.mkv'))]
+        if video_files:
+            fallback_path = os.path.join(uploads_dir, video_files[0])
+            logger.warning(f"Using fallback video file: {fallback_path}")
+            return fallback_path
+    
+    logger.error(f"Video file not found for: {video_file}")
+    logger.error(f"Tried paths: {possible_paths}")
+    return None
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -550,14 +631,44 @@ def generate_timestamps_from_video_id():
         transcript_result = model.transcribe(audio_path)
         transcript = transcript_result["text"]
         
-        # Generate timestamps
-        logger.info("Generating timestamps with GPT...")
-        timestamps = gpt_service.generate_timestamps(transcript, video_title)
+        # Detect scenes with PySceneDetect (more accurate timestamps)
+        logger.info("Detecting scenes with PySceneDetect...")
+        scene_timestamps = scene_detector.detect_scenes(video_path, threshold=27.0, min_scene_length=1.0)
+        
+        # Filter to only include main/important scenes using GPT
+        logger.info("Filtering to main scenes using GPT...")
+        main_scenes = gpt_service.filter_main_scenes(scene_timestamps, transcript, video_title)
+        
+        # Generate descriptions for main scenes using GPT
+        logger.info("Generating descriptions for main scenes with GPT...")
+        scene_descriptions = gpt_service.generate_scene_descriptions(main_scenes, transcript, video_title)
+        
+        # Combine PySceneDetect timestamps with GPT descriptions
+        logger.info("Combining main scene timestamps with GPT descriptions...")
+        final_timestamps = []
+        
+        for i, scene_ts in enumerate(main_scenes):
+            # Find matching GPT description
+            matching_description = None
+            for desc in scene_descriptions:
+                if desc["scene_index"] == i:
+                    matching_description = desc["description"]
+                    break
+            
+            # Use GPT description if available, otherwise use scene description
+            description = matching_description if matching_description else scene_ts["description"]
+            
+            final_timestamps.append({
+                "time_start": scene_ts["time_start"],
+                "description": description,
+                "scene_info": f"Main Scene {i+1}",
+                "duration": scene_ts["duration"]
+            })
         
         # Clean up audio file
         video_processor.cleanup_files(None, audio_path)
         
-        return jsonify({"timestamps": timestamps})
+        return jsonify({"timestamps": final_timestamps})
         
     except Exception as e:
         logger.error(f"Error generating timestamps: {str(e)}")
@@ -612,7 +723,34 @@ def process_video_sequential():
         
         if 'timestamps' in features:
             logger.info("Generating timestamps...")
-            result["timestamps"] = gpt_service.generate_timestamps(transcript, video_title)
+            # Detect scenes with PySceneDetect
+            scene_timestamps = scene_detector.detect_scenes(video_path, threshold=27.0, min_scene_length=1.0)
+            
+            # Filter to main scenes
+            main_scenes = gpt_service.filter_main_scenes(scene_timestamps, transcript, video_title)
+            
+            # Generate descriptions for main scenes
+            scene_descriptions = gpt_service.generate_scene_descriptions(main_scenes, transcript, video_title)
+            
+            # Combine timestamps with descriptions
+            final_timestamps = []
+            for i, scene_ts in enumerate(main_scenes):
+                matching_description = None
+                for desc in scene_descriptions:
+                    if desc["scene_index"] == i:
+                        matching_description = desc["description"]
+                        break
+                
+                description = matching_description if matching_description else scene_ts["description"]
+                
+                final_timestamps.append({
+                    "time_start": scene_ts["time_start"],
+                    "description": description,
+                    "scene_info": f"Main Scene {i+1}",
+                    "duration": scene_ts["duration"]
+                })
+            
+            result["timestamps"] = final_timestamps
         
         # Clean up audio file
         video_processor.cleanup_files(None, audio_path)
