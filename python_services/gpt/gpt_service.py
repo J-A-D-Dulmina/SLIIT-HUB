@@ -12,7 +12,8 @@ class GPTService:
         self.api_key = os.getenv('OPENAI_API_KEY')
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
-        openai.api_key = self.api_key
+        import openai
+        self.client = openai.OpenAI(api_key=self.api_key)
         # Use faster model for better performance
         self.model = "gpt-3.5-turbo"
         self.system_prompt = os.getenv(
@@ -28,7 +29,7 @@ class GPTService:
         for attempt in range(retries):
             try:
                 logger.info(f"Making OpenAI API call (attempt {attempt + 1}/{retries})")
-                response = openai.ChatCompletion.create(
+                response = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
                     max_tokens=max_tokens,
