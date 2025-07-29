@@ -15,18 +15,19 @@ class VideoProcessor:
                filename.rsplit('.', 1)[1].lower() in self.allowed_extensions
     
     def extract_audio_from_video(self, video_path):
-        """Extract audio from video file using ffmpeg"""
+        """Extract audio from video file using ffmpeg - Optimized for speed"""
         audio_path = video_path.rsplit('.', 1)[0] + '.wav'
         
         try:
-            # Use ffmpeg to extract audio
+            # Use ffmpeg with optimized parameters for faster processing
             cmd = [
                 'ffmpeg', '-i', video_path, 
                 '-vn',  # No video
                 '-acodec', 'pcm_s16le',  # PCM 16-bit
-                '-ar', '16000',  # 16kHz sample rate
+                '-ar', '8000',  # 8kHz sample rate (reduced for speed)
                 '-ac', '1',  # Mono
                 '-y',  # Overwrite output file
+                '-loglevel', 'error',  # Reduce logging for speed
                 audio_path
             ]
             

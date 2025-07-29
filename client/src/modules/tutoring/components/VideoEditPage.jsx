@@ -202,65 +202,51 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
 
     setIsGenerating(prev => ({ ...prev, [type]: true }));
     setGenerationProgress(prev => ({ ...prev, [type]: 0 }));
-    
+
     try {
-      // Simulate initial processing
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setGenerationProgress(prev => ({ ...prev, [type]: 30 }));
+      console.log(`Generating ${type}...`);
+      
+      // Quick progress update for UI feedback
+      setGenerationProgress(prev => ({ ...prev, [type]: 25 }));
       
       let result;
-      
       switch (type) {
-        case 'description':
-          result = await generateDescription(video.id, { videoTitle: formData.title });
-          // Real-time update: Update description immediately
-          setFormData(prev => ({
-            ...prev,
-            description: result
-          }));
-          showUpdateSuccess('description');
-          break;
-          
         case 'summary':
           result = await generateSummary(video.id, { videoTitle: formData.title });
-          // Real-time update: Update summary immediately
-          setFormData(prev => ({
-            ...prev,
-            summary: result
-          }));
-          showUpdateSuccess('summary');
           break;
-          
+        case 'description':
+          result = await generateDescription(video.id, { videoTitle: formData.title });
+          break;
         case 'timestamps':
           result = await generateTimestamps(video.id, { videoTitle: formData.title });
-          // Real-time update: Update timestamps immediately
-          setFormData(prev => ({
-            ...prev,
-            timestamps: result
-          }));
-          showUpdateSuccess('timestamps');
           break;
         default:
           throw new Error(`Unknown generation type: ${type}`);
       }
-      
+
+      // Set progress to 100% when completed
       setGenerationProgress(prev => ({ ...prev, [type]: 100 }));
-      
-      // Show immediate success message with specific content
+
+      // Update form data immediately
+      setFormData(prev => ({
+        ...prev,
+        [type]: result
+      }));
+
+      // Show success feedback
+      showUpdateSuccess(type);
+      showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} generated successfully!`, 'success');
+
+      // Reset progress after a short delay to show completion
       setTimeout(() => {
-        const typeName = type.charAt(0).toUpperCase() + type.slice(1);
-        showNotification(`${typeName} generated successfully! The ${type} field has been updated.`, 'success');
-      }, 300);
-      
+        setGenerationProgress(prev => ({ ...prev, [type]: 0 }));
+      }, 1000);
+
     } catch (error) {
       console.error(`Error generating ${type}:`, error);
-      alert(`Error generating ${type}: ${error.message}`);
-      setGenerationProgress(prev => ({ ...prev, [type]: 0 }));
+      showNotification(`Error generating ${type}: ${error.message}`, 'error');
     } finally {
-      setTimeout(() => {
-        setIsGenerating(prev => ({ ...prev, [type]: false }));
-        setGenerationProgress(prev => ({ ...prev, [type]: 0 }));
-      }, 500);
+      setIsGenerating(prev => ({ ...prev, [type]: false }));
     }
   };
 
@@ -285,11 +271,11 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     try {
       // Step 1: Generate Summary (0-33%)
       console.log('Step 1: Generating Summary...');
-      setGenerationProgress(prev => ({ ...prev, summary: 10 }));
-      
-      // Simulate processing time for summary
-      await new Promise(resolve => setTimeout(resolve, 1000));
       setGenerationProgress(prev => ({ ...prev, summary: 25 }));
+      
+      // Minimal delay for UI feedback
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setGenerationProgress(prev => ({ ...prev, summary: 50 }));
       
       const summaryResult = await generateSummary(video.id, { videoTitle: formData.title });
       
@@ -298,23 +284,18 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
         ...prev,
         summary: summaryResult
       }));
-      setGenerationProgress(prev => ({ ...prev, summary: 33 }));
+      setGenerationProgress(prev => ({ ...prev, summary: 100 })); // Set to 100% when completed
       
       // Show visual feedback
       showUpdateSuccess('summary');
       
-      // Show summary completion message
-      setTimeout(() => {
-        showNotification('Summary generated successfully!', 'success');
-      }, 300);
-      
-      // Step 2: Generate Description (33-66%)
+      // Step 2: Generate Description (33-66%) - Reduced delays
       console.log('Step 2: Generating Description...');
-      setGenerationProgress(prev => ({ ...prev, description: 10 }));
-      
-      // Simulate processing time for description
-      await new Promise(resolve => setTimeout(resolve, 800));
       setGenerationProgress(prev => ({ ...prev, description: 25 }));
+      
+      // Minimal delay for UI feedback
+      await new Promise(resolve => setTimeout(resolve, 200));
+      setGenerationProgress(prev => ({ ...prev, description: 50 }));
       
       const descriptionResult = await generateDescription(video.id, { videoTitle: formData.title });
       
@@ -323,23 +304,18 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
         ...prev,
         description: descriptionResult
       }));
-      setGenerationProgress(prev => ({ ...prev, description: 33 }));
+      setGenerationProgress(prev => ({ ...prev, description: 100 })); // Set to 100% when completed
       
       // Show visual feedback
       showUpdateSuccess('description');
       
-      // Show description completion message
-      setTimeout(() => {
-        showNotification('Description generated successfully!', 'success');
-      }, 300);
-      
-      // Step 3: Generate Timestamps (66-100%)
+      // Step 3: Generate Timestamps (66-100%) - Reduced delays
       console.log('Step 3: Generating Timestamps...');
-      setGenerationProgress(prev => ({ ...prev, timestamps: 10 }));
-      
-      // Simulate processing time for timestamps
-      await new Promise(resolve => setTimeout(resolve, 1200));
       setGenerationProgress(prev => ({ ...prev, timestamps: 25 }));
+      
+      // Minimal delay for UI feedback
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setGenerationProgress(prev => ({ ...prev, timestamps: 50 }));
       
       const timestampsResult = await generateTimestamps(video.id, { videoTitle: formData.title });
       
@@ -348,7 +324,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
         ...prev,
         timestamps: timestampsResult
       }));
-      setGenerationProgress(prev => ({ ...prev, timestamps: 33 }));
+      setGenerationProgress(prev => ({ ...prev, timestamps: 100 })); // Set to 100% when completed
       
       // Show visual feedback
       showUpdateSuccess('timestamps');
@@ -358,31 +334,25 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
       // Show final completion message
       setTimeout(() => {
         showNotification('All AI content generated successfully! Summary, Description, and Timestamps have been updated.', 'success');
-      }, 500);
+      }, 200);
       
     } catch (error) {
       console.error('Error generating AI content:', error);
       alert(`Error generating AI content: ${error.message}`);
       
-      // Reset progress on error
+    } finally {
+      // Reset all generation states
+      setIsGenerating({
+        description: false,
+        summary: false,
+        timestamps: false
+      });
+      
       setGenerationProgress({
         description: 0,
         summary: 0,
         timestamps: 0
       });
-    } finally {
-      setTimeout(() => {
-        setIsGenerating({
-          description: false,
-          summary: false,
-          timestamps: false
-        });
-        setGenerationProgress({
-          description: 0,
-          summary: 0,
-          timestamps: 0
-        });
-      }, 1000);
     }
   };
 
@@ -492,7 +462,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
             </div>
             
             {/* Progress Bar for Generate All Content */}
-            {(isGenerating.summary && isGenerating.description && isGenerating.timestamps) && (
+            {(isGenerating.summary || isGenerating.description || isGenerating.timestamps) && (
               <div className="ai-progress-overview">
                 <div className="progress-container">
                   <div className="progress-header">
@@ -512,15 +482,15 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                     ></div>
                   </div>
                   <div className="progress-steps">
-                    <div className={`step ${generationProgress.summary >= 33 ? 'completed' : ''}`}>
+                    <div className={`step ${generationProgress.summary >= 100 ? 'completed' : ''}`}>
                       <span className="step-icon">1</span>
                       <span className="step-text">Generate Summary</span>
                     </div>
-                    <div className={`step ${generationProgress.description >= 33 ? 'completed' : ''}`}>
+                    <div className={`step ${generationProgress.description >= 100 ? 'completed' : ''}`}>
                       <span className="step-icon">2</span>
                       <span className="step-text">Generate Description</span>
                     </div>
-                    <div className={`step ${generationProgress.timestamps >= 33 ? 'completed' : ''}`}>
+                    <div className={`step ${generationProgress.timestamps >= 100 ? 'completed' : ''}`}>
                       <span className="step-icon">3</span>
                       <span className="step-text">Generate Timestamps</span>
                     </div>

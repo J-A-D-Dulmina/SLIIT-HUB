@@ -14,14 +14,14 @@ class SceneDetector:
     def __init__(self):
         self.supported_formats = {'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm'}
     
-    def detect_scenes(self, video_path, threshold=27.0, min_scene_length=1.0):
+    def detect_scenes(self, video_path, threshold=35.0, min_scene_length=0.5):
         """
-        Detect scenes in a video using PySceneDetect
+        Detect scenes in a video using PySceneDetect - Optimized for speed
         
         Args:
             video_path (str): Path to the video file
-            threshold (float): Content detection threshold (default: 27.0)
-            min_scene_length (float): Minimum scene length in seconds (default: 1.0)
+            threshold (float): Content detection threshold (default: 35.0 - higher for faster detection)
+            min_scene_length (float): Minimum scene length in seconds (default: 0.5 - shorter for more scenes)
         
         Returns:
             list: List of scene timestamps in format [{"time_start": "00:00", "description": "Scene 1"}, ...]
@@ -29,7 +29,7 @@ class SceneDetector:
         try:
             logger.info(f"Detecting scenes in video: {video_path}")
             
-            # Use the modern detect function
+            # Use the modern detect function with optimized parameters
             scene_list = detect(video_path, ContentDetector(threshold=threshold))
             
             # Convert to timestamp format

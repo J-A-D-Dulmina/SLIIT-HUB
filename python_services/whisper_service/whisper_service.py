@@ -38,8 +38,8 @@ class WhisperService:
                 raise
         return self.model
     
-    def transcribe_audio(self, audio_path, model_name="base"):
-        """Transcribe audio using OpenAI Whisper"""
+    def transcribe_audio(self, audio_path, model_name="tiny"):
+        """Transcribe audio using OpenAI Whisper - Optimized for speed"""
         try:
             # Ensure whisper is imported
             if self._whisper is None:
@@ -52,9 +52,15 @@ class WhisperService:
             if not os.path.exists(audio_path):
                 raise FileNotFoundError(f"Audio file not found: {audio_path}")
             
-            # Transcribe with error handling
+            # Transcribe with optimized parameters for speed
             try:
-                result = model.transcribe(audio_path)
+                result = model.transcribe(
+                    audio_path,
+                    fp16=False,  # Disable fp16 for better compatibility
+                    language='en',  # Specify language for faster processing
+                    task='transcribe',  # Explicitly set task
+                    verbose=False  # Reduce logging for speed
+                )
                 transcript = result.get('text', '')
                 
                 if not transcript:
@@ -66,9 +72,9 @@ class WhisperService:
                 
             except Exception as e:
                 logger.error(f"Whisper transcription failed: {e}")
-                # Try with different parameters
+                # Try with fallback parameters
                 try:
-                    logger.info("Retrying with different parameters...")
+                    logger.info("Retrying with fallback parameters...")
                     result = model.transcribe(audio_path, fp16=False, language='en')
                     transcript = result.get('text', '')
                     return transcript
