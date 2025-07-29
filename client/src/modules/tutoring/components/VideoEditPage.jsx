@@ -465,7 +465,7 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
             </div>
             
             {/* Progress Bar for Generate All Content */}
-            {(isGenerating.summary || isGenerating.description || isGenerating.timestamps) && (
+            {(isGenerating.summary && isGenerating.description && isGenerating.timestamps) && (
               <div className="ai-progress-overview">
                 <div className="progress-container">
                   <div className="progress-header">

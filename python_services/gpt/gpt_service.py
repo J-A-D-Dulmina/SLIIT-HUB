@@ -176,68 +176,93 @@ class GPTService:
                 end_time = scene_ts.get("end_time", 0)
                 duration = end_time - start_time
                 
-                # Extract transcript segment for this scene
+                # Extract transcript segment for this scene with more context
                 scene_transcript = self._extract_transcript_segment(transcript, start_time, end_time)
                 
                 if scene_transcript.strip():
+                    # Get more context by including surrounding content
+                    context_before = self._extract_transcript_segment(transcript, max(0, start_time - 30), start_time)
+                    context_after = self._extract_transcript_segment(transcript, end_time, min(len(transcript), end_time + 30))
+                    
                     prompt = f"""
-                    Create a short, accurate description for this video scene.
+                    Create a specific, accurate description for this video scene.
                     
                     Video Title: {video_title}
-                    Scene Duration: {duration:.1f} seconds
-                    Scene Start Time: {start_time:.1f}s
-                    Scene End Time: {end_time:.1f}s
+                    Scene {i+1} of {len(scene_timestamps)}
+                    Duration: {duration:.1f} seconds ({start_time:.1f}s - {end_time:.1f}s)
                     
-                    Scene Transcript:
+                    Previous Context: {context_before[-200:] if context_before else "Start of video"}
+                    
+                    Scene Content:
                     {scene_transcript}
                     
+                    Next Context: {context_after[:200] if context_after else "End of video"}
+                    
                     Requirements:
-                    - Keep it under 80 characters
-                    - Be accurate to the actual content
-                    - Focus on the main topic or key point
-                    - Use clear, simple language
-                    - Avoid generic descriptions like "Scene 1"
+                    - Be specific to the actual content in this scene
+                    - Focus on the main topic, concept, or action
+                    - Use 3-8 words maximum
+                    - Avoid generic terms like "Scene", "Part", "Section"
                     - Make it useful for navigation
+                    - Be unique and different from other scenes
                     
                     Examples of good descriptions:
-                    - "Introduction to React hooks"
-                    - "Setting up the database"
-                    - "Error handling demonstration"
-                    - "Final project overview"
+                    - "React useState hook"
+                    - "Database connection setup"
+                    - "Error handling demo"
+                    - "Final code review"
+                    - "API endpoint creation"
+                    - "User authentication"
                     
-                    Return only the description text, nothing else.
-                    """
+                    Description:"""
                     
                     messages = [
-                        {"role": "system", "content": self.system_prompt},
+                        {"role": "system", "content": "You are an expert video content analyzer. Create precise, unique descriptions for video segments."},
                         {"role": "user", "content": prompt}
                     ]
                     
-                    description = self._make_api_call(messages, max_tokens=150, temperature=0.3)
+                    description = self._make_api_call(messages, max_tokens=100, temperature=0.4)
                     
                     # Clean up the description
-                    description = description.strip()
-                    if len(description) > 80:
-                        description = description[:77] + "..."
-                    
-                    # If description is too generic, use a more specific one
-                    if description.lower() in ['scene', 'scene 1', 'introduction', 'part']:
-                        description = f"Section {i+1} ({duration:.0f}s)"
-                    
-                    scene_descriptions.append({
-                        "scene_index": i,
-                        "start_time": start_time,
-                        "description": description
-                    })
+                    if description:
+                        description = description.strip()
+                        # Remove quotes if present
+                        if description.startswith('"') and description.endswith('"'):
+                            description = description[1:-1]
+                        # Remove numbering if present
+                        if description.startswith(f"{i+1}. "):
+                            description = description[len(f"{i+1}. "):]
+                        # Ensure it's not too long
+                        if len(description) > 80:
+                            description = description[:77] + "..."
+                        
+                        scene_descriptions.append({
+                            "scene_index": i,
+                            "description": description,
+                            "start_time": start_time,
+                            "end_time": end_time,
+                            "duration": duration
+                        })
+                    else:
+                        # Fallback description
+                        scene_descriptions.append({
+                            "scene_index": i,
+                            "description": f"Scene {i+1} ({duration:.1f}s)",
+                            "start_time": start_time,
+                            "end_time": end_time,
+                            "duration": duration
+                        })
                 else:
-                    # Use a more descriptive default if no transcript available
+                    # No transcript available for this scene
                     scene_descriptions.append({
                         "scene_index": i,
+                        "description": f"Scene {i+1} ({duration:.1f}s)",
                         "start_time": start_time,
-                        "description": f"Section {i+1} ({duration:.0f}s)"
+                        "end_time": end_time,
+                        "duration": duration
                     })
             
-            logger.info(f"Scene descriptions generation completed successfully. Generated {len(scene_descriptions)} descriptions.")
+            logger.info(f"Generated {len(scene_descriptions)} scene descriptions")
             return scene_descriptions
             
         except Exception as e:
@@ -245,30 +270,47 @@ class GPTService:
             raise Exception(f"Failed to generate scene descriptions: {str(e)}")
     
     def _extract_transcript_segment(self, transcript, start_time, end_time):
-        """Extract transcript segment for a specific time range"""
+        """Extract transcript segment for a specific time range with better context"""
         try:
-            # For now, we'll use the full transcript and let GPT focus on the scene
-            # In a future implementation, you could use Whisper's segment timestamps
-            # to extract the exact transcript for each time range
-            
-            # Add timing context to help GPT understand the scene
+            # Calculate timing information
             duration = end_time - start_time
             start_minutes = int(start_time // 60)
             start_seconds = int(start_time % 60)
             end_minutes = int(end_time // 60)
             end_seconds = int(end_time % 60)
             
+            # Estimate character position based on time (rough approximation)
+            # Assuming average speaking rate of 150 words per minute
+            # and average word length of 5 characters
+            chars_per_second = (150 * 5) / 60  # ~12.5 characters per second
+            
+            start_char = int(start_time * chars_per_second)
+            end_char = int(end_time * chars_per_second)
+            
+            # Ensure we don't go out of bounds
+            start_char = max(0, min(start_char, len(transcript)))
+            end_char = max(start_char, min(end_char, len(transcript)))
+            
+            # Extract the segment
+            segment = transcript[start_char:end_char]
+            
+            # If segment is too short, expand it
+            if len(segment) < 50:
+                # Expand by 100 characters on each side
+                expanded_start = max(0, start_char - 100)
+                expanded_end = min(len(transcript), end_char + 100)
+                segment = transcript[expanded_start:expanded_end]
+            
+            # Add timing context
             context = f"""
-            Scene Timing: {start_minutes:02d}:{start_seconds:02d} - {end_minutes:02d}:{end_seconds:02d}
+            Time Range: {start_minutes:02d}:{start_seconds:02d} - {end_minutes:02d}:{end_seconds:02d}
             Duration: {duration:.1f} seconds
             
-            Full Video Transcript:
-            {transcript}
-            
-            Focus on the content that would be most relevant for this time period.
+            Content for this time period:
+            {segment}
             """
             
-            return context
+            return context.strip()
             
         except Exception as e:
             logger.error(f"Error extracting transcript segment: {str(e)}")
@@ -282,8 +324,8 @@ class GPTService:
             if not scene_timestamps:
                 return []
             
-            # If we have very few scenes (5 or less), keep all of them
-            if len(scene_timestamps) <= 5:
+            # If we have very few scenes (8 or less), keep all of them
+            if len(scene_timestamps) <= 8:
                 logger.info(f"Only {len(scene_timestamps)} scenes detected, keeping all")
                 return scene_timestamps
             
@@ -313,67 +355,77 @@ class GPTService:
             
             Instructions:
             1. Identify MAIN/IMPORTANT scenes that contain key content
-            2. Include scenes that are longer than 5 seconds (likely important)
+            2. Include scenes that are longer than 3 seconds (likely important)
             3. Include scenes that represent different topics or sections
-            4. Keep at least 60-70% of the original scenes
+            4. Keep at least 70-80% of the original scenes (be less aggressive)
             5. Focus on scenes that would be useful for navigation
             6. Do NOT modify any timestamps or timing information
-            7. Return only the scene numbers of important scenes
+            7. Return only the scene numbers of important scenes (e.g., "1,3,5,7,8")
             
-            Guidelines:
-            - Keep scenes longer than 5 seconds
-            - Keep scenes that are well-spaced throughout the video
-            - Avoid removing too many scenes (keep most of them)
-            - Focus on educational content and topic transitions
-            
-            Return only a JSON array of important scene numbers, nothing else.
-            Example: [1, 2, 4, 6, 8, 10]
+            Important: Keep more scenes rather than fewer to ensure good coverage.
             """
             
             messages = [
-                {"role": "system", "content": self.system_prompt},
+                {"role": "system", "content": "You are an expert video content analyzer. Identify important scenes for navigation."},
                 {"role": "user", "content": prompt}
             ]
             
             response = self._make_api_call(messages, max_tokens=200, temperature=0.2)
             
-            # Parse the response to get important scene numbers
-            try:
-                # Clean the response to extract JSON array
-                response = response.strip()
-                if response.startswith('[') and response.endswith(']'):
-                    important_scene_numbers = json.loads(response)
-                else:
-                    # Try to extract numbers from the response
-                    numbers = re.findall(r'\d+', response)
-                    important_scene_numbers = [int(n) for n in numbers if int(n) <= len(scene_timestamps)]
-                
-                # Ensure we keep at least 60% of scenes
-                min_scenes = max(3, int(len(scene_timestamps) * 0.6))
-                if len(important_scene_numbers) < min_scenes:
-                    logger.warning(f"GPT filtered too many scenes. Keeping at least {min_scenes} scenes.")
-                    # Keep scenes with longer duration
-                    scene_durations = [(i+1, scene_ts.get("end_time", 0) - scene_ts.get("start_time", 0)) 
-                                     for i, scene_ts in enumerate(scene_timestamps)]
-                    scene_durations.sort(key=lambda x: x[1], reverse=True)
-                    important_scene_numbers = [scene_num for scene_num, _ in scene_durations[:min_scenes]]
-                    important_scene_numbers.sort()  # Keep original order
+            if response:
+                # Parse the response to get scene numbers
+                try:
+                    # Extract numbers from the response
+                    import re
+                    scene_numbers = re.findall(r'\d+', response)
+                    scene_numbers = [int(num) for num in scene_numbers]
                     
-            except:
-                logger.warning("Failed to parse GPT response for scene filtering, using all scenes")
-                important_scene_numbers = list(range(1, len(scene_timestamps) + 1))
+                    # Filter to valid scene numbers
+                    valid_scenes = []
+                    for num in scene_numbers:
+                        if 1 <= num <= len(scene_timestamps):
+                            valid_scenes.append(num - 1)  # Convert to 0-based index
+                    
+                    # If GPT was too aggressive, keep more scenes
+                    if len(valid_scenes) < len(scene_timestamps) * 0.6:
+                        logger.warning(f"GPT filtered too aggressively ({len(valid_scenes)}/{len(scene_timestamps)}), keeping more scenes")
+                        # Keep scenes with duration > 2 seconds or first/last scenes
+                        valid_scenes = []
+                        for i, scene_ts in enumerate(scene_timestamps):
+                            duration = scene_ts.get("end_time", 0) - scene_ts.get("start_time", 0)
+                            if duration > 2.0 or i == 0 or i == len(scene_timestamps) - 1:
+                                valid_scenes.append(i)
+                    
+                    # Ensure we have at least some scenes
+                    if not valid_scenes:
+                        logger.warning("No valid scenes found, keeping all scenes")
+                        return scene_timestamps
+                    
+                    # Return filtered scenes
+                    filtered_scenes = [scene_timestamps[i] for i in valid_scenes]
+                    logger.info(f"Filtered to {len(filtered_scenes)} main scenes out of {len(scene_timestamps)} total")
+                    return filtered_scenes
+                    
+                except Exception as e:
+                    logger.error(f"Error parsing GPT response: {str(e)}")
+                    # Fallback: keep scenes with duration > 2 seconds
+                    filtered_scenes = []
+                    for scene_ts in scene_timestamps:
+                        duration = scene_ts.get("end_time", 0) - scene_ts.get("start_time", 0)
+                        if duration > 2.0:
+                            filtered_scenes.append(scene_ts)
+                    
+                    if not filtered_scenes:
+                        return scene_timestamps
+                    
+                    logger.info(f"Fallback filtering: kept {len(filtered_scenes)} scenes")
+                    return filtered_scenes
             
-            # Filter scenes to only include important ones
-            filtered_scenes = []
-            for i, scene_ts in enumerate(scene_timestamps):
-                scene_number = i + 1
-                if scene_number in important_scene_numbers:
-                    filtered_scenes.append(scene_ts)
-            
-            logger.info(f"Scene filtering completed. Kept {len(filtered_scenes)} out of {len(scene_timestamps)} scenes.")
-            return filtered_scenes
+            # If GPT response is empty, keep all scenes
+            logger.warning("Empty GPT response, keeping all scenes")
+            return scene_timestamps
             
         except Exception as e:
             logger.error(f"Error filtering main scenes: {str(e)}")
-            # Return all scenes if filtering fails
+            # Return all scenes as fallback
             return scene_timestamps 
