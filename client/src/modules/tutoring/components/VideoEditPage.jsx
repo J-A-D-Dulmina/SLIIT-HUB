@@ -336,6 +336,15 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
         showNotification('All AI content generated successfully! Summary, Description, and Timestamps have been updated.', 'success');
       }, 200);
       
+      // Reset progress after a short delay to show completion
+      setTimeout(() => {
+        setGenerationProgress({
+          description: 0,
+          summary: 0,
+          timestamps: 0
+        });
+      }, 1500);
+      
     } catch (error) {
       console.error('Error generating AI content:', error);
       alert(`Error generating AI content: ${error.message}`);
@@ -346,12 +355,6 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
         description: false,
         summary: false,
         timestamps: false
-      });
-      
-      setGenerationProgress({
-        description: 0,
-        summary: 0,
-        timestamps: 0
       });
     }
   };
