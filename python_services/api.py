@@ -7,8 +7,6 @@ api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     raise ValueError("OPENAI_API_KEY environment variable is required")
 
-
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
@@ -24,6 +22,7 @@ from scene_detection.scene_detector import SceneDetector
 from typing import Any, Dict
 import whisper
 import traceback
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +42,39 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 video_processor = VideoProcessor()
 gpt_service = GPTService()
 scene_detector = SceneDetector()
+
+# Server configuration
+NODE_SERVER_URL = "http://localhost:5000"
+
+def get_video_from_database(video_id):
+    """Fetch video information from the Node.js server"""
+    try:
+        response = requests.get(f"{NODE_SERVER_URL}/api/tutoring/videos/{video_id}", 
+                              headers={'Content-Type': 'application/json'})
+        if response.status_code == 200:
+            return response.json().get('video')
+        else:
+            logger.error(f"Failed to fetch video {video_id}: {response.status_code}")
+            return None
+    except Exception as e:
+        logger.error(f"Error fetching video from database: {str(e)}")
+        return None
+
+def get_video_file_path(video_data):
+    """Get the full path to the video file"""
+    if not video_data or not video_data.get('videoFile'):
+        return None
+    
+    video_file = video_data['videoFile']
+    # Remove any leading slashes and construct the full path
+    video_file = video_file.lstrip('/')
+    full_path = os.path.join(os.path.dirname(__file__), '..', 'server', video_file)
+    
+    if os.path.exists(full_path):
+        return full_path
+    else:
+        logger.error(f"Video file not found: {full_path}")
+        return None
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -397,6 +429,221 @@ def combine_timestamps():
         
     except Exception as e:
         logger.error("Error combining timestamps:\n" + traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/generate-summary', methods=['POST'])
+def generate_summary_from_video_id():
+    """Generate summary from video ID (for existing videos)"""
+    try:
+        data = request.get_json()
+        video_id = data.get('videoId')
+        video_title = data.get('videoTitle', '')
+        
+        if not video_id:
+            return jsonify({"error": "No video ID provided"}), 400
+        
+        # Get video from database
+        video_data = get_video_from_database(video_id)
+        if not video_data:
+            return jsonify({"error": "Video not found"}), 404
+        
+        # Get video file path
+        video_path = get_video_file_path(video_data)
+        if not video_path:
+            return jsonify({"error": "Video file not found"}), 404
+        
+        # Extract audio and transcribe
+        logger.info(f"Processing video {video_id} for summary generation...")
+        audio_path = video_processor.extract_audio_from_video(video_path)
+        
+        # Transcribe with Whisper
+        logger.info("Transcribing audio with Whisper...")
+        model = whisper.load_model('base')
+        transcript_result = model.transcribe(audio_path)
+        transcript = transcript_result["text"]
+        
+        # Generate summary
+        logger.info("Generating summary with GPT...")
+        summary = gpt_service.generate_summary(transcript, video_title)
+        
+        # Clean up audio file
+        video_processor.cleanup_files(None, audio_path)
+        
+        return jsonify({"summary": summary})
+        
+    except Exception as e:
+        logger.error(f"Error generating summary: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/generate-description', methods=['POST'])
+def generate_description_from_video_id():
+    """Generate description from video ID (for existing videos)"""
+    try:
+        data = request.get_json()
+        video_id = data.get('videoId')
+        video_title = data.get('videoTitle', '')
+        
+        if not video_id:
+            return jsonify({"error": "No video ID provided"}), 400
+        
+        # Get video from database
+        video_data = get_video_from_database(video_id)
+        if not video_data:
+            return jsonify({"error": "Video not found"}), 404
+        
+        # Get video file path
+        video_path = get_video_file_path(video_data)
+        if not video_path:
+            return jsonify({"error": "Video file not found"}), 404
+        
+        # Extract audio and transcribe
+        logger.info(f"Processing video {video_id} for description generation...")
+        audio_path = video_processor.extract_audio_from_video(video_path)
+        
+        # Transcribe with Whisper
+        logger.info("Transcribing audio with Whisper...")
+        model = whisper.load_model('base')
+        transcript_result = model.transcribe(audio_path)
+        transcript = transcript_result["text"]
+        
+        # Generate description
+        logger.info("Generating description with GPT...")
+        description = gpt_service.generate_description(transcript, video_title)
+        
+        # Clean up audio file
+        video_processor.cleanup_files(None, audio_path)
+        
+        return jsonify({"description": description})
+        
+    except Exception as e:
+        logger.error(f"Error generating description: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/generate-timestamps', methods=['POST'])
+def generate_timestamps_from_video_id():
+    """Generate timestamps from video ID (for existing videos)"""
+    try:
+        data = request.get_json()
+        video_id = data.get('videoId')
+        video_title = data.get('videoTitle', '')
+        
+        if not video_id:
+            return jsonify({"error": "No video ID provided"}), 400
+        
+        # Get video from database
+        video_data = get_video_from_database(video_id)
+        if not video_data:
+            return jsonify({"error": "Video not found"}), 404
+        
+        # Get video file path
+        video_path = get_video_file_path(video_data)
+        if not video_path:
+            return jsonify({"error": "Video file not found"}), 404
+        
+        # Extract audio and transcribe
+        logger.info(f"Processing video {video_id} for timestamps generation...")
+        audio_path = video_processor.extract_audio_from_video(video_path)
+        
+        # Transcribe with Whisper
+        logger.info("Transcribing audio with Whisper...")
+        model = whisper.load_model('base')
+        transcript_result = model.transcribe(audio_path)
+        transcript = transcript_result["text"]
+        
+        # Generate timestamps
+        logger.info("Generating timestamps with GPT...")
+        timestamps = gpt_service.generate_timestamps(transcript, video_title)
+        
+        # Clean up audio file
+        video_processor.cleanup_files(None, audio_path)
+        
+        return jsonify({"timestamps": timestamps})
+        
+    except Exception as e:
+        logger.error(f"Error generating timestamps: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/process-video', methods=['POST'])
+def process_video_sequential():
+    """Process video sequentially - summary, description, timestamps"""
+    try:
+        data = request.get_json()
+        video_id = data.get('videoId')
+        video_title = data.get('videoTitle', '')
+        features = data.get('features', ['summary', 'description', 'timestamps'])
+        
+        if not video_id:
+            return jsonify({"error": "No video ID provided"}), 400
+        
+        # Get video from database
+        video_data = get_video_from_database(video_id)
+        if not video_data:
+            return jsonify({"error": "Video not found"}), 404
+        
+        # Get video file path
+        video_path = get_video_file_path(video_data)
+        if not video_path:
+            return jsonify({"error": "Video file not found"}), 404
+        
+        result = {
+            "summary": None,
+            "description": None,
+            "timestamps": None
+        }
+        
+        # Extract audio and transcribe once
+        logger.info(f"Processing video {video_id} for AI generation...")
+        audio_path = video_processor.extract_audio_from_video(video_path)
+        
+        # Transcribe with Whisper
+        logger.info("Transcribing audio with Whisper...")
+        model = whisper.load_model('base')
+        transcript_result = model.transcribe(audio_path)
+        transcript = transcript_result["text"]
+        
+        # Generate features sequentially
+        if 'summary' in features:
+            logger.info("Generating summary...")
+            result["summary"] = gpt_service.generate_summary(transcript, video_title)
+        
+        if 'description' in features:
+            logger.info("Generating description...")
+            result["description"] = gpt_service.generate_description(transcript, video_title)
+        
+        if 'timestamps' in features:
+            logger.info("Generating timestamps...")
+            result["timestamps"] = gpt_service.generate_timestamps(transcript, video_title)
+        
+        # Clean up audio file
+        video_processor.cleanup_files(None, audio_path)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error processing video: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/test-video/<video_id>', methods=['GET'])
+def test_video_access(video_id):
+    """Test if video is accessible"""
+    try:
+        video_data = get_video_from_database(video_id)
+        if not video_data:
+            return jsonify({"error": "Video not found"}), 404
+        
+        video_path = get_video_file_path(video_data)
+        if not video_path:
+            return jsonify({"error": "Video file not found"}), 404
+        
+        return jsonify({
+            "status": "success",
+            "video_id": video_id,
+            "video_path": video_path,
+            "file_exists": os.path.exists(video_path)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error testing video access: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

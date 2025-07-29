@@ -29,9 +29,9 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     timestamps: false
   });
   const [generationProgress, setGenerationProgress] = useState({
-    description: '',
-    summary: '',
-    timestamps: ''
+    description: 0,
+    summary: 0,
+    timestamps: 0
   });
   const [showFullSummary, setShowFullSummary] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -39,6 +39,19 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
+  const [videoReady, setVideoReady] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState({
+    summary: false,
+    description: false,
+    timestamps: false
+  });
+  const [notification, setNotification] = useState({
+    show: false,
+    message: '',
+    type: 'success'
+  });
 
   // AI model hook
   const { 
@@ -55,6 +68,36 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     }, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Clear update status after 3 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setUpdateStatus({
+        summary: false,
+        description: false,
+        timestamps: false
+      });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [updateStatus]);
+
+  // Auto-hide notification after 3 seconds
+  useEffect(() => {
+    if (notification.show) {
+      const timer = setTimeout(() => {
+        setNotification({ show: false, message: '', type: 'success' });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification.show]);
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({
+      show: true,
+      message,
+      type
+    });
+  };
 
   useEffect(() => {
     // Fetch the latest video data from the backend by ID
@@ -152,72 +195,78 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
   };
 
   const generateAIContent = async (type) => {
-    // Remove or comment out these debug logs:
-    // VideoEditPage generateAIContent called with: Object
-    // ✅ Using video ID: ...
-    // 📤 Calling generateTimestamps with: Object
-    // (and any similar console.log statements)
-    
     if (!video?.id) {
-      // Remove or comment out this alert:
-      // alert('Please select an existing video to generate AI content.');
+      alert('Please select an existing video to generate AI content.');
       return;
     }
 
     setIsGenerating(prev => ({ ...prev, [type]: true }));
-    setGenerationProgress(prev => ({ ...prev, [type]: 'Processing with AI...' }));
+    setGenerationProgress(prev => ({ ...prev, [type]: 0 }));
     
     try {
+      // Simulate initial processing
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setGenerationProgress(prev => ({ ...prev, [type]: 30 }));
+      
       let result;
       
       switch (type) {
         case 'description':
-          // Remove or comment out this console.log:
-          // console.log('📤 Calling generateDescription with:', { videoId: video.id, title: formData.title });
           result = await generateDescription(video.id, { videoTitle: formData.title });
+          // Real-time update: Update description immediately
           setFormData(prev => ({
             ...prev,
             description: result
           }));
+          showUpdateSuccess('description');
           break;
           
         case 'summary':
-          // Remove or comment out this console.log:
-          // console.log('📤 Calling generateSummary with:', { videoId: video.id, title: formData.title });
           result = await generateSummary(video.id, { videoTitle: formData.title });
+          // Real-time update: Update summary immediately
           setFormData(prev => ({
             ...prev,
             summary: result
           }));
+          showUpdateSuccess('summary');
           break;
           
         case 'timestamps':
-          // Remove or comment out this console.log:
-          // console.log('📤 Calling generateTimestamps with:', { videoId: video.id, title: formData.title });
           result = await generateTimestamps(video.id, { videoTitle: formData.title });
+          // Real-time update: Update timestamps immediately
           setFormData(prev => ({
             ...prev,
             timestamps: result
           }));
+          showUpdateSuccess('timestamps');
           break;
         default:
-          // Optionally, do nothing or handle unexpected cases
-          break;
+          throw new Error(`Unknown generation type: ${type}`);
       }
+      
+      setGenerationProgress(prev => ({ ...prev, [type]: 100 }));
+      
+      // Show immediate success message with specific content
+      setTimeout(() => {
+        const typeName = type.charAt(0).toUpperCase() + type.slice(1);
+        showNotification(`${typeName} generated successfully! The ${type} field has been updated.`, 'success');
+      }, 300);
+      
     } catch (error) {
-      // Remove or comment out this console.error:
-      // console.error(`Error generating ${type}:`, error);
+      console.error(`Error generating ${type}:`, error);
       alert(`Error generating ${type}: ${error.message}`);
+      setGenerationProgress(prev => ({ ...prev, [type]: 0 }));
     } finally {
-      setIsGenerating(prev => ({ ...prev, [type]: false }));
-      setGenerationProgress(prev => ({ ...prev, [type]: '' }));
+      setTimeout(() => {
+        setIsGenerating(prev => ({ ...prev, [type]: false }));
+        setGenerationProgress(prev => ({ ...prev, [type]: 0 }));
+      }, 500);
     }
   };
 
   const generateAllAIContent = async () => {
     if (!video?.id) {
-      // Remove or comment out this alert:
-      // alert('Please select an existing video to generate AI content.');
+      alert('Please select an existing video to generate AI content.');
       return;
     }
 
@@ -228,54 +277,112 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     });
     
     setGenerationProgress({
-      description: 'Processing video with AI...',
-      summary: 'Processing video with AI...',
-      timestamps: 'Processing video with AI...'
+      description: 0,
+      summary: 0,
+      timestamps: 0
     });
 
     try {
-      const result = await processVideoWithAI(
-        video.id,
-        formData.title, 
-        ['summary', 'timestamps', 'description']
-      );
+      // Step 1: Generate Summary
+      console.log('Step 1: Generating Summary...');
+      setGenerationProgress(prev => ({ ...prev, summary: 10 }));
       
-      if (result.summary) {
-        setFormData(prev => ({
-          ...prev,
-          summary: result.summary
-        }));
-      }
+      // Simulate processing time for summary
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setGenerationProgress(prev => ({ ...prev, summary: 50 }));
       
-      if (result.timestamps) {
-        setFormData(prev => ({
-          ...prev,
-          timestamps: result.timestamps
-        }));
-      }
+      const summaryResult = await generateSummary(video.id, { videoTitle: formData.title });
       
-      if (result.description) {
-        setFormData(prev => ({
-          ...prev,
-          description: result.description
-        }));
-      }
+      // Real-time update: Update summary immediately
+      setFormData(prev => ({
+        ...prev,
+        summary: summaryResult
+      }));
+      setGenerationProgress(prev => ({ ...prev, summary: 100 }));
+      
+      // Show visual feedback
+      showUpdateSuccess('summary');
+      
+      // Show summary completion message
+      setTimeout(() => {
+        showNotification('Summary generated successfully!', 'success');
+      }, 300);
+      
+      // Step 2: Generate Description
+      console.log('Step 2: Generating Description...');
+      setGenerationProgress(prev => ({ ...prev, description: 30 }));
+      
+      // Simulate processing time for description
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setGenerationProgress(prev => ({ ...prev, description: 70 }));
+      
+      const descriptionResult = await generateDescription(video.id, { videoTitle: formData.title });
+      
+      // Real-time update: Update description immediately
+      setFormData(prev => ({
+        ...prev,
+        description: descriptionResult
+      }));
+      setGenerationProgress(prev => ({ ...prev, description: 100 }));
+      
+      // Show visual feedback
+      showUpdateSuccess('description');
+      
+      // Show description completion message
+      setTimeout(() => {
+        showNotification('Description generated successfully!', 'success');
+      }, 300);
+      
+      // Step 3: Generate Timestamps
+      console.log('Step 3: Generating Timestamps...');
+      setGenerationProgress(prev => ({ ...prev, timestamps: 60 }));
+      
+      // Simulate processing time for timestamps
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      setGenerationProgress(prev => ({ ...prev, timestamps: 85 }));
+      
+      const timestampsResult = await generateTimestamps(video.id, { videoTitle: formData.title });
+      
+      // Real-time update: Update timestamps immediately
+      setFormData(prev => ({
+        ...prev,
+        timestamps: timestampsResult
+      }));
+      setGenerationProgress(prev => ({ ...prev, timestamps: 100 }));
+      
+      // Show visual feedback
+      showUpdateSuccess('timestamps');
+
+      console.log('All AI content generated successfully!');
+      
+      // Show final completion message
+      setTimeout(() => {
+        showNotification('All AI content generated successfully! Summary, Description, and Timestamps have been updated.', 'success');
+      }, 500);
       
     } catch (error) {
-      // Remove or comment out this console.error:
-      // console.error('Error generating all AI content:', error);
+      console.error('Error generating AI content:', error);
       alert(`Error generating AI content: ${error.message}`);
-    } finally {
-      setIsGenerating({
-        description: false,
-        summary: false,
-        timestamps: false
-      });
+      
+      // Reset progress on error
       setGenerationProgress({
-        description: '',
-        summary: '',
-        timestamps: ''
+        description: 0,
+        summary: 0,
+        timestamps: 0
       });
+    } finally {
+      setTimeout(() => {
+        setIsGenerating({
+          description: false,
+          summary: false,
+          timestamps: false
+        });
+        setGenerationProgress({
+          description: 0,
+          summary: 0,
+          timestamps: 0
+        });
+      }, 1000);
     }
   };
 
@@ -320,6 +427,33 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
     }
   };
 
+  const handleVideoReady = () => {
+    setVideoLoading(false);
+    setVideoReady(true);
+    setVideoError(false);
+  };
+
+  const handleVideoError = (error) => {
+    console.error('Video player error:', error);
+    setVideoLoading(false);
+    setVideoError(true);
+    setVideoReady(false);
+  };
+
+  const handleVideoStart = () => {
+    setVideoLoading(false);
+  };
+
+  const handleRetryVideo = () => {
+    setVideoError(false);
+    setVideoLoading(true);
+    setVideoReady(false);
+  };
+
+  const showUpdateSuccess = (type) => {
+    setUpdateStatus(prev => ({ ...prev, [type]: true }));
+  };
+
   return (
     <div className="app-container">
       <SideMenu collapsed={collapsed} setCollapsed={setCollapsed} />
@@ -361,8 +495,42 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
             </div>
             {(isGenerating.summary || isGenerating.description || isGenerating.timestamps) && (
               <div className="ai-progress-overview">
-                <div className="progress-spinner"></div>
-                <span>Processing video with AI (Whisper + GPT-4)...</span>
+                <div className="progress-container">
+                  <div className="progress-header">
+                    <h3>AI Content Generation in Progress</h3>
+                    <div className="progress-stats">
+                      <span className="progress-percentage">
+                        {Math.round((generationProgress.summary + generationProgress.description + generationProgress.timestamps) / 3)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-fill" 
+                      style={{ 
+                        width: `${(generationProgress.summary + generationProgress.description + generationProgress.timestamps) / 3}%` 
+                      }}
+                    ></div>
+                  </div>
+                  <div className="progress-steps">
+                    <div className={`step ${generationProgress.summary >= 10 ? 'completed' : ''}`}>
+                      <span className="step-icon">1</span>
+                      <span className="step-text">Generate Summary</span>
+                    </div>
+                    <div className={`step ${generationProgress.description >= 30 ? 'completed' : ''}`}>
+                      <span className="step-icon">2</span>
+                      <span className="step-text">Generate Description</span>
+                    </div>
+                    <div className={`step ${generationProgress.timestamps >= 60 ? 'completed' : ''}`}>
+                      <span className="step-icon">3</span>
+                      <span className="step-text">Generate Timestamps</span>
+                    </div>
+                    <div className={`step ${(generationProgress.summary + generationProgress.description + generationProgress.timestamps) / 3 >= 90 ? 'completed' : ''}`}>
+                      <span className="step-icon">4</span>
+                      <span className="step-text">Finalizing Results</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
             {aiError && (
@@ -374,21 +542,48 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
 
           <div className="video-preview-section">
             <div className="video-player-wrapper">
-              {video?.videoFile ? (
-              <ReactPlayer
+              {videoLoading && (
+                <div className="video-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading video...</p>
+                </div>
+              )}
+              
+              {videoError && (
+                <div className="video-error">
+                  <div className="error-icon">⚠️</div>
+                  <p>Failed to load video</p>
+                  <small>The video file may be missing or corrupted</small>
+                  <button className="retry-btn" onClick={handleRetryVideo}>
+                    Try Again
+                  </button>
+                </div>
+              )}
+              
+              {video?.videoFile && !videoError && (
+                <ReactPlayer
                   url={`http://localhost:5000/${video.videoFile}`}
-                width="100%"
-                height="100%"
-                controls={true}
-                config={{
-                  file: {
-                    attributes: {
-                      controlsList: 'nodownload'
+                  width="100%"
+                  height="100%"
+                  controls={true}
+                  onReady={handleVideoReady}
+                  onError={handleVideoError}
+                  onStart={handleVideoStart}
+                  config={{
+                    file: {
+                      attributes: {
+                        crossOrigin: "anonymous"
+                      },
+                      forceVideo: true,
+                      forceHLS: false,
+                      forceDASH: false
                     }
-                  }
-                }}
-              />
-              ) : (
+                  }}
+                  style={{ display: videoLoading ? 'none' : 'block' }}
+                />
+              )}
+              
+              {!video?.videoFile && (
                 <div className="video-placeholder">
                   <div className="placeholder-content">
                     <div className="placeholder-icon">📹</div>
@@ -405,6 +600,9 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
               <div className="form-group-header">
                 <div className="summary-header-left">
                   <label htmlFor="summary">Summary</label>
+                  {updateStatus.summary && (
+                    <span className="update-indicator">✓ Updated</span>
+                  )}
                   <div className="summary-actions">
                     <button
                       type="button"
@@ -434,8 +632,18 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
               </div>
               {isGenerating.summary && (
                 <div className="generation-progress">
-                  <div className="progress-spinner"></div>
-                  <span>{generationProgress.summary}</span>
+                  <div className="progress-container">
+                    <div className="progress-header">
+                      <span className="progress-label">Generating Summary</span>
+                      <span className="progress-percentage">{generationProgress.summary}%</span>
+                    </div>
+                    <div className="progress-bar">
+                      <div 
+                        className="progress-fill" 
+                        style={{ width: `${generationProgress.summary}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               )}
               <textarea
@@ -494,7 +702,12 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
 
               <div className="form-group">
                 <div className="form-group-header">
-                  <label htmlFor="description">Description</label>
+                  <div className="description-header-left">
+                    <label htmlFor="description">Description</label>
+                    {updateStatus.description && (
+                      <span className="update-indicator">✓ Updated</span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     className="ai-generate-btn description"
@@ -506,8 +719,18 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                 </div>
                 {isGenerating.description && (
                   <div className="generation-progress">
-                    <div className="progress-spinner"></div>
-                    <span>{generationProgress.description}</span>
+                    <div className="progress-container">
+                      <div className="progress-header">
+                        <span className="progress-label">Generating Description</span>
+                        <span className="progress-percentage">{generationProgress.description}%</span>
+                      </div>
+                      <div className="progress-bar">
+                        <div 
+                          className="progress-fill" 
+                          style={{ width: `${generationProgress.description}%` }}
+                        ></div>
+                      </div>
+                    </div>
                   </div>
                 )}
                 <textarea
@@ -592,6 +815,9 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                 <div className="timestamps-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <label style={{ marginRight: 8 }}>Timestamps</label>
+                    {updateStatus.timestamps && (
+                      <span className="update-indicator">✓ Updated</span>
+                    )}
                     <button type="button" className="add-timestamp-btn" onClick={addTimestamp} style={{ marginRight: 8 }}>
                     + Add
                     </button>
@@ -607,8 +833,18 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
                 </div>
                 {isGenerating.timestamps && (
                   <div className="generation-progress">
-                    <div className="progress-spinner"></div>
-                    <span>{generationProgress.timestamps || 'Processing video with AI...'}</span>
+                    <div className="progress-container">
+                      <div className="progress-header">
+                        <span className="progress-label">Generating Timestamps</span>
+                        <span className="progress-percentage">{generationProgress.timestamps}%</span>
+                      </div>
+                      <div className="progress-bar">
+                        <div 
+                          className="progress-fill" 
+                          style={{ width: `${generationProgress.timestamps}%` }}
+                        ></div>
+                      </div>
+                    </div>
                   </div>
                 )}
                 <ul className="timestamps-list">
@@ -653,6 +889,26 @@ const VideoEditPage = ({ video, onClose, onSave }) => {
 
           {/* Show save success toast */}
           <Toast message={saveSuccess ? 'Video saved successfully!' : ''} onClose={() => setSaveSuccess(false)} />
+          
+          {/* Custom Notification Popup */}
+          {notification.show && (
+            <div className={`notification-popup ${notification.type}`}>
+              <div className="notification-content">
+                <div className="notification-icon">
+                  {notification.type === 'success' ? '✓' : '⚠️'}
+                </div>
+                <div className="notification-message">
+                  {notification.message}
+                </div>
+                <button 
+                  className="notification-close"
+                  onClick={() => setNotification({ show: false, message: '', type: 'success' })}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

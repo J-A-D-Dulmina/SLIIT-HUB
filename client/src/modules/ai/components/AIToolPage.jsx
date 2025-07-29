@@ -9,6 +9,7 @@ const AIToolPage = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedFile, setSelectedFile] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [highlightedText, setHighlightedText] = useState('');
   const [similarDocuments, setSimilarDocuments] = useState([]);
@@ -88,8 +89,24 @@ const AIToolPage = () => {
     if (!selectedFile) return;
 
     setIsAnalyzing(true);
+    setAnalysisProgress(0);
+    
+    // Simulate progress updates
+    const progressInterval = setInterval(() => {
+      setAnalysisProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 200);
+
     // Simulate API call for analysis
     setTimeout(() => {
+      clearInterval(progressInterval);
+      setAnalysisProgress(100);
+      
       // Enhanced analysis result with detailed matches
       const result = {
         similarityScore: 35,
@@ -160,6 +177,7 @@ SQL queries should be optimized for performance. Indexing and proper query struc
       setHighlightedText(result.documentContent);
       setSimilarDocuments(result.matches);
       setIsAnalyzing(false);
+      setAnalysisProgress(0);
     }, 2000);
   };
 
@@ -470,8 +488,36 @@ SQL queries should be optimized for performance. Indexing and proper query struc
 
             {isAnalyzing && (
               <div className="analysis-progress">
-                <div className="progress-spinner"></div>
-                <p>Analyzing document for plagiarism...</p>
+                <div className="progress-container">
+                  <div className="progress-header">
+                    <h3>AI Content Generation in Progress</h3>
+                    <span className="progress-percentage">{analysisProgress}%</span>
+                  </div>
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-fill" 
+                      style={{ width: `${analysisProgress}%` }}
+                    ></div>
+                  </div>
+                  <div className="progress-steps">
+                    <div className={`step ${analysisProgress >= 10 ? 'completed' : ''}`}>
+                      <span className="step-icon">1</span>
+                      <span className="step-text">Uploading document</span>
+                    </div>
+                    <div className={`step ${analysisProgress >= 30 ? 'completed' : ''}`}>
+                      <span className="step-icon">2</span>
+                      <span className="step-text">Processing content</span>
+                    </div>
+                    <div className={`step ${analysisProgress >= 60 ? 'completed' : ''}`}>
+                      <span className="step-icon">3</span>
+                      <span className="step-text">Analyzing similarity</span>
+                    </div>
+                    <div className={`step ${analysisProgress >= 90 ? 'completed' : ''}`}>
+                      <span className="step-icon">4</span>
+                      <span className="step-text">Generating report</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
