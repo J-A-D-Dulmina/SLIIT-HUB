@@ -9,11 +9,15 @@ const {
   togglePublishStatus,
   streamVideo,
   serveThumbnail,
-  getPublishedVideos
+  getPublishedVideos,
+  likeVideo
 } = require('./controller');
 const authenticateToken = require('../../middleware/auth');
 
-// All tutoring routes require authentication
+// Get published videos (public endpoint - no authentication required)
+router.get('/videos/published', getPublishedVideos);
+
+// All other tutoring routes require authentication
 router.use(authenticateToken);
 
 // Upload new video
@@ -40,7 +44,7 @@ router.delete('/videos/:videoId', deleteVideo);
 // Toggle publish status
 router.patch('/videos/:videoId/publish', togglePublishStatus);
 
-// Get published videos
-router.get('/videos/published', getPublishedVideos);
+// Like/Unlike video
+router.post('/videos/:videoId/like', likeVideo);
 
 module.exports = router; 

@@ -47,12 +47,22 @@ const DEFAULT_VIDEO = {
   likes: 0,
   aiSummary: '',
   timestamps: [],
-  comments: []
+  comments: [],
+  tags: []
 };
 
 const VideoDetailsPage = () => {
   const { moduleId, videoId } = useParams();
   const navigate = useNavigate();
+  
+  // Debug: Log the parameters
+  console.log('=== URL Parameters Debug ===');
+  console.log('moduleId:', moduleId);
+  console.log('videoId:', videoId);
+  console.log('All params:', useParams());
+  console.log('Current URL:', window.location.href);
+  console.log('Pathname:', window.location.pathname);
+  
   const playerRef = useRef(null);
   const [collapsed, setCollapsed] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -74,42 +84,19 @@ const VideoDetailsPage = () => {
   const [editingComment, setEditingComment] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [replyContent, setReplyContent] = useState('');
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    getCurrentUser();
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-
-    // Fetch video details from API
-    fetchVideoDetails();
-    
-    return () => clearInterval(timer);
-  }, [moduleId, videoId]);
-
+  // Define getCurrentUser function before using it in useEffect
   const getCurrentUser = () => {
     const userType = localStorage.getItem('userType');
     const studentId = localStorage.getItem('studentId');
     const lecturerId = localStorage.getItem('lecturerId');
     const userName = localStorage.getItem('userName') || localStorage.getItem('name') || 'Unknown User';
     
-    console.log('=== Frontend User Debug ===');
-    console.log('userType:', userType);
-    console.log('studentId:', studentId);
-    console.log('lecturerId:', lecturerId);
-    console.log('userName:', userName);
-    console.log('All localStorage keys:', Object.keys(localStorage));
-    console.log('All localStorage values:');
-    Object.keys(localStorage).forEach(key => {
-      console.log(`${key}:`, localStorage.getItem(key));
-    });
-    
     // Check if user is logged in
     if (!userType || (!studentId && !lecturerId)) {
-      console.log('User not properly logged in!');
       setCurrentUser(null);
       return;
     }
@@ -122,11 +109,51 @@ const VideoDetailsPage = () => {
       name: userName
     };
     
-    console.log('Setting current user to:', currentUserData);
     setCurrentUser(currentUserData);
   };
 
+  useEffect(() => {
+    getCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+
+    // Only fetch video details if videoId is valid
+    if (videoId && videoId !== 'undefined' && videoId !== undefined) {
+      fetchVideoDetails();
+    }
+    
+    return () => clearInterval(timer);
+  }, [moduleId, videoId]);
+
+  // Validate parameters after all hooks are declared
+  if (!videoId || videoId === 'undefined' || videoId === undefined) {
+    console.error('Invalid videoId:', videoId);
+    console.error('videoId type:', typeof videoId);
+    return (
+      <div className="video-details-page">
+        <div className="error-container">
+          <h2>Invalid Video ID</h2>
+          <p>The video ID is missing or invalid.</p>
+          <p>URL: {window.location.href}</p>
+          <p>Pathname: {window.location.pathname}</p>
+          <p>Params: {JSON.stringify({ moduleId, videoId })}</p>
+          <button onClick={() => navigate(`/videos/${moduleId}`)}>Back to Videos</button>
+        </div>
+      </div>
+    );
+  }
+
   const fetchComments = async () => {
+    // Validate videoId before making API call
+    if (!videoId || videoId === 'undefined' || videoId === undefined) {
+      console.error('Cannot fetch comments: videoId is invalid');
+      return;
+    }
+    
     try {
       setCommentsLoading(true);
       const response = await axios.get(`http://localhost:5000/api/content/videos/${videoId}/comments`, {
@@ -134,7 +161,6 @@ const VideoDetailsPage = () => {
       });
       
       if (response.data.success) {
-        console.log('Fetched comments:', response.data.comments);
         setComments(response.data.comments);
       }
     } catch (error) {
@@ -145,6 +171,16 @@ const VideoDetailsPage = () => {
   };
 
   const fetchVideoDetails = async () => {
+    // Validate videoId before making API call
+    if (!videoId || videoId === 'undefined' || videoId === undefined) {
+      console.error('Cannot fetch video details: videoId is invalid');
+      console.error('Current URL params:', { moduleId, videoId });
+      console.error('Current URL:', window.location.href);
+      setError('Invalid video ID');
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -155,19 +191,49 @@ const VideoDetailsPage = () => {
       
       const videoData = response.data.video;
       
+      // Format duration function
+      const formatDuration = (seconds) => {
+        // Handle non-numeric values
+        if (seconds === null || seconds === undefined || seconds === '') {
+          return '00:00';
+        }
+        
+        // Convert to number if it's a string
+        const numSeconds = typeof seconds === 'string' ? parseFloat(seconds) : Number(seconds);
+        
+        if (isNaN(numSeconds) || numSeconds <= 0) {
+          return '00:00';
+        }
+        
+        const hours = Math.floor(numSeconds / 3600);
+        const minutes = Math.floor((numSeconds % 3600) / 60);
+        const secs = Math.floor(numSeconds % 60);
+        
+        if (hours > 0) {
+          return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        } else {
+          return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+      };
+      
+      // Get the owner name with proper fallback
+      const getOwnerName = (data) => {
+        return data.studentName || data.uploaderName || data.studentId || data.uploader || 'Unknown Student';
+      };
+      
       // Transform the API data to match our component structure
       const transformedVideo = {
         id: videoData.id,
         title: videoData.title,
         description: videoData.description,
-        duration: '00:00', // Duration not available in API
-        date: new Date(videoData.uploadDate).toLocaleDateString(),
+        duration: formatDuration(videoData.duration), // Format the duration properly
+        date: new Date(videoData.uploadDate || videoData.addDate).toLocaleDateString(),
         videoUrl: videoData.videoFile ? `http://localhost:5000/${videoData.videoFile}` : '',
-        publisher: 'Student', // Videos are uploaded by students
+        publisher: getOwnerName(videoData), // Use the helper function
         isRecommended: videoData.aiFeatures?.lecturerRecommended || false,
         hasAISummary: videoData.aiFeatures?.summary || false,
         hasAITimestamps: videoData.aiFeatures?.timestamps || false,
-        uploadTime: new Date(videoData.uploadDate).toLocaleTimeString(),
+        uploadTime: new Date(videoData.uploadDate || videoData.addDate).toLocaleTimeString(),
         views: videoData.views || 0,
         likes: 0, // Likes not implemented yet
         aiSummary: videoData.summary || '',
@@ -175,10 +241,16 @@ const VideoDetailsPage = () => {
           time: ts.time_start || '00:00',
           title: ts.description || 'Untitled'
         })) || [],
-        comments: [] // Comments not implemented yet
+        comments: [], // Comments not implemented yet
+        tags: videoData.tags || []
       };
       
       setVideo(transformedVideo);
+      
+      // Initialize like state
+      setLikeCount(videoData.likes || 0);
+      setLiked(videoData.userLiked || false);
+      setSaved(videoData.userSaved || false);
     } catch (error) {
       console.error('Error fetching video details:', error);
       setError('Failed to load video details. Please try again.');
@@ -206,7 +278,6 @@ const VideoDetailsPage = () => {
     }
 
     try {
-      console.log('Adding comment with user:', currentUser);
       const response = await axios.post(`http://localhost:5000/api/content/videos/${videoId}/comments`, {
         content: content
       }, {
@@ -214,7 +285,6 @@ const VideoDetailsPage = () => {
       });
 
       if (response.data.success) {
-        console.log('Comment added successfully:', response.data.comment);
         setComments(prev => [response.data.comment, ...prev]);
         setNewComment('');
         setShowCommentForm(false);
@@ -234,7 +304,6 @@ const VideoDetailsPage = () => {
     if (!replyContent.trim()) return;
 
     try {
-      console.log('Adding reply with user:', currentUser);
       const response = await axios.post(`http://localhost:5000/api/content/videos/comments/${commentId}/replies`, {
         content: replyContent
       }, {
@@ -242,7 +311,6 @@ const VideoDetailsPage = () => {
       });
 
       if (response.data.success) {
-        console.log('Reply added successfully:', response.data.comment);
         setComments(prev => prev.map(comment => 
           comment._id === commentId ? response.data.comment : comment
         ));
@@ -355,6 +423,97 @@ const VideoDetailsPage = () => {
     // Force re-render of ReactPlayer
     if (playerRef.current) {
       playerRef.current.seekTo(0);
+    }
+  };
+
+  const handleShare = () => {
+    const shareUrl = window.location.origin + `/videos/${moduleId}/${videoId}`;
+    const shareText = `Check out this video: ${video.title}`;
+    
+    // Check if Web Share API is available (mobile devices)
+    if (navigator.share) {
+      navigator.share({
+        title: video.title,
+        text: shareText,
+        url: shareUrl
+      }).catch(err => {
+        console.error('Error sharing:', err);
+        // Fallback to clipboard
+        copyToClipboard(shareUrl);
+      });
+    } else {
+      // Fallback for desktop browsers
+      copyToClipboard(shareUrl);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Video link copied to clipboard!');
+    }).catch(err => {
+      console.error('Error copying to clipboard:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert('Video link copied to clipboard!');
+    });
+  };
+
+  const handleSave = async () => {
+    if (!currentUser || !currentUser.id) {
+      alert('Please log in to save videos.');
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await axios.post(`http://localhost:5000/api/content/videos/${videoId}/save`, {}, {
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        setSaved(!saved);
+        alert(saved ? 'Video removed from saved videos.' : 'Video saved successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving video:', error);
+      if (error.response?.status === 401) {
+        alert('Please log in again to save videos.');
+        window.location.href = '/login';
+      } else {
+        alert('Failed to save video. Please try again.');
+      }
+    }
+  };
+
+  const handleLike = async () => {
+    if (!currentUser || !currentUser.id) {
+      alert('Please log in to like videos.');
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await axios.post(`http://localhost:5000/api/content/videos/${videoId}/like`, {}, {
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        setLiked(!liked);
+        setLikeCount(prev => liked ? prev - 1 : prev + 1);
+      }
+    } catch (error) {
+      console.error('Error liking video:', error);
+      if (error.response?.status === 401) {
+        alert('Please log in again to like videos.');
+        window.location.href = '/login';
+      } else {
+        alert('Failed to like video. Please try again.');
+      }
     }
   };
 
@@ -532,33 +691,48 @@ const VideoDetailsPage = () => {
           </div>
 
           <div className="video-actions">
-            <button className="action-btn like-btn">
-              <FaThumbsUp />
-              <span className="action-text">Like</span>
-              <span className="action-count">{video.likes}</span>
-            </button>
-            <button className="action-btn share-btn">
-              <FaShare />
-              <span className="action-text">Share</span>
-            </button>
-            <button className="action-btn save-btn">
-              <FaBookmark />
-              <span className="action-text">Save</span>
-            </button>
+            <h3 className="actions-title">Video Actions</h3>
+            <div className="actions-buttons">
+              <button className={`action-btn like-btn ${liked ? 'liked' : ''}`} onClick={handleLike}>
+                <FaThumbsUp />
+                <span className="action-text">Like</span>
+                <span className="action-count">{likeCount}</span>
+              </button>
+              <button className="action-btn share-btn" onClick={() => handleShare()}>
+                <FaShare />
+                <span className="action-text">Share</span>
+              </button>
+              <button className={`action-btn save-btn ${saved ? 'saved' : ''}`} onClick={handleSave}>
+                <FaBookmark />
+                <span className="action-text">Save</span>
+              </button>
+              <button className="action-btn download-btn" onClick={() => window.open(video.videoUrl, '_blank')}>
+                <FaDownload />
+                <span className="action-text">Download</span>
+              </button>
+            </div>
           </div>
 
           <div className="video-info">
             <div className="video-meta">
-              <span>
-                <FaEye /> {video.views} views
-              </span>
-              <span>
-                <FaCalendarAlt /> {video.date}
-              </span>
-              <span>
-                <FaClock /> {video.duration}
-              </span>
+              <div className="meta-item">
+                <FaEye />
+                <span>{video.views || 0} views</span>
+              </div>
+              <div className="meta-item">
+                <FaCalendarAlt />
+                <span>{video.date || video.uploadDate || 'Unknown date'}</span>
+              </div>
+              <div className="meta-item">
+                <FaClock />
+                <span>{video.duration || '00:00'}</span>
+              </div>
+              <div className="meta-item">
+                <FaUser />
+                <span>{video.publisher || video.uploaderName || video.studentName || 'Unknown'}</span>
+              </div>
             </div>
+            
             <p className="description">{video.description}</p>
           </div>
 
@@ -722,16 +896,6 @@ const VideoDetailsPage = () => {
                     >
                       <FaReply /> Reply
                     </button>
-                    
-                    {/* Debug: Log user comparison */}
-                    {console.log('=== Comment User Debug ===')}
-                    {console.log('Comment user:', comment.user)}
-                    {console.log('Current user:', currentUser)}
-                    {console.log('Comment user.id:', comment.user.id)}
-                    {console.log('Current user.id:', currentUser?.id)}
-                    {console.log('Current user.studentId:', currentUser?.studentId)}
-                    {console.log('Current user.lecturerId:', currentUser?.lecturerId)}
-                    {console.log('Comparison result:', currentUser && comment.user.id === currentUser.id)}
                     
                     {/* Show edit/delete/pin buttons only for comment author */}
                     {/* Temporary: Always show for testing */}

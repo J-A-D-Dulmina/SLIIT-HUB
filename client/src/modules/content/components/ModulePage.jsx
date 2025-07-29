@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaChevronLeft, FaPlay, FaClock, FaUser, FaCalendar, FaBook, FaGraduationCap } from 'react-icons/fa';
+import { FaChevronLeft, FaPlay, FaClock, FaUser, FaCalendar, FaBook, FaGraduationCap, FaRobot, FaUserGraduate } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
 import moment from 'moment';
@@ -23,7 +23,7 @@ const ModulePage = () => {
     }, 60000);
 
     fetchModuleInfo();
-    fetchPublishedVideos();
+    fetchPublishedVideos(); // Call immediately
 
     return () => clearInterval(timer);
   }, [moduleCode]);
@@ -76,10 +76,25 @@ const ModulePage = () => {
   const fetchPublishedVideos = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/tutoring/videos/published?module=${moduleCode}`, {
+      
+      // Fetch all published videos (simpler approach)
+      console.log('Fetching all published videos...');
+      
+      const response = await axios.get(`http://localhost:5000/api/tutoring/videos/published`, {
         withCredentials: true
       });
-      setPublishedVideos(response.data.videos || []);
+      
+      console.log('All published videos response:', response.data);
+      
+      // Filter videos for this specific module
+      const allVideos = response.data.videos || [];
+      const moduleVideos = allVideos.filter(video => video.module === moduleCode);
+      
+      console.log('Filtered videos for module', moduleCode, ':', moduleVideos);
+      console.log('Sample video structure:', moduleVideos[0]);
+      console.log('Video IDs:', moduleVideos.map(v => ({ id: v.id, _id: v._id, title: v.title })));
+      
+      setPublishedVideos(moduleVideos);
     } catch (error) {
       console.error('Error fetching published videos:', error);
       setPublishedVideos([]);
@@ -89,10 +104,27 @@ const ModulePage = () => {
   };
 
   const handleVideoClick = (video) => {
-    navigate(`/video/${video._id}`);
+    console.log('=== Video Click Debug ===');
+    console.log('Video object:', video);
+    console.log('Video ID:', video.id);
+    console.log('Video _id:', video._id);
+    console.log('Video title:', video.title);
+    console.log('Module code:', moduleCode);
+    console.log('Navigation URL:', `/video/${moduleCode}/${video.id}`);
+    
+    if (!video.id) {
+      console.error('Video ID is missing!');
+      console.error('Available video fields:', Object.keys(video));
+      alert('Error: Video ID is missing. Please try again.');
+      return;
+    }
+    
+    navigate(`/video/${moduleCode}/${video.id}`);
   };
 
   const formatDuration = (seconds) => {
+    if (!seconds || seconds <= 0) return '';
+    
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
@@ -210,7 +242,7 @@ const ModulePage = () => {
               <span className="video-count">{publishedVideos.length} video{publishedVideos.length !== 1 ? 's' : ''}</span>
             </div>
 
-            {publishedVideos.length === 0 ? (
+            {!loading && publishedVideos.length === 0 ? (
               <div className="no-videos">
                 <div className="no-videos-icon">
                   <FaPlay />
@@ -218,53 +250,129 @@ const ModulePage = () => {
                 <h3>No Published Videos</h3>
                 <p>There are no published videos available for this module yet.</p>
                 <p>Check back later for new content!</p>
+                {/* Debug: Show the module code being searched */}
+                <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '1rem' }}>
+                  Debug: Searching for module "{moduleCode}"
+                </p>
               </div>
             ) : (
               <div className="videos-grid">
-                {publishedVideos.map(video => (
-                  <div 
-                    key={video._id} 
-                    className="video-card"
-                    onClick={() => handleVideoClick(video)}
-                  >
-                    <div className="video-thumbnail">
-                      <img 
-                        src={video.thumbnail || '/assets/SLITT HUB logo transparent.png'} 
-                        alt={video.title || 'Video thumbnail'}
-                      />
-                      <div className="video-overlay">
-                        <FaPlay className="play-icon" />
+                {publishedVideos.map(video => {
+                  // Clean thumbnail URL construction
+                  const thumbnailUrl = video.thumbnail 
+                    ? `http://localhost:5000/${video.thumbnail}` 
+                    : '/assets/SLITT HUB logo transparent.png';
+                  
+                  // Clean uploader name extraction
+                  const uploaderName = video.uploaderName || video.studentName || video.studentId || 'Unknown';
+                  
+                  // Clean upload date extraction
+                  const uploadDate = video.uploadDate || video.createdAt || video.addDate || new Date();
+                  
+                  // Clean duration formatting
+                  const formattedDuration = video.duration && video.duration > 0 ? formatDuration(video.duration) : null;
+                  
+                  return (
+                    <div 
+                      key={video.id} 
+                      className="video-card"
+                      onClick={() => handleVideoClick(video)}
+                    >
+                      {/* Video Thumbnail Section */}
+                      <div className="video-thumbnail">
+                        <img 
+                          src={thumbnailUrl}
+                          alt={video.title || 'Video thumbnail'}
+                          onError={(e) => {
+                            e.target.src = '/assets/SLITT HUB logo transparent.png';
+                          }}
+                        />
+                        
+                        {/* Play Icon */}
+                        <div className="play-icon">
+                          <FaPlay />
+                        </div>
+                        
+                        {/* Duration Badge */}
+                        {formattedDuration && (
+                          <div className="video-duration">
+                            {formattedDuration}
+                          </div>
+                        )}
+                        
+                        {/* Published Status Badge */}
+                        {video.status === 'published' && (
+                          <div className="publish-status-badge">
+                            Published
+                          </div>
+                        )}
                       </div>
-                      {video.duration && (
-                        <div className="video-duration">
-                          {formatDuration(video.duration)}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="video-info">
-                      <h3 className="video-title">{video.title || 'Untitled Video'}</h3>
-                      <p className="video-description">{video.description || 'No description available'}</p>
                       
-                      <div className="video-meta">
-                        <div className="meta-item">
-                          <FaUser />
-                          <span>{video.uploaderName || 'Unknown'}</span>
-                        </div>
-                        <div className="meta-item">
-                          <FaCalendar />
-                          <span>{formatDate(video.createdAt)}</span>
-                        </div>
-                        {video.duration && (
+                      {/* Video Information Section */}
+                      <div className="video-info">
+                        {/* Title */}
+                        <h3 className="video-title">
+                          {video.title || 'Untitled Video'}
+                        </h3>
+                        
+                        {/* Description */}
+                        <p className="video-description">
+                          {video.description || 'No description available'}
+                        </p>
+                        
+                        {/* Meta Information */}
+                        <div className="video-meta">
+                          {/* Uploader */}
                           <div className="meta-item">
-                            <FaClock />
-                            <span>{formatDuration(video.duration)}</span>
+                            <FaUser />
+                            <span>{uploaderName}</span>
+                          </div>
+                          
+                          {/* Upload Date */}
+                          <div className="meta-item">
+                            <FaCalendar />
+                            <span>{formatDate(uploadDate)}</span>
+                          </div>
+                          
+                          {/* Duration */}
+                          {formattedDuration && (
+                            <div className="meta-item">
+                              <FaClock />
+                              <span>{formattedDuration}</span>
+                            </div>
+                          )}
+                          
+                          {/* Module */}
+                          <div className="meta-item">
+                            <FaBook />
+                            <span>{video.module || moduleCode}</span>
+                          </div>
+                        </div>
+                        
+                        {/* AI Features Badges */}
+                        {video.aiFeatures && (
+                          <div className="ai-features-badges">
+                            {video.aiFeatures.summary && (
+                              <span className="ai-badge summary">
+                                <FaRobot /> AI Summary
+                              </span>
+                            )}
+                            {video.aiFeatures.timestamps && (
+                              <span className="ai-badge timestamps">
+                                <FaClock /> AI Timestamps
+                              </span>
+                            )}
+                            {video.aiFeatures.lecturerRecommended && (
+                              <span className="ai-badge recommended">
+                                <FaUserGraduate /> Recommended
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

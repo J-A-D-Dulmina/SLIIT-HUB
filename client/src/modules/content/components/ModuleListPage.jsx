@@ -38,19 +38,9 @@ const ModuleListPage = () => {
   const [myMeetings, setMyMeetings] = useState([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [meetingToStart, setMeetingToStart] = useState(null);
-  const [allPublishedVideos, setAllPublishedVideos] = useState([]);
   
   // Get user info from localStorage
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-
-  const fetchAllPublishedVideos = async () => {
-    try {
-      const res = await axios.get(`/api/tutoring/videos/published`);
-      setAllPublishedVideos(res.data.videos);
-    } catch (error) {
-      setAllPublishedVideos([]);
-    }
-  };
 
   const fetchMeetings = async () => {
     try {
@@ -99,7 +89,6 @@ const ModuleListPage = () => {
     
     fetchMeetings();
     fetchMyMeetings();
-    fetchAllPublishedVideos();
     
     return () => clearInterval(timer);
   }, []);
@@ -287,9 +276,6 @@ const ModuleListPage = () => {
                                   <div className="module-list">
                                     <div className="module-grid">
                                       {degree.years.find(y => y.yearNumber === selectedYear[degree._id])?.semesters.find(s => s.semesterNumber === selectedSemester[degree._id])?.modules.map(module => {
-                                        const moduleVideos = allPublishedVideos.filter(video => video.module === module.code);
-                                        console.log('Module code:', module.code, 'All video.module:', allPublishedVideos.map(v => v.module));
-                                        console.log('Filtered videos for this module:', moduleVideos);
                                         return (
                                           <div
                                             key={module.code}
@@ -302,28 +288,6 @@ const ModuleListPage = () => {
                                             </div>
                                             <h4>{module.name}</h4>
                                             <p>{module.description}</p>
-                                            {/* Show published videos for this module */}
-                                            {moduleVideos && moduleVideos.length > 0 && (
-                                              <div className="published-videos-list">
-                                                {moduleVideos.map(video => {
-                                                  // Patch: fallback for missing thumbnail/title, show raw data if missing
-                                                  const thumbnail = video.thumbnail || '/assets/SLITT HUB logo transparent.png';
-                                                  const title = video.title || 'Untitled Video';
-                                                  return (
-                                                    <div key={video._id} className="published-video-card">
-                                                      <img src={thumbnail} alt={title} style={{ width: 120, height: 68, objectFit: 'cover', borderRadius: 6 }} />
-                                                      <div style={{ marginLeft: 10 }}>
-                                                        <div style={{ fontWeight: 600 }}>{title}</div>
-                                                        <div style={{ fontSize: 12, color: '#666' }}>{video.description}</div>
-                                                        {(!video.title || !video.thumbnail) && (
-                                                          <pre style={{ fontSize: 10, color: '#b91c1c', background: '#fef2f2', padding: 4, borderRadius: 4 }}>{JSON.stringify(video, null, 2)}</pre>
-                                                        )}
-                                                      </div>
-                                                    </div>
-                                                  );
-                                                })}
-                                              </div>
-                                            )}
                                           </div>
                                         );
                                       })}

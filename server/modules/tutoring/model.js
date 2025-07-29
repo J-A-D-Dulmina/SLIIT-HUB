@@ -11,6 +11,10 @@ const videoSchema = new mongoose.Schema({
   videoFile: { type: String, required: true },
   thumbnail: { type: String },
   fileSize: { type: Number },
+  duration: { type: Number }, // Video duration in seconds
+  views: { type: Number, default: 0 }, // Video view count
+  likes: { type: Number, default: 0 }, // Video like count
+  likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Student' }], // Array of user IDs who liked
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   studentId: { type: String, required: true },
   status: { type: String, enum: ['draft', 'published', 'unpublished'], default: 'draft' },
