@@ -9,6 +9,8 @@ const MeetingSocketServer = require('./websocket/meetingSocket');
 const { degreeRoutes } = require('./modules/admin');
 const videoRoutes = require('./modules/content/video.routes');
 const tutoringRoutes = require('./modules/tutoring');
+const announcementsRoutes = require('./modules/announcements/routes');
+const notificationsRoutes = require('./modules/notifications/routes');
 
 const app = express();
 const server = http.createServer(app);
@@ -33,7 +35,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Serve static files for uploaded videos
+// Serve static files for uploads (resources/videos/thumbnails)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // User routes
@@ -46,6 +48,8 @@ app.use('/api/admin/degrees', degreeRoutes);
 app.use('/api/admin/videos', videoRoutes);
 app.use('/api/content', videoRoutes); // Add content routes for frontend
 app.use('/api/resources', require('./modules/resources'));
+app.use('/api/announcements', announcementsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // WebSocket status endpoint
 app.get('/api/websocket/status', (req, res) => {

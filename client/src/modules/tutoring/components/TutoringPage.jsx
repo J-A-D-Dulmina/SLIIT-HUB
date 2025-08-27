@@ -11,6 +11,7 @@ import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
 import Toast from '../../../shared/components/Toast';
 import '../../../shared/styles/Toast.css';
 import axios from 'axios';
+import { tutoringApi } from '../../../services/api';
 
 const TutoringPage = () => {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ const TutoringPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get('http://localhost:5000/api/tutoring/videos', { withCredentials: true });
+      const res = await tutoringApi.myVideos();
       setVideos(res.data.videos);
     } catch (error) {
       console.error('Error fetching videos:', error);
@@ -106,9 +107,7 @@ const TutoringPage = () => {
   const handleConfirmDelete = async () => {
     if (selectedVideo) {
       try {
-        const res = await axios.delete(`http://localhost:5000/api/tutoring/videos/${selectedVideo.id}`, {
-          withCredentials: true
-        });
+        const res = await tutoringApi.delete(selectedVideo.id);
         // Remove from local state
         const updatedVideos = videos.filter(v => v.id !== selectedVideo.id);
         setVideos(updatedVideos);
@@ -164,11 +163,7 @@ const TutoringPage = () => {
     if (!publishTarget) return;
     setPublishLoading(true);
     try {
-      const res = await axios.patch(`http://localhost:5000/api/tutoring/videos/${publishTarget.id}/publish`, {
-        status: publishTarget.status === 'published' ? 'unpublished' : 'published'
-      }, {
-        withCredentials: true
-      });
+      const res = await tutoringApi.publishToggle(publishTarget.id, publishTarget.status === 'published' ? 'unpublished' : 'published');
       setVideos(videos => videos.map(v => v.id === publishTarget.id ? { ...v, status: v.status === 'published' ? 'unpublished' : 'published' } : v));
       setShowPublishConfirm(false);
       setAgreeTerms(false);
@@ -180,7 +175,7 @@ const TutoringPage = () => {
 
   const fetchVideoById = async (videoId) => {
     try {
-      const res = await axios.get('http://localhost:5000/api/tutoring/videos', { withCredentials: true });
+      const res = await tutoringApi.myVideos();
       return res.data.videos.find(v => v.id === videoId);
     } catch (error) {
       return null;
@@ -286,13 +281,20 @@ const TutoringPage = () => {
     }
   };
 
-  const handleRequestReview = (reviewData) => {
-    handleVideoUpdate(selectedVideo.id, {
-      reviewStatus: 'pending',
-      reviewLecturer: reviewData.lecturerId
-    });
-    setShowReviewDialog(false);
-    setSelectedVideo(null);
+  const handleRequestReview = async (reviewData) => {
+    if (!selectedVideo) return;
+    try {
+      await tutoringApi.requestReview(selectedVideo.id, reviewData.lecturerId);
+      handleVideoUpdate(selectedVideo.id, {
+        reviewStatus: 'pending',
+        reviewLecturer: reviewData.lecturerId
+      });
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to request review');
+    } finally {
+      setShowReviewDialog(false);
+      setSelectedVideo(null);
+    }
   };
 
   const handleVideoClick = (video) => {

@@ -15,6 +15,7 @@ const videoSchema = new mongoose.Schema({
   views: { type: Number, default: 0 }, // Video view count
   likes: { type: Number, default: 0 }, // Video like count
   likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Student' }], // Array of user IDs who liked
+  savedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   studentId: { type: String, required: true },
   status: { type: String, enum: ['draft', 'published', 'unpublished'], default: 'draft' },
@@ -27,7 +28,8 @@ const videoSchema = new mongoose.Schema({
   summary: { type: String },
   timestamps: { type: Array },
   reviewStatus: { type: String },
-  reviewLecturer: { type: String }
+  reviewLecturer: { type: String },
+  reviewNote: { type: String }
 });
 
 module.exports = mongoose.models.Video || mongoose.model('Video', videoSchema); 

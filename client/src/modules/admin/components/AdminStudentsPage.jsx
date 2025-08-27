@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import '../styles/AdminStudentsPage.css';
 import { FaPencilAlt, FaTrash, FaEye, FaEyeSlash } from 'react-icons/fa';
 import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
+import axios from 'axios';
 
-const initialStudents = [
-  { id: 1, studentId: 'S001', name: 'Alice Smith', email: 'alice@uni.edu', mobile: '0711111111', enrolYear: '2022', password: 'student123' },
-  { id: 2, studentId: 'S002', name: 'Bob Lee', email: 'bob@uni.edu', mobile: '0722222222', enrolYear: '2023', password: 'student456' },
-];
+const initialStudents = [];
 
 const emptyStudent = { studentId: '', name: '', email: '', mobile: '', enrolYear: '', password: '' };
 
@@ -21,6 +19,34 @@ const AdminStudentsPage = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await axios.get('http://localhost:5000/api/admin/students', { withCredentials: true });
+      const rows = (res.data.students || []).map(s => ({
+        id: s._id,
+        studentId: s.studentId,
+        name: s.name,
+        email: s.email,
+        mobile: s.mobile || '',
+        enrolYear: String(s.enrolYear || ''),
+        password: '********'
+      }));
+      setStudents(rows);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to load students');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
 
   // Modal open/close helpers
   const openAddModal = () => {
@@ -50,18 +76,33 @@ const AdminStudentsPage = () => {
   };
 
   // Add/Edit Student
-  const handleStudentFormSubmit = (e) => {
+  const handleStudentFormSubmit = async (e) => {
     e.preventDefault();
-    if (!studentForm.studentId.trim() || !studentForm.name.trim() || !studentForm.email.trim() || !studentForm.mobile.trim() || !studentForm.enrolYear.trim() || !studentForm.password.trim()) return;
-    if (modalMode === 'add') {
-      setStudents([
-        ...students,
-        { ...studentForm, id: Date.now() },
-      ]);
-    } else if (modalMode === 'edit' && selectedStudent) {
-      setStudents(students.map(s => s.id === selectedStudent.id ? { ...studentForm, id: s.id } : s));
+    if (!studentForm.studentId.trim() || !studentForm.name.trim() || !studentForm.email.trim() || !studentForm.mobile.trim() || !studentForm.enrolYear.trim() || (modalMode === 'add' && !studentForm.password.trim())) return;
+    try {
+      if (modalMode === 'add') {
+        await axios.post('http://localhost:5000/api/admin/students', {
+          name: studentForm.name,
+          email: studentForm.email,
+          password: studentForm.password,
+          studentId: studentForm.studentId,
+          mobile: studentForm.mobile,
+          enrolYear: studentForm.enrolYear
+        }, { withCredentials: true });
+      } else if (modalMode === 'edit' && selectedStudent) {
+        await axios.put(`http://localhost:5000/api/admin/students/${selectedStudent.id}`, {
+          name: studentForm.name,
+          email: studentForm.email,
+          mobile: studentForm.mobile,
+          enrolYear: studentForm.enrolYear,
+          password: studentForm.password && studentForm.password !== '********' ? studentForm.password : undefined
+        }, { withCredentials: true });
+      }
+      await fetchStudents();
+      closeModal();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to save student');
     }
-    closeModal();
   };
 
   // Delete Student (with confirmation)
@@ -69,8 +110,13 @@ const AdminStudentsPage = () => {
     setStudentToDelete(student);
     setShowDeleteDialog(true);
   };
-  const confirmDeleteStudent = () => {
-    setStudents(students.filter(s => s.id !== studentToDelete.id));
+  const confirmDeleteStudent = async () => {
+    try {
+      await axios.delete(`http://localhost:5000/api/admin/students/${studentToDelete.id}`, { withCredentials: true });
+      await fetchStudents();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete');
+    }
     setShowDeleteDialog(false);
     setStudentToDelete(null);
   };
@@ -105,6 +151,7 @@ const AdminStudentsPage = () => {
         </div>
         <button className="students-add-btn" onClick={openAddModal}>+ Add Student</button>
       </div>
+      {error && <div className="error" style={{ marginBottom: 8 }}>{error}</div>}
       <div className="students-table-wrapper">
         <table className="students-table styled">
           <thead>
@@ -119,7 +166,7 @@ const AdminStudentsPage = () => {
             </tr>
           </thead>
           <tbody>
-            {students.filter(student => {
+            {(!loading ? students : []).filter(student => {
               const q = search.toLowerCase();
               return (
                 student.studentId.toLowerCase().includes(q) ||
@@ -136,9 +183,7 @@ const AdminStudentsPage = () => {
                 <td>{student.mobile}</td>
                 <td>{student.enrolYear}</td>
                 <td style={{ position: 'relative' }}>
-                  <span style={{ userSelect: 'none' }}>
-                    {showPasswordTable[student.id] ? student.password : '•'.repeat(student.password.length)}
-                  </span>
+                  <span style={{ userSelect: 'none' }}>{showPasswordTable[student.id] ? '********' : '•'.repeat(8)}</span>
                   <button
                     type="button"
                     className="students-password-toggle-btn"

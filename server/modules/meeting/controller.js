@@ -1,6 +1,7 @@
 const Meeting = require('./model');
 const { Student } = require('../user/model');
 const Lecturer = require('../lecturer/model');
+const Notifications = require('../notifications/controller');
 
 
 
@@ -118,6 +119,11 @@ const createMeeting = async (req, res) => {
     // Now set the meetingLink using the real MongoDB _id
     meeting.meetingLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/meeting/${meeting._id}`;
     await meeting.save();
+
+    // Notify host about meeting creation
+    try {
+      await Notifications.createForUser(student._id, 'meeting', `Your meeting "${meeting.title}" has been scheduled.`, { meetingId: meeting._id, startTime: meeting.startTime });
+    } catch (e) { /* noop */ }
 
     res.status(201).json({
       success: true,
@@ -727,6 +733,14 @@ const startMeeting = async (req, res) => {
     meeting.status = 'in-progress';
     meeting.startedAt = new Date(); // set start timestamp
     await meeting.save();
+
+    // Notify participants (excluding host) that meeting started
+    try {
+      const participantIds = meeting.participants
+        .filter(p => p.userId && meeting.host.toString() !== p.userId.toString())
+        .map(p => p.userId);
+      await Promise.all(participantIds.map(uid => Notifications.createForUser(uid, 'meeting', `Meeting "${meeting.title}" has started.`, { meetingId: meeting._id })));
+    } catch (e) { /* noop */ }
     res.json({
       success: true,
       message: 'Meeting started successfully',
@@ -1386,6 +1400,10 @@ const getPublicMeetings = async (req, res) => {
       meetingObj.isHost = false; // Will be determined on frontend
       meetingObj.canStart = false; // Will be determined on frontend
       meetingObj.canJoin = status !== 'ended' && status !== 'completed'; // Show join button for all non-ended meetings
+      // participant tag info for frontend
+      if (req.user?.id) {
+        meetingObj.participating = meeting.participants.some(p => p.userId && p.userId.toString() === req.user.id);
+      }
       meetingObj.status = status; // Update the status to use computed status
       meetingsWithStatus.push(meetingObj);
     }

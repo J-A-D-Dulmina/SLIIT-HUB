@@ -41,6 +41,11 @@ const UpcomingMeetings = ({ events }) => {
             <div className="meeting-header">
               <div className="meeting-details">
                 <h4 className="meeting-title">{upcomingMeeting.title}</h4>
+                {upcomingMeeting.participating && (
+                  <div className="participate-tag" style={{ display: 'inline-block', marginBottom: 6, padding: '2px 8px', borderRadius: 9999, background: '#ecfdf5', color: '#065f46', fontSize: 12 }}>
+                    Participating
+                  </div>
+                )}
                 <div className="meeting-description">
                   {upcomingMeeting.resource?.description || upcomingMeeting.description || 'No description available'}
                 </div>

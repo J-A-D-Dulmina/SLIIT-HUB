@@ -40,3 +40,9 @@ function authenticateToken(req, res, next) {
 }
 
 module.exports = authenticateToken; 
+module.exports.authenticateAdmin = function(req, res, next) {
+  authenticateToken(req, res, function() {
+    if (req.user && req.user.type === 'admin') return next();
+    return res.status(403).json({ message: 'Admin access required' });
+  });
+};

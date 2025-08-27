@@ -12,28 +12,7 @@ import axios from 'axios';
 
 const localizer = momentLocalizer(moment);
 
-const ANNOUNCEMENTS = [
-  {
-    title: 'System Maintenance',
-    message: 'The system will be down for maintenance on Sunday, May 30th from 2 AM to 5 AM.'
-  },
-  {
-    title: 'New Feature: AI Notes',
-    message: 'Try our new AI-powered note generation feature for video lectures!'
-  },
-  {
-    title: 'Exam Timetable Released',
-    message: 'The semester exam timetable is now available on the portal.'
-  },
-  {
-    title: 'Library Hours Extended',
-    message: 'Library will be open until 10 PM during exam week.'
-  },
-  {
-    title: 'New Course: Data Science',
-    message: 'Enrollments are open for the new Data Science course.'
-  }
-];
+const ANNOUNCEMENTS = [];
 
 // Helper to get tomorrow's date at a specific hour
 const getTomorrowAt = (hour, minute = 0) => {
@@ -97,10 +76,23 @@ const LandingPage = () => {
   const [showEventModal, setShowEventModal] = useState(false);
   const navigate = useNavigate();
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const [isLecturer, setIsLecturer] = useState(userInfo?.userType === 'lecturer');
 
   useEffect(() => {
+    // Determine role from backend for reliability
+    axios.get('http://localhost:5000/api/protected', { withCredentials: true })
+      .then(res => setIsLecturer(res.data?.user?.userType === 'lecturer'))
+      .catch(() => setIsLecturer(userInfo?.userType === 'lecturer'));
+
     fetchMeetings();
     fetchMyMeetings();
+    // Load announcements
+    axios.get('http://localhost:5000/api/announcements?limit=5')
+      .then(res => setAnnouncementsState((res.data?.announcements || []).map(a => ({
+        title: a.text,
+        message: new Date(a.date).toLocaleDateString()
+      }))))
+      .catch(() => {});
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
@@ -217,7 +209,8 @@ const LandingPage = () => {
     setSelectedEvent(null);
   };
 
-  const displayedAnnouncements = showAllAnnouncements ? ANNOUNCEMENTS : ANNOUNCEMENTS.slice(0, 3);
+  const [announcementsState, setAnnouncementsState] = useState([]);
+  const displayedAnnouncements = showAllAnnouncements ? announcementsState : announcementsState.slice(0, 3);
 
   const formatMeetingTime = (date) => {
     return moment(date).format('MMM D, YYYY [at] HH:mm');
@@ -297,7 +290,7 @@ const LandingPage = () => {
                     <p>{a.message}</p>
                   </div>
                 ))}
-                {ANNOUNCEMENTS.length > 3 && (
+                {announcementsState.length > 3 && (
                   <button 
                     className="view-all-announcements-btn" 
                     onClick={() => setShowAllAnnouncements(v => !v)}
@@ -310,66 +303,68 @@ const LandingPage = () => {
           </div>
           <div className="right-sidebar">
             <UpcomingMeetings events={upcomingOthers} />
-            <div className="my-scheduled-meetings">
-              <h3>My Scheduled Meeting</h3>
-              {!nextScheduledMeeting ? (
-                <>
-                  <div className="dashboard-no-meetings">No scheduled meetings</div>
-                  <button 
-                    className="dashboard-action-btn" 
-                    onClick={() => navigate('/my-meetings')}
-                  >
-                    Schedule Meeting
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="dashboard-meeting-list">
-                    <div className="dashboard-meeting-item">
-                      <div className="dashboard-meeting-header">
-                        <div className="dashboard-meeting-details">
-                          <h4 className="dashboard-meeting-title">{nextScheduledMeeting.resource?.title || nextScheduledMeeting.title || nextScheduledMeeting.topic}</h4>
-                          <div className="dashboard-meeting-description">
-                            {nextScheduledMeeting.resource?.description || nextScheduledMeeting.description || 'No description available'}
+            {!isLecturer && (
+              <div className="my-scheduled-meetings">
+                <h3>My Scheduled Meeting</h3>
+                {!nextScheduledMeeting ? (
+                  <>
+                    <div className="dashboard-no-meetings">No scheduled meetings</div>
+                    <button 
+                      className="dashboard-action-btn" 
+                      onClick={() => navigate('/my-meetings')}
+                    >
+                      Schedule Meeting
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="dashboard-meeting-list">
+                      <div className="dashboard-meeting-item">
+                        <div className="dashboard-meeting-header">
+                          <div className="dashboard-meeting-details">
+                            <h4 className="dashboard-meeting-title">{nextScheduledMeeting.resource?.title || nextScheduledMeeting.title || nextScheduledMeeting.topic}</h4>
+                            <div className="dashboard-meeting-description">
+                              {nextScheduledMeeting.resource?.description || nextScheduledMeeting.description || 'No description available'}
+                            </div>
+                            <div className="dashboard-meeting-meta">
+                              <span>{nextScheduledMeeting.resource?.degree || nextScheduledMeeting.degree || 'N/A'}</span>
+                              <span>{nextScheduledMeeting.resource?.year || nextScheduledMeeting.year || 'N/A'}</span>
+                              <span>{nextScheduledMeeting.resource?.semester || nextScheduledMeeting.semester || 'N/A'}</span>
+                              <span>{nextScheduledMeeting.resource?.module || nextScheduledMeeting.module || 'N/A'}</span>
+                            </div>
+                            <div className="dashboard-meeting-coordinator">
+                              Coordinator: {nextScheduledMeeting.resource?.hostName || nextScheduledMeeting.hostName || 'N/A'}
+                            </div>
+                            <div className="dashboard-meeting-time">
+                              {formatMeetingTime(nextScheduledMeeting.resource?.startTime || nextScheduledMeeting.startTime || nextScheduledMeeting.start)}
+                            </div>
                           </div>
-                          <div className="dashboard-meeting-meta">
-                            <span>{nextScheduledMeeting.resource?.degree || nextScheduledMeeting.degree || 'N/A'}</span>
-                            <span>{nextScheduledMeeting.resource?.year || nextScheduledMeeting.year || 'N/A'}</span>
-                            <span>{nextScheduledMeeting.resource?.semester || nextScheduledMeeting.semester || 'N/A'}</span>
-                            <span>{nextScheduledMeeting.resource?.module || nextScheduledMeeting.module || 'N/A'}</span>
-                          </div>
-                          <div className="dashboard-meeting-coordinator">
-                            Coordinator: {nextScheduledMeeting.resource?.hostName || nextScheduledMeeting.hostName || 'N/A'}
-                          </div>
-                          <div className="dashboard-meeting-time">
-                            {formatMeetingTime(nextScheduledMeeting.resource?.startTime || nextScheduledMeeting.startTime || nextScheduledMeeting.start)}
-                          </div>
+                          <button
+                            className="dashboard-start-meeting-btn"
+                            disabled={!(nextScheduledMeeting.resource?.canStart || nextScheduledMeeting.canStart)}
+                            onClick={() => handleStartMeeting(nextScheduledMeeting.resource || nextScheduledMeeting)}
+                          >
+                            <FaPlay /> Start
+                          </button>
                         </div>
-                        <button
-                          className="dashboard-start-meeting-btn"
-                          disabled={!(nextScheduledMeeting.resource?.canStart || nextScheduledMeeting.canStart)}
-                          onClick={() => handleStartMeeting(nextScheduledMeeting.resource || nextScheduledMeeting)}
-                        >
-                          <FaPlay /> Start
-                        </button>
-                      </div>
-                      <div className="dashboard-meeting-link">
-                        <FaLink />
-                        <a href={nextScheduledMeeting.resource?.meetingLink || nextScheduledMeeting.meetingLink || '#'} target="_blank" rel="noopener noreferrer">
-                          {nextScheduledMeeting.resource?.meetingLink || nextScheduledMeeting.meetingLink || 'N/A'}
-                        </a>
+                        <div className="dashboard-meeting-link">
+                          <FaLink />
+                          <a href={nextScheduledMeeting.resource?.meetingLink || nextScheduledMeeting.meetingLink || '#'} target="_blank" rel="noopener noreferrer">
+                            {nextScheduledMeeting.resource?.meetingLink || nextScheduledMeeting.meetingLink || 'N/A'}
+                          </a>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <button 
-                    className="dashboard-view-all-meetings-btn" 
-                    onClick={() => navigate('/my-meetings')}
-                  >
-                    View All My Scheduled Meetings
-                  </button>
-                </>
-              )}
-            </div>
+                    <button 
+                      className="dashboard-view-all-meetings-btn" 
+                      onClick={() => navigate('/my-meetings')}
+                    >
+                      View All My Scheduled Meetings
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             {showConfirm && meetingToStart && (
               <div className="meeting-confirm-overlay">
                 <div className="meeting-confirm-dialog">

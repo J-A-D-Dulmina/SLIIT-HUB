@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { loginUser, registerUser, createLecturer, updateProfile, adminLogin, getAllAdmins, createAdmin, updateAdmin, deleteAdmin } = require('./controller');
+const { loginUser, registerUser, createLecturer, updateProfile, adminLogin, getAllAdmins, createAdmin, updateAdmin, deleteAdmin, listStudents, createStudent, updateStudent, deleteStudent, listLecturers, updateLecturer, deleteLecturer, getAdminStats, uploadProfileImageMiddleware, uploadProfileImage } = require('./controller');
 const authenticateToken = require('../../middleware/auth');
+const { authenticateAdmin } = require('../../middleware/auth');
 const { Student } = require('./model');
 const Lecturer = require('../lecturer/model');
 
@@ -19,6 +20,30 @@ router.get('/admins', getAllAdmins);
 router.post('/admins', createAdmin);
 router.put('/admins/:id', updateAdmin);
 router.delete('/admins/:id', deleteAdmin);
+
+// Admin: Students CRUD (admin only)
+router.get('/admin/students', authenticateAdmin, listStudents);
+router.post('/admin/students', authenticateAdmin, createStudent);
+router.put('/admin/students/:id', authenticateAdmin, updateStudent);
+router.delete('/admin/students/:id', authenticateAdmin, deleteStudent);
+
+// Admin: Lecturers CRUD (admin only)
+router.get('/admin/lecturers', authenticateAdmin, listLecturers);
+// Public to authenticated users: list lecturers for selection (name, lecturerId)
+router.get('/lecturers', async (req, res) => {
+  try {
+    const Lecturer = require('../lecturer/model');
+    const lecturers = await Lecturer.find({}, 'name email lecturerId _id');
+    res.json({ lecturers });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+router.put('/admin/lecturers/:id', authenticateAdmin, updateLecturer);
+router.delete('/admin/lecturers/:id', authenticateAdmin, deleteLecturer);
+
+// Admin: dashboard stats (admin only)
+router.get('/admin/stats', authenticateAdmin, getAdminStats);
 
 // GET /api/students/by-id/:studentId
 router.get('/students/by-id/:studentId', async (req, res) => {
@@ -42,7 +67,8 @@ router.get('/protected', authenticateToken, async (req, res) => {
         mobile: userInfo.mobile,
         userType: 'student',
         studentId: userInfo.studentId,
-        degree: userInfo.degree
+        degree: userInfo.degree,
+        profileImageUrl: userInfo.profileImageUrl
       }
     });
   } else if (req.user.type === 'lecturer') {
@@ -54,7 +80,8 @@ router.get('/protected', authenticateToken, async (req, res) => {
         email: userInfo.email,
         mobile: userInfo.mobile,
         userType: 'lecturer',
-        lecturerId: userInfo.lecturerId
+        lecturerId: userInfo.lecturerId,
+        profileImageUrl: userInfo.profileImageUrl
       }
     });
   } else if (req.user.type === 'admin') {
@@ -77,5 +104,6 @@ router.get('/protected', authenticateToken, async (req, res) => {
 
 // Profile update route
 router.put('/profile', authenticateToken, updateProfile);
+router.post('/profile/image', authenticateToken, uploadProfileImageMiddleware, uploadProfileImage);
 
 module.exports = router; 

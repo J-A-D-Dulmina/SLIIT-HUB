@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/TopBar.css';
 import { FaBell, FaSearch, FaEnvelope, FaSave, FaUser, FaSignOutAlt } from 'react-icons/fa';
@@ -12,37 +12,9 @@ const TopBar = ({ currentTime }) => {
   
   // Get user info from localStorage
   const userName = localStorage.getItem('userName');
+  const [avatarUrl, setAvatarUrl] = useState('');
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'message',
-      content: 'New message from Dr. Yasas Jayaweera',
-      time: '10 minutes ago',
-      read: false
-    },
-    {
-      id: 2,
-      type: 'meeting',
-      content: 'Upcoming meeting: Research Discussion',
-      time: '30 minutes ago',
-      read: false
-    },
-    {
-      id: 3,
-      type: 'system',
-      content: 'Your resource upload was approved',
-      time: '2 hours ago',
-      read: true
-    },
-    {
-      id: 4,
-      type: 'deadline',
-      content: 'Reminder: Assignment due tomorrow',
-      time: '5 hours ago',
-      read: true
-    }
-  ]);
+  const [notifications, setNotifications] = useState([]);
 
   const toggleNotifications = () => {
     setShowNotifications(!showNotifications);
@@ -101,10 +73,41 @@ const TopBar = ({ currentTime }) => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const [savedVideos, setSavedVideos] = useState([
-    { id: 1, title: 'Saved Video 1', time: '2 days ago' },
-    { id: 2, title: 'Saved Video 2', time: '1 week ago' },
-  ]);
+  const [savedVideos, setSavedVideos] = useState([]);
+  useEffect(() => {
+    const handler = (e) => {
+      const url = e.detail;
+      setAvatarUrl(url || '');
+    };
+    window.addEventListener('avatar-updated', handler);
+    return () => window.removeEventListener('avatar-updated', handler);
+  }, []);
+
+  useEffect(() => {
+    // Load notifications
+    axios.get('http://localhost:5000/api/notifications', { withCredentials: true })
+      .then(res => {
+        const items = Array.isArray(res.data?.notifications) ? res.data.notifications : [];
+        setNotifications(items);
+      })
+      .catch(() => setNotifications([]));
+
+    // Load saved videos for current user
+    axios.get('http://localhost:5000/api/tutoring/videos/saved/me', { withCredentials: true })
+      .then(res => {
+        const items = Array.isArray(res.data?.videos) ? res.data.videos : [];
+        setSavedVideos(items.map(v => ({ id: v.id, title: v.title, time: new Date(v.savedAt).toLocaleString() })));
+      })
+      .catch(() => setSavedVideos([]));
+
+    // Load profile image
+    axios.get('http://localhost:5000/api/protected', { withCredentials: true })
+      .then(res => {
+        const url = res.data?.user?.profileImageUrl ? `http://localhost:5000/${res.data.user.profileImageUrl}` : '';
+        setAvatarUrl(url);
+      })
+      .catch(() => setAvatarUrl(''));
+  }, []);
 
   return (
     <header className="app-header">
@@ -198,7 +201,11 @@ const TopBar = ({ currentTime }) => {
 
         <div className="user-menu-wrapper">
           <button className="icon-button user-button" onClick={toggleUserMenu}>
-            <FaUser />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="avatar" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <FaUser />
+            )}
           </button>
 
           {showUserMenu && (

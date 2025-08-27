@@ -13,6 +13,9 @@ import TutoringPage from './modules/tutoring/components/TutoringPage.jsx';
 import JoinMeetingPage from './modules/meetings/components/JoinMeetingPage.jsx';
 import MyMeetingsPage from './modules/meetings/components/MyMeetingsPage.jsx';
 import ResourcesPage from './modules/resources/components/ResourcesPage.jsx';
+import MyResourcesPage from './modules/resources/components/MyResourcesPage.jsx';
+import PublicResourcesPage from './modules/resources/components/PublicResourcesPage.jsx';
+import ResourcesHubPage from './modules/resources/components/ResourcesHubPage.jsx';
 import CalendarPage from './modules/calendar/components/CalendarPage.jsx';
 import AIToolPage from './modules/ai/components/AIToolPage.jsx';
 import MeetingPage from './modules/communication/components/MeetingPage.jsx';
@@ -101,7 +104,17 @@ const AppRoutes = () => {
       } />
       <Route path="/resources" element={
         <ProtectedRoute>
-          <ResourcesPage />
+          <ResourcesHubPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/resources/my" element={
+        <ProtectedRoute>
+          <MyResourcesPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/resources/public" element={
+        <ProtectedRoute>
+          <PublicResourcesPage />
         </ProtectedRoute>
       } />
       <Route path="/calendar" element={

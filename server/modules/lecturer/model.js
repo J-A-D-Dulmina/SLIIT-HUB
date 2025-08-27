@@ -6,6 +6,7 @@ const lecturerSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   mobile: { type: String },
+  profileImageUrl: { type: String },
   modules: [{ type: String }],
   degrees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Degree' }], // New: degrees taught/managed
 }, { timestamps: true });

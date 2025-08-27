@@ -6,6 +6,7 @@ const studentSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   mobile: { type: String },
+  profileImageUrl: { type: String },
   enrolYear: { type: Number },
   degree: { type: mongoose.Schema.Types.ObjectId, ref: 'Degree' }, // Now references Degree model
   degreeLegacy: { type: String } // For backward compatibility

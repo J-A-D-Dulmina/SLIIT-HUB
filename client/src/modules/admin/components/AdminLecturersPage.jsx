@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import '../styles/AdminLecturersPage.css';
 import { FaPencilAlt, FaTrash, FaEye, FaEyeSlash } from 'react-icons/fa';
 import ConfirmationDialog from '../../../shared/components/ConfirmationDialog';
+import axios from 'axios';
 
-const initialLecturers = [
-  { id: 1, lecturerId: 'L001', name: 'Dr. John Smith', email: 'john@uni.edu', mobile: '0711234567', modules: ['Programming', 'Networks'], password: 'password123' },
-  { id: 2, lecturerId: 'L002', name: 'Prof. Sarah Johnson', email: 'sarah@uni.edu', mobile: '0729876543', modules: ['Databases'], password: 'password456' },
-];
+const initialLecturers = [];
 
 const emptyLecturer = { lecturerId: '', name: '', email: '', mobile: '', modules: [], password: '' };
 
@@ -21,6 +19,34 @@ const AdminLecturersPage = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [lecturerToDelete, setLecturerToDelete] = useState(null);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchLecturers = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await axios.get('http://localhost:5000/api/admin/lecturers', { withCredentials: true });
+      const rows = (res.data.lecturers || []).map(l => ({
+        id: l._id,
+        lecturerId: l.lecturerId,
+        name: l.name,
+        email: l.email,
+        mobile: l.mobile || '',
+        modules: Array.isArray(l.modules) ? l.modules : [],
+        password: '********'
+      }));
+      setLecturers(rows);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to load lecturers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLecturers();
+  }, []);
 
   // Modal open/close helpers
   const openAddModal = () => {
@@ -57,19 +83,34 @@ const AdminLecturersPage = () => {
   };
 
   // Add/Edit Lecturer
-  const handleLecturerFormSubmit = (e) => {
+  const handleLecturerFormSubmit = async (e) => {
     e.preventDefault();
-    if (!lecturerForm.lecturerId.trim() || !lecturerForm.name.trim() || !lecturerForm.email.trim() || !lecturerForm.mobile.trim() || !lecturerForm.password.trim()) return;
-    const modulesArr = lecturerForm.modules.split(',').map(m => m.trim()).filter(Boolean);
-    if (modalMode === 'add') {
-      setLecturers([
-        ...lecturers,
-        { ...lecturerForm, id: Date.now(), modules: modulesArr },
-      ]);
-    } else if (modalMode === 'edit' && selectedLecturer) {
-      setLecturers(lecturers.map(l => l.id === selectedLecturer.id ? { ...lecturerForm, id: l.id, modules: modulesArr } : l));
+    if (!lecturerForm.lecturerId.trim() || !lecturerForm.name.trim() || !lecturerForm.email.trim() || !lecturerForm.mobile.trim() || (modalMode === 'add' && !lecturerForm.password.trim())) return;
+    try {
+      const modulesArr = (typeof lecturerForm.modules === 'string' ? lecturerForm.modules.split(',') : lecturerForm.modules).map(m => String(m).trim()).filter(Boolean);
+      if (modalMode === 'add') {
+        await axios.post('http://localhost:5000/api/admin/lecturers', {
+          lecturerId: lecturerForm.lecturerId,
+          name: lecturerForm.name,
+          email: lecturerForm.email,
+          password: lecturerForm.password,
+          mobile: lecturerForm.mobile,
+          modules: modulesArr
+        }, { withCredentials: true });
+      } else if (modalMode === 'edit' && selectedLecturer) {
+        await axios.put(`http://localhost:5000/api/admin/lecturers/${selectedLecturer.id}`, {
+          name: lecturerForm.name,
+          email: lecturerForm.email,
+          mobile: lecturerForm.mobile,
+          modules: modulesArr,
+          password: lecturerForm.password && lecturerForm.password !== '********' ? lecturerForm.password : undefined
+        }, { withCredentials: true });
+      }
+      await fetchLecturers();
+      closeModal();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to save lecturer');
     }
-    closeModal();
   };
 
   // Delete Lecturer (with confirmation)
@@ -77,8 +118,13 @@ const AdminLecturersPage = () => {
     setLecturerToDelete(lecturer);
     setShowDeleteDialog(true);
   };
-  const confirmDeleteLecturer = () => {
-    setLecturers(lecturers.filter(l => l.id !== lecturerToDelete.id));
+  const confirmDeleteLecturer = async () => {
+    try {
+      await axios.delete(`http://localhost:5000/api/admin/lecturers/${lecturerToDelete.id}`, { withCredentials: true });
+      await fetchLecturers();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete');
+    }
     setShowDeleteDialog(false);
     setLecturerToDelete(null);
   };
@@ -113,6 +159,7 @@ const AdminLecturersPage = () => {
         </div>
         <button className="lecturers-add-btn" onClick={openAddModal}>+ Add Lecturer</button>
       </div>
+      {error && <div className="error" style={{ marginBottom: 8 }}>{error}</div>}
       <div className="lecturers-table-wrapper">
         <table className="lecturers-table styled">
           <thead>
@@ -127,7 +174,7 @@ const AdminLecturersPage = () => {
             </tr>
           </thead>
           <tbody>
-            {lecturers.filter(lecturer => {
+            {(!loading ? lecturers : []).filter(lecturer => {
               const q = search.toLowerCase();
               return (
                 lecturer.lecturerId.toLowerCase().includes(q) ||

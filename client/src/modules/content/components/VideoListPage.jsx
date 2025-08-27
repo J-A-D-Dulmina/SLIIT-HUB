@@ -13,7 +13,8 @@ import {
   FaClock as FaTimestamp,
   FaMagic,
   FaFileAlt,
-  FaListUl
+  FaListUl,
+  FaBookmark
 } from 'react-icons/fa';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
@@ -76,6 +77,7 @@ const VideoListPage = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [videos, setVideos] = useState([]);
+  const [saving, setSaving] = useState({});
   const [generatingAI, setGeneratingAI] = useState({});
 
   // AI model hook
@@ -168,6 +170,22 @@ const VideoListPage = () => {
     }
   };
 
+  const toggleSave = async (e, videoId) => {
+    e.stopPropagation();
+    try {
+      setSaving(prev => ({ ...prev, [videoId]: true }));
+      await fetch(`http://localhost:5000/api/tutoring/videos/${videoId}/save`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      setVideos(prev => prev.map(v => v.id === videoId ? { ...v, saved: !v.saved } : v));
+    } catch (err) {
+      alert('Failed to toggle save');
+    } finally {
+      setSaving(prev => ({ ...prev, [videoId]: false }));
+    }
+  };
+
   const stopPropagation = (e) => {
     e.stopPropagation();
   };
@@ -220,6 +238,14 @@ const VideoListPage = () => {
                           <span className="upload-time">
                             <FaCalendarAlt /> {video.uploadTime}
                           </span>
+                          <button
+                            className={`save-video-btn ${video.saved ? 'saved' : ''}`}
+                            onClick={(e) => toggleSave(e, video.id)}
+                            title={video.saved ? 'Unsave' : 'Save'}
+                            disabled={!!saving[video.id]}
+                          >
+                            <FaBookmark style={{ marginRight: 6 }} /> {video.saved ? 'Saved' : 'Save'}
+                          </button>
                         </div>
                         <div className="video-features">
                           {video.isRecommended && (

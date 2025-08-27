@@ -3,7 +3,7 @@ import { FaUser, FaEnvelope, FaPhone, FaEdit, FaLock, FaChevronLeft, FaChevronRi
 import '../styles/ProfilePage.css';
 import SideMenu from '../../../shared/components/SideMenu';
 import TopBar from '../../../shared/components/TopBar';
-import profileImage from '../../../assets/main_deshan-img.png';
+// Removed hardcoded profile image; will use backend URL or placeholder
 import axios from 'axios';
 
 const ProfilePage = () => {
@@ -23,7 +23,7 @@ const ProfilePage = () => {
     userType: '',
     studentId: '',
     lecturerId: '',
-    profileImage: profileImage
+    profileImage: ''
   });
   const [degrees, setDegrees] = useState([]);
 
@@ -57,7 +57,8 @@ const ProfilePage = () => {
           module: res.data.user.module || '',
           userType: res.data.user.userType || '',
           studentId: res.data.user.studentId || '',
-          lecturerId: res.data.user.lecturerId || ''
+          lecturerId: res.data.user.lecturerId || '',
+          profileImage: res.data.user.profileImageUrl ? `http://localhost:5000/${res.data.user.profileImageUrl}` : prev.profileImage
         }));
         setLoading(false);
       })
@@ -103,15 +104,11 @@ const ProfilePage = () => {
     setUpdateError('');
     
     try {
-      const updateData = {
-        name: formData.name,
-        mobile: formData.phone
-      };
+      const updateData = {};
+      if (formData.name && formData.name.trim()) updateData.name = formData.name.trim();
+      if (formData.phone && formData.phone.trim()) updateData.mobile = formData.phone.trim();
       
-      // Only include degree for students
-      if (formData.userType === 'student' && formData.degree) {
-        updateData.degree = formData.degree;
-      }
+      // Degree editing removed per requirements
       
       const res = await axios.put('http://localhost:5000/api/profile', updateData, {
         withCredentials: true
@@ -130,7 +127,7 @@ const ProfilePage = () => {
       // Clear message after 3 seconds
       setTimeout(() => setUpdateMessage(''), 3000);
     } catch (err) {
-      setUpdateError(err.response?.data?.message || 'Server error. Please try again.');
+      setUpdateError(err.response?.data?.message || err.response?.data?.error || 'Server error. Please try again.');
     }
   };
 
@@ -186,15 +183,43 @@ const ProfilePage = () => {
                 
                 <div className="profile-content">
                   <div className="profile-image-section">
-                    <img 
-                      src={formData.profileImage} 
-                      alt="Profile" 
-                      className="profile-image"
-                    />
+                    {formData.profileImage ? (
+                      <img 
+                        src={formData.profileImage} 
+                        alt="Profile" 
+                        className="profile-image"
+                      />
+                    ) : (
+                      <div className="profile-image placeholder">
+                        <FaUser />
+                      </div>
+                    )}
                     {isEditing && (
-                      <button className="change-image-btn">
+                      <label className="change-image-btn">
                         Change Photo
-                      </button>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const form = new FormData();
+                            form.append('image', file);
+                            try {
+                              const res = await axios.post('http://localhost:5000/api/profile/image', form, { withCredentials: true });
+                              const newUrl = `http://localhost:5000${res.data.url}`;
+                              setFormData(prev => ({ ...prev, profileImage: newUrl }));
+                              try {
+                                localStorage.setItem('profileImageUrl', newUrl);
+                                window.dispatchEvent(new CustomEvent('avatar-updated', { detail: newUrl }));
+                              } catch {}
+                            } catch (err) {
+                              alert('Failed to upload image');
+                            }
+                          }}
+                        />
+                      </label>
                     )}
                   </div>
                   {!isEditing ? (
@@ -220,13 +245,15 @@ const ProfilePage = () => {
                           <p>{formData.phone}</p>
                         </div>
                       </div>
-                      <div className="info-item">
-                        <FaGraduationCap />
-                        <div>
-                          <label>Degree:</label>
-                          <p>{formData.degree}</p>
+                      {formData.userType === 'student' && (
+                        <div className="info-item">
+                          <FaGraduationCap />
+                          <div>
+                            <label>Degree:</label>
+                            <p>{selectedDegree ? selectedDegree.name : (formData.degree || 'N/A')}</p>
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div className="info-item">
                         <FaIdCard />
                         <div>
@@ -270,71 +297,7 @@ const ProfilePage = () => {
                           onChange={handleInputChange}
                         />
                       </div>
-                      {/* Degree Dropdown */}
-                      <div className="form-group">
-                        <label>Degree</label>
-                        <select
-                          name="degree"
-                          value={formData.degree}
-                          onChange={handleInputChange}
-                        >
-                          <option value="">Select your degree</option>
-                          {degrees.map(degree => (
-                            <option key={degree._id} value={degree._id}>{degree.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Year Dropdown */}
-                      {selectedDegree && (
-                        <div className="form-group">
-                          <label>Year</label>
-                          <select
-                            name="year"
-                            value={formData.year}
-                            onChange={handleInputChange}
-                          >
-                            <option value="">Select year</option>
-                            {years.map(y => (
-                              <option key={y.yearNumber} value={y.yearNumber}>Year {y.yearNumber}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-
-                      {/* Semester Dropdown */}
-                      {selectedYear && (
-                        <div className="form-group">
-                          <label>Semester</label>
-                          <select
-                            name="semester"
-                            value={formData.semester}
-                            onChange={handleInputChange}
-                          >
-                            <option value="">Select semester</option>
-                            {semesters.map(s => (
-                              <option key={s.semesterNumber} value={s.semesterNumber}>Semester {s.semesterNumber}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-
-                      {/* Module Dropdown */}
-                      {selectedSemester && (
-                        <div className="form-group">
-                          <label>Module</label>
-                          <select
-                            name="module"
-                            value={formData.module}
-                            onChange={handleInputChange}
-                          >
-                            <option value="">Select module</option>
-                            {modules.map(m => (
-                              <option key={m.code} value={m.code}>{m.code} - {m.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+                      {/* Degree removed from edit as requested */}
                       <div className="form-actions">
                         <button type="submit" className="save-btn">Save Changes</button>
                         <button 

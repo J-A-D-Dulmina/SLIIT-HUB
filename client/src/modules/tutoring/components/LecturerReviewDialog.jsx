@@ -1,18 +1,33 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import '../styles/LecturerReviewDialog.css';
-
-// Dummy data for lecturers
-const LECTURERS = [
-  { id: 1, name: 'Dr. John Smith', module: 'IT1010' },
-  { id: 2, name: 'Prof. Sarah Johnson', module: 'IT1010' },
-  { id: 3, name: 'Dr. Michael Brown', module: 'IT1020' },
-  { id: 4, name: 'Prof. Emily Davis', module: 'IT1020' }
-];
+import { userApi } from '../../../services/api';
 
 const LecturerReviewDialog = ({ video, onClose, onRequestReview }) => {
   const [selectedLecturer, setSelectedLecturer] = useState('');
   const [message, setMessage] = useState('');
+  const [lecturers, setLecturers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchLecturers = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await userApi.listLecturers();
+        const list = res?.data?.lecturers || [];
+        const mapped = list.map(l => ({ id: String(l.lecturerId || l._id || ''), name: String(l.name || l.email || l.lecturerId || 'Unknown') }));
+        setLecturers(mapped.filter(l => l.id));
+      } catch (e) {
+        setError('Failed to load lecturers');
+        setLecturers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLecturers();
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -23,7 +38,7 @@ const LecturerReviewDialog = ({ video, onClose, onRequestReview }) => {
     });
   };
 
-  const filteredLecturers = LECTURERS.filter(lecturer => lecturer.module === video.module);
+  const filteredLecturers = useMemo(() => lecturers, [lecturers]);
 
   return (
     <div className="tutoring-review-dialog">
@@ -59,6 +74,8 @@ const LecturerReviewDialog = ({ video, onClose, onRequestReview }) => {
                 </option>
               ))}
             </select>
+            {loading && <small>Loading lecturers...</small>}
+            {error && <small style={{ color: '#b91c1c' }}>{error}</small>}
           </div>
 
           <div className="tutoring-review-field">

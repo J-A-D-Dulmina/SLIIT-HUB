@@ -4,6 +4,10 @@ const { Student } = require('./model');
 const Lecturer = require('../lecturer/model');
 const { Admin } = require('./model');
 const Degree = require('../admin/degree.model');
+const Video = require('../tutoring/model');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
@@ -125,12 +129,32 @@ exports.updateProfile = async (req, res) => {
 
   try {
     if (userType === 'student') {
-      const updateData = { name, mobile };
+      const updateData = {};
+      if (name !== undefined && name !== '') updateData.name = name;
+      if (mobile !== undefined && mobile !== '') updateData.mobile = mobile;
       if (degree) {
         let degreeObj = await Degree.findOne({ code: degree }) || await Degree.findById(degree);
         if (!degreeObj) return res.status(400).json({ message: 'Degree not found' });
         updateData.degree = degreeObj._id;
         updateData.degreeLegacy = degree;
+      }
+      // If nothing to update, just return current user data
+      if (Object.keys(updateData).length === 0) {
+        const current = await Student.findById(userId).lean();
+        if (!current) return res.status(404).json({ message: 'User not found' });
+        return res.json({
+          message: 'No changes',
+          user: {
+            name: current.name,
+            email: current.email,
+            mobile: current.mobile,
+            userType: 'student',
+            studentId: current.studentId,
+            degree: current.degree,
+            degreeLegacy: current.degreeLegacy,
+            profileImageUrl: current.profileImageUrl
+          }
+        });
       }
       
       const updatedUser = await Student.findByIdAndUpdate(
@@ -152,13 +176,32 @@ exports.updateProfile = async (req, res) => {
           userType: 'student',
           studentId: updatedUser.studentId,
           degree: updatedUser.degree,
-          degreeLegacy: updatedUser.degreeLegacy
+          degreeLegacy: updatedUser.degreeLegacy,
+          profileImageUrl: updatedUser.profileImageUrl
         }
       });
     } else if (userType === 'lecturer') {
+      const updateData = {};
+      if (name !== undefined && name !== '') updateData.name = name;
+      if (mobile !== undefined && mobile !== '') updateData.mobile = mobile;
+      if (Object.keys(updateData).length === 0) {
+        const current = await Lecturer.findById(userId).lean();
+        if (!current) return res.status(404).json({ message: 'User not found' });
+        return res.json({
+          message: 'No changes',
+          user: {
+            name: current.name,
+            email: current.email,
+            mobile: current.mobile,
+            userType: 'lecturer',
+            lecturerId: current.lecturerId,
+            profileImageUrl: current.profileImageUrl
+          }
+        });
+      }
       const updatedUser = await Lecturer.findByIdAndUpdate(
         userId,
-        { name, mobile },
+        updateData,
         { new: true, runValidators: true }
       );
       
@@ -210,7 +253,8 @@ exports.getAllAdmins = async (req, res) => {
     const admins = await Admin.find({}, '-password'); // Exclude password from list
     res.json({ admins });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Update profile error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
@@ -263,3 +307,187 @@ exports.deleteAdmin = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 }; 
+
+// Admin: list students
+exports.listStudents = async (req, res) => {
+  try {
+    const students = await Student.find({}, '-__v -updatedAt');
+    res.json({ students });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Admin: create student
+exports.createStudent = async (req, res) => {
+  const { name, email, password, studentId, mobile, enrolYear, degree } = req.body;
+  if (!name || !email || !password || !studentId || !mobile || !enrolYear) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+  try {
+    const existing = await Student.findOne({ $or: [{ email }, { studentId }] });
+    if (existing) return res.status(409).json({ message: 'Email or Student ID already exists' });
+    let degreeObj = null;
+    if (degree) {
+      degreeObj = await Degree.findOne({ code: degree }) || await Degree.findById(degree);
+      if (!degreeObj) return res.status(400).json({ message: 'Degree not found' });
+    }
+    const hashed = await bcrypt.hash(password, 10);
+    const student = new Student({
+      name,
+      email,
+      password: hashed,
+      studentId,
+      mobile,
+      enrolYear: Number(enrolYear),
+      ...(degreeObj ? { degree: degreeObj._id } : {}),
+      degreeLegacy: degree || undefined
+    });
+    await student.save();
+    res.status(201).json({ message: 'Student created', id: student._id });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Admin: update student
+exports.updateStudent = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, mobile, enrolYear, degree, password } = req.body;
+  try {
+    const student = await Student.findById(id);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (name) student.name = name;
+    if (email) student.email = email;
+    if (mobile) student.mobile = mobile;
+    if (enrolYear) student.enrolYear = Number(enrolYear);
+    if (degree) {
+      let degreeObj = await Degree.findOne({ code: degree }) || await Degree.findById(degree);
+      if (!degreeObj) return res.status(400).json({ message: 'Degree not found' });
+      student.degree = degreeObj._id;
+      student.degreeLegacy = degree;
+    }
+    if (password) {
+      student.password = await bcrypt.hash(password, 10);
+    }
+    await student.save();
+    res.json({ message: 'Student updated' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Admin: delete student
+exports.deleteStudent = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const student = await Student.findByIdAndDelete(id);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    res.json({ message: 'Student deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Admin: list lecturers
+exports.listLecturers = async (req, res) => {
+  try {
+    const lecturers = await Lecturer.find({}, '-__v -updatedAt');
+    res.json({ lecturers });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Admin: update lecturer
+exports.updateLecturer = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, mobile, modules, password } = req.body;
+  try {
+    const lecturer = await Lecturer.findById(id);
+    if (!lecturer) return res.status(404).json({ message: 'Lecturer not found' });
+    if (name) lecturer.name = name;
+    if (email) lecturer.email = email;
+    if (mobile) lecturer.mobile = mobile;
+    if (Array.isArray(modules)) lecturer.modules = modules;
+    if (typeof modules === 'string') lecturer.modules = modules.split(',').map(m => m.trim()).filter(Boolean);
+    if (password) lecturer.password = await bcrypt.hash(password, 10);
+    await lecturer.save();
+    res.json({ message: 'Lecturer updated' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Admin: delete lecturer
+exports.deleteLecturer = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const lecturer = await Lecturer.findByIdAndDelete(id);
+    if (!lecturer) return res.status(404).json({ message: 'Lecturer not found' });
+    res.json({ message: 'Lecturer deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Admin: aggregated stats for dashboard
+exports.getAdminStats = async (req, res) => {
+  try {
+    const [students, lecturers, videos, degrees, admins] = await Promise.all([
+      Student.countDocuments({}),
+      Lecturer.countDocuments({}),
+      Video.countDocuments({}),
+      Degree.countDocuments({}),
+      Admin.countDocuments({})
+    ]);
+    res.json({ students, lecturers, videos, degrees, admins });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Multer for profile image uploads
+const profileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dest = path.join(__dirname, '../../uploads/profile');
+    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+    cb(null, dest);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.png';
+    cb(null, `${req.user.id}_${Date.now()}${ext}`);
+  }
+});
+
+function imageFileFilter(req, file, cb) {
+  if (!file.mimetype.startsWith('image/')) {
+    return cb(new Error('Only image files are allowed'));
+  }
+  cb(null, true);
+}
+
+exports.uploadProfileImageMiddleware = multer({ 
+  storage: profileStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: imageFileFilter
+}).single('image');
+
+exports.uploadProfileImage = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    const relativePath = path.join('uploads', 'profile', req.file.filename).replace(/\\/g, '/');
+    if (req.user.type === 'student') {
+      const updated = await Student.findByIdAndUpdate(req.user.id, { profileImageUrl: relativePath }, { new: true });
+      return res.json({ url: `/${relativePath}`, userType: 'student' });
+    } else if (req.user.type === 'lecturer') {
+      const LecturerModel = require('../lecturer/model');
+      const updated = await LecturerModel.findByIdAndUpdate(req.user.id, { profileImageUrl: relativePath }, { new: true });
+      return res.json({ url: `/${relativePath}`, userType: 'lecturer' });
+    }
+    return res.status(400).json({ message: 'Unsupported user type' });
+  } catch (err) {
+    console.error('Profile image upload error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};

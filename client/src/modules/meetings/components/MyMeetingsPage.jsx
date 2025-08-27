@@ -74,7 +74,15 @@ const MyMeetingsPage = () => {
         withCredentials: true
       });
       
-      setMeetings(response.data.data || []);
+      // If logged in user is a lecturer, hide this page content
+      const protectedRes = await axios.get('http://localhost:5000/api/protected', { withCredentials: true });
+      const isLecturer = protectedRes.data?.user?.userType === 'lecturer';
+      setMeetings(isLecturer ? [] : (response.data.data || []));
+      if (isLecturer) {
+        // Redirect lecturers to join meetings instead of showing host UI
+        navigate('/join-meeting');
+        return;
+      }
     } catch (error) {
       setError('Failed to load meetings');
     } finally {

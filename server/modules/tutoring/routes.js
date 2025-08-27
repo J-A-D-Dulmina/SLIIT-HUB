@@ -10,7 +10,10 @@ const {
   streamVideo,
   serveThumbnail,
   getPublishedVideos,
-  likeVideo
+  likeVideo,
+  requestReview,
+  toggleSaveVideo,
+  getSavedVideos
 } = require('./controller');
 const authenticateToken = require('../../middleware/auth');
 
@@ -46,5 +49,12 @@ router.patch('/videos/:videoId/publish', togglePublishStatus);
 
 // Like/Unlike video
 router.post('/videos/:videoId/like', likeVideo);
+
+// Request lecturer review
+router.post('/videos/:videoId/request-review', requestReview);
+
+// Save/Unsave & list saved videos
+router.post('/videos/:videoId/save', toggleSaveVideo);
+router.get('/videos/saved/me', getSavedVideos);
 
 module.exports = router; 

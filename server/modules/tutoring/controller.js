@@ -405,6 +405,39 @@ exports.togglePublishStatus = async (req, res) => {
   }
 };
 
+// Student requests lecturer review for a video
+exports.requestReview = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const { lecturerId, message } = req.body;
+    if (!lecturerId) {
+      return res.status(400).json({ message: 'lecturerId is required' });
+    }
+    // Ensure this video belongs to the current student
+    const video = await Video.findOne({ _id: videoId, uploadedBy: req.user.id });
+    if (!video) {
+      return res.status(404).json({ message: 'Video not found' });
+    }
+    video.reviewLecturer = lecturerId;
+    video.reviewStatus = 'pending';
+    if (typeof message === 'string') {
+      video.reviewNote = message.slice(0, 1000);
+    }
+    await video.save();
+    res.json({
+      message: 'Review requested',
+      video: {
+        id: video._id,
+        reviewLecturer: video.reviewLecturer,
+        reviewStatus: video.reviewStatus,
+        reviewNote: video.reviewNote || ''
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Stream video file
 exports.streamVideo = async (req, res) => {
   try {
@@ -694,3 +727,37 @@ exports.likeVideo = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 }; 
+
+// Save/Unsave a video for the current user (student or lecturer)
+exports.toggleSaveVideo = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const userId = req.user.id;
+    const video = await Video.findById(videoId);
+    if (!video) return res.status(404).json({ message: 'Video not found' });
+    if (!Array.isArray(video.savedBy)) video.savedBy = [];
+    const alreadySaved = video.savedBy.some(id => String(id) === String(userId));
+    if (alreadySaved) {
+      video.savedBy = video.savedBy.filter(id => String(id) !== String(userId));
+    } else {
+      video.savedBy.push(userId);
+    }
+    await video.save();
+    res.json({ success: true, saved: !alreadySaved });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get saved videos for current user
+exports.getSavedVideos = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const videos = await Video.find({ savedBy: userId }).sort({ addDate: -1 });
+    res.json({
+      videos: videos.map(v => ({ id: v._id, title: v.title, savedAt: v.updateDate || v.addDate }))
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};

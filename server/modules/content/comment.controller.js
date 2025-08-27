@@ -231,7 +231,7 @@ const togglePinComment = async (req, res) => {
     }
 
     // Only lecturers can pin/unpin comments
-    if (user.userType !== 'lecturer') {
+    if (user.type !== 'lecturer') {
       return res.status(403).json({ success: false, message: 'Only lecturers can pin comments' });
     }
 

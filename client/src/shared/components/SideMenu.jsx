@@ -16,7 +16,8 @@ import {
   FaChevronDown,
   FaChevronRight,
   FaSignInAlt,
-  FaList
+  FaList,
+  FaThumbsUp
 } from 'react-icons/fa';
 import axios from 'axios';
 
@@ -151,11 +152,20 @@ const SideMenu = ({ collapsed }) => {
               </li>
             </>
           )}
+          {/* Lecturers: show Join Meetings only */}
+          {userRole === 'lecturer' && (
+            <li className={pathname === '/join-meeting' ? 'active' : ''}>
+              <Link to="/join-meeting">
+                <FaSignInAlt className="icon" />
+                {!collapsed && <span>Join Meetings</span>}
+              </Link>
+            </li>
+          )}
           {/* Show My Recommendations only for lecturers */}
           {userRole === 'lecturer' && (
             <li className={pathname === '/my-recommendations' ? 'active' : ''}>
               <Link to="/my-recommendations">
-                <FaBook className="icon" />
+                <FaThumbsUp className="icon" />
                 {!collapsed && <span>My Recommendations</span>}
               </Link>
             </li>
