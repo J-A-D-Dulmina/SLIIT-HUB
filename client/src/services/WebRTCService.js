@@ -8,6 +8,15 @@ class WebRTCService {
     this.userId = null;
     this.userName = null;
     
+    // Camera and device management
+    this.currentVideoDeviceId = null;
+    this.currentAudioDeviceId = null;
+    this.availableDevices = {
+      video: [],
+      audio: [],
+      audioOutput: []
+    };
+    
     // Recording functionality
     this.mediaRecorder = null;
     this.recordedChunks = [];
@@ -41,6 +50,7 @@ class WebRTCService {
     this.onMeetingEnded = null;
     this.onHostTransferred = null;
     this.onHostRestored = null;
+    this.onDevicesChanged = null;
   }
 
   // Initialize WebRTC service
@@ -165,57 +175,6 @@ class WebRTCService {
         console.error('Audio also failed:', audioError);
         if (this.onError) this.onError('Unable to access camera or microphone. Please check your device permissions.');
       }
-    }
-  }
-
-  // Get available devices
-  getAvailableDevices() {
-    return this.availableDevices;
-  }
-
-  // Set video device
-  async setVideoDevice(deviceId) {
-    try {
-      console.log('Setting video device to:', deviceId);
-      this.currentVideoDeviceId = deviceId;
-      
-      // Get new stream with new video device
-      await this.getUserMedia();
-      
-      console.log('Video device set successfully');
-      return this.localStream;
-    } catch (error) {
-      console.error('Error setting video device:', error);
-      throw error;
-    }
-  }
-
-  // Set audio device
-  async setAudioDevice(deviceId) {
-    try {
-      console.log('Setting audio device to:', deviceId);
-      this.currentAudioDeviceId = deviceId;
-      
-      // Get new stream with new audio device
-      await this.getUserMedia();
-      
-      console.log('Audio device set successfully');
-      return this.localStream;
-    } catch (error) {
-      console.error('Error setting audio device:', error);
-      throw error;
-    }
-  }
-
-  // Set audio output device
-  setAudioOutputDevice(deviceId) {
-    try {
-      console.log('Setting audio output device to:', deviceId);
-      // This is handled in the UI component since it requires access to video elements
-      return true;
-    } catch (error) {
-      console.error('Error setting audio output device:', error);
-      throw error;
     }
   }
 
