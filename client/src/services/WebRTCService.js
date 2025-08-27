@@ -168,6 +168,57 @@ class WebRTCService {
     }
   }
 
+  // Get available devices
+  getAvailableDevices() {
+    return this.availableDevices;
+  }
+
+  // Set video device
+  async setVideoDevice(deviceId) {
+    try {
+      console.log('Setting video device to:', deviceId);
+      this.currentVideoDeviceId = deviceId;
+      
+      // Get new stream with new video device
+      await this.getUserMedia();
+      
+      console.log('Video device set successfully');
+      return this.localStream;
+    } catch (error) {
+      console.error('Error setting video device:', error);
+      throw error;
+    }
+  }
+
+  // Set audio device
+  async setAudioDevice(deviceId) {
+    try {
+      console.log('Setting audio device to:', deviceId);
+      this.currentAudioDeviceId = deviceId;
+      
+      // Get new stream with new audio device
+      await this.getUserMedia();
+      
+      console.log('Audio device set successfully');
+      return this.localStream;
+    } catch (error) {
+      console.error('Error setting audio device:', error);
+      throw error;
+    }
+  }
+
+  // Set audio output device
+  setAudioOutputDevice(deviceId) {
+    try {
+      console.log('Setting audio output device to:', deviceId);
+      // This is handled in the UI component since it requires access to video elements
+      return true;
+    } catch (error) {
+      console.error('Error setting audio output device:', error);
+      throw error;
+    }
+  }
+
   // Join meeting room
   joinMeeting() {
     this.sendMessage({

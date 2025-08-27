@@ -1,502 +1,648 @@
-### Chapter 04 – System Development (Updated)
+# SLIIT-HUB - Comprehensive User Manual
 
-This chapter covers the end‑to‑end implementation of SLIIT‑HUB: React frontend, Express/MongoDB backend, realtime meetings, and a Python AI microservice. It also documents user‑facing features: authentication, calendar, content/videos, tutoring with lecturer review workflow, resources repository, recommendations, and the AI tool.
+## Table of Contents
+1. [Project Overview](#project-overview)
+2. [System Architecture](#system-architecture)
+3. [Installation & Setup](#installation--setup)
+4. [Features & Modules](#features--modules)
+5. [User Guide](#user-guide)
+6. [Administrator Guide](#administrator-guide)
+7. [API Documentation](#api-documentation)
+8. [Troubleshooting](#troubleshooting)
+9. [Development Guide](#development-guide)
+10. [Contributing](#contributing)
 
-## 4.1. Frontend Development
-React SPA with protected routing and feature‑oriented modules (`content`, `meetings`, `resources`, `tutoring`, `lecturer`, `ai`, `admin`, `user`). Layout uses `SideMenu` + `TopBar`. Auth‑guarded routes redirect unauthenticated users.
+## Project Overview
 
-- Sign Up/Login: validated forms, error toasts, post‑login redirect to dashboard.
-- ProtectedRoute example:
-```jsx
-// ProtectedRoute.jsx
-const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  const location = useLocation();
-  return token ? children : <Navigate to="/login" state={{ from: location }} replace />;
-};
+**SLIIT-HUB** is a comprehensive educational platform designed for Sri Lanka Institute of Information Technology (SLIIT). It provides a modern, integrated learning environment that combines traditional academic content with cutting-edge AI tools, real-time communication, and resource management.
+
+### Key Features
+- **Multi-User Platform**: Support for students, lecturers, and administrators
+- **Content Management**: Video lectures, modules, and educational resources
+- **AI-Powered Tools**: Intelligent tutoring and content analysis
+- **Real-Time Communication**: Video meetings and WebRTC support
+- **Resource Hub**: Document sharing and management system
+- **Responsive Design**: Modern UI/UX optimized for all devices
+
+### Target Users
+- **Students**: Access learning materials, join tutoring sessions, participate in meetings
+- **Lecturers**: Upload content, conduct meetings, manage student interactions
+- **Administrators**: System management, user administration, content oversight
+
+## System Architecture
+
+The SLIIT-HUB platform consists of three main components:
+
+### 1. Frontend (React.js)
+- **Location**: `client/` directory
+- **Technology**: React 18, Redux Toolkit, React Router
+- **UI Framework**: Custom CSS with React Icons
+- **State Management**: Redux for global state, local state for components
+
+### 2. Backend (Node.js)
+- **Location**: `server/` directory
+- **Technology**: Express.js, MongoDB, WebSocket
+- **Database**: MongoDB with Mongoose ODM
+- **Real-time**: WebSocket server for live communication
+
+### 3. AI Services (Python)
+- **Location**: `python_services/` directory
+- **Technology**: Flask, OpenAI Whisper, Scene Detection
+- **Features**: Video processing, AI analysis, automated testing
+
+## Installation & Setup
+
+### Prerequisites
+- Node.js (v16 or higher)
+- Python 3.8+
+- MongoDB (v4.4 or higher)
+- Git
+
+### Step 1: Clone the Repository
+```bash
+git clone <repository-url>
+cd SLIIT-HUB
 ```
 
-- Dashboard: entry to Modules, Videos, Calendar, Meetings, AI Tools, Tutoring, Resources, and Lecturer Reviews; sections shown contextually by role.
-
-- Content and Videos: module list → module videos → video details with comments and AI metadata.
-```jsx
-// VideoDetailsPage.jsx (simplified)
-useEffect(() => {
-  http.get(`/api/content/videos/${id}`).then(r => setVideo(r.data));
-  http.get(`/api/content/${id}/comments`).then(r => setComments(r.data));
-}, [id]);
+### Step 2: Frontend Setup
+```bash
+cd client
+npm install
 ```
 
-- Calendar: personal/academic events with reminders.
-
-- Tutoring + Lecturer Review:
-  - Students upload videos, request lecturer review, and add a student note.
-  - Lecturers see a review queue with clean cards showing: Title, Owner, Degree name, Year/Sem/Module, Tags (status, AI features), and actions.
-  - Recommend/Reject uses confirmation modal; success toast shows after update.
-
-- Real‑time Meetings: WebRTC + WebSocket signaling. Join/leave, media streams, and live session management.
-```js
-// WebRTCService.js (simplified)
-export function createPeer(onTrack) {
-  const pc = new RTCPeerConnection();
-  pc.ontrack = e => onTrack(e.streams[0]);
-  return pc;
-}
+**Environment Configuration**: Create `.env` file in client directory:
+```env
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_WEBSOCKET_URL=ws://localhost:5000
 ```
 
-- Resources Repository: browse, upload, update visibility, and download PDFs/docs, with “My” and “Public” views.
-
-- AI Tool: trigger summary, timestamps, and descriptions, orchestrating to Python AI service.
-```js
-// useAIModel.js (simplified)
-export function useAIModel() {
-  const generateSummary = (videoId) =>
-    http.post('/api/ai/generate-summary', { videoId }).then(r => r.data);
-  return { generateSummary };
-}
+### Step 3: Backend Setup
+```bash
+cd ../server
+npm install
 ```
 
-- Lecturer Recommendations: cards render degree name (not code/ObjectId), owner name, publish/upload date, and status tags. View opens the standard video page; actions are aligned in one row with confirm dialog and success banner.
-
-- Profile/Admin: profile edits and image upload. Admin manages degrees, lecturers, students, announcements, and content oversight.
-
-## 4.2. Database Development
-MongoDB with Mongoose; connection via env, validated at startup.
-
-```js
-// db.js
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/sliithub_db')
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => { console.error('Database connection failed:', err); process.exit(1); });
+**Environment Configuration**: Create `.env` file in server directory:
+```env
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/sliithub
+JWT_SECRET=your_jwt_secret_here
+NODE_ENV=development
 ```
 
-Key models: Users (students/lecturers/admins), Videos/Content, Comments, Meetings, Resources, Degrees, Announcements, and Tutoring videos.
+### Step 4: Python Services Setup
+```bash
+cd ../python_services
+python -m venv venv
 
-Important tutoring fields: `degree` (ObjectId or code), `reviewStatus`, `reviewLecturer`, `reviewNote`, `aiFeatures`, `duration`, `savedBy`, `likedBy`, `publishDate`.
+# Windows
+venv\Scripts\activate
 
-## 4.3. Backend Development
-Express server exposes REST APIs and initializes WebSocket server for meetings. Common middleware: CORS, JSON body parsing, cookies, auth, static uploads.
+# Linux/Mac
+source venv/bin/activate
 
-Mounted routes (actual project structure):
-- `/api` → `user`, `lecturer`, `ai`, `meeting`
-- `/api/content` → videos
-- `/api/resources` → resources
-- `/api/announcements`, `/api/admin/degrees`
-
-Example server bootstrap:
-```js
-// server.js (excerpt)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/api', require('./modules/user'));
-app.use('/api', require('./modules/lecturer'));
-app.use('/api/content', require('./modules/content/video.routes'));
-app.use('/api/resources', require('./modules/resources'));
+pip install -r requirements.txt
 ```
 
-Authentication: JWT via middleware. Protected endpoints check `req.user.type` for role‑based authorization.
+**Environment Configuration**: Create `.env` file in python_services directory:
+```env
+FLASK_ENV=development
+OPENAI_API_KEY=your_openai_api_key
+FLASK_APP=api.py
+```
 
-Content: upload, list, details, comments. Meetings: create/join with socket events. AI: proxy to Python microservice endpoints.
+### Step 5: Database Setup
+1. Start MongoDB service
+2. Create database: `sliithub`
+3. Import initial data if available
 
-AI controller example:
-```js
-// ai/controller.js (simplified)
-const generateSummary = async (req, res) => {
-  try {
-    const { videoId } = req.body;
-    const response = await axios.post(`${AI_SERVICE_URL}/summary`, { videoId });
-    res.json(response.data);
-  } catch {
-    res.status(500).json({ error: 'AI service unavailable' });
+### Step 6: Start Services
+
+**Terminal 1 - Backend:**
+```bash
+cd server
+npm run dev
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd client
+npm start
+```
+
+**Terminal 3 - Python Services:**
+```bash
+cd python_services
+python api.py
+```
+
+## Features & Modules
+
+### 1. User Management Module
+**Location**: `client/src/modules/user/`
+
+**Features:**
+- User registration and authentication
+- Profile management
+- Password recovery
+- Role-based access control
+
+**Key Components:**
+- `LoginPage.jsx` - User authentication
+- `RegisterPage.jsx` - New user registration
+- `ProfilePage.jsx` - User profile management
+- `ForgotPasswordPage.jsx` - Password recovery
+
+### 2. Content Management Module
+**Location**: `client/src/modules/content/`
+
+**Features:**
+- Module organization by degree and year
+- Video lecture management
+- Content categorization
+- Search and filtering
+
+**Key Components:**
+- `ModuleListPage.jsx` - Browse available modules
+- `ModulePage.jsx` - Individual module view
+- `VideoListPage.jsx` - Video content listing
+- `VideoDetailsPage.jsx` - Video player and details
+
+### 3. AI Tools Module
+**Location**: `client/src/modules/ai/`
+
+**Features:**
+- AI-powered tutoring assistance
+- Content analysis and recommendations
+- Intelligent search capabilities
+- Automated content processing
+
+**Key Components:**
+- `AIToolPage.jsx` - Main AI interface
+- `gpt_service.py` - OpenAI integration
+- `whisper_service.py` - Audio transcription
+
+### 4. Meeting & Communication Module
+**Location**: `client/src/modules/meetings/` & `client/src/modules/communication/`
+
+**Features:**
+- Real-time video meetings
+- WebRTC integration
+- Meeting scheduling and management
+- Participant controls
+
+**Key Components:**
+- `MeetingPage.jsx` - Video meeting interface
+- `JoinMeetingPage.jsx` - Meeting entry point
+- `MyMeetingsPage.jsx` - Meeting management
+- `meetingSocket.js` - WebSocket server
+
+### 5. Resources Module
+**Location**: `client/src/modules/resources/`
+
+**Features:**
+- Document upload and sharing
+- Resource categorization
+- Search and filtering
+- Access control and permissions
+
+**Key Components:**
+- `ResourcesPage.jsx` - Main resources interface
+- `UploadResourceModal.jsx` - File upload
+- Resource management and sharing
+
+### 6. Tutoring Module
+**Location**: `client/src/modules/tutoring/`
+
+**Features:**
+- Tutoring session management
+- Student-tutor matching
+- Session scheduling
+- Progress tracking
+
+### 7. Calendar Module
+**Location**: `client/src/modules/calendar/`
+
+**Features:**
+- Event scheduling
+- Meeting coordination
+- Academic calendar integration
+- Reminder system
+
+### 8. Admin Module
+**Location**: `client/src/modules/admin/`
+
+**Features:**
+- User administration
+- Content oversight
+- System configuration
+- Analytics and reporting
+
+**Key Components:**
+- `AdminLayout.jsx` - Admin dashboard
+- `AdminDashboardHome.jsx` - Overview
+- User, content, and system management pages
+
+## User Guide
+
+### Getting Started
+
+#### 1. First Login
+1. Navigate to the login page
+2. Enter your credentials (provided by administrator)
+3. Complete profile setup if prompted
+4. Explore the dashboard
+
+#### 2. Navigation
+- **Sidebar Menu**: Access all modules and features
+- **Top Bar**: User profile, notifications, and quick actions
+- **Breadcrumbs**: Navigate through hierarchical content
+
+#### 3. Dashboard Overview
+- **Quick Actions**: Common tasks and shortcuts
+- **Recent Activity**: Latest updates and notifications
+- **Quick Access**: Frequently used modules and resources
+
+### Using the Platform
+
+#### Content Access
+1. **Browse Modules**: Navigate to "Units" from the main menu
+2. **Select Degree/Year**: Choose your academic program
+3. **Access Content**: Click on modules to view available resources
+4. **Watch Videos**: Use the integrated video player
+5. **Download Resources**: Access supplementary materials
+
+#### Resource Management
+1. **Upload Files**: Use the upload button in resources section
+2. **Organize Content**: Categorize by type, degree, year, semester
+3. **Set Permissions**: Choose public or private visibility
+4. **Share Resources**: Generate shareable links
+5. **Search & Filter**: Find specific content quickly
+
+#### Meeting Participation
+1. **Join Meetings**: Use meeting links or codes
+2. **Video Controls**: Mute/unmute, camera on/off
+3. **Screen Sharing**: Present content to participants
+4. **Chat**: Use text chat during meetings
+5. **Recording**: Access meeting recordings if available
+
+#### AI Tools Usage
+1. **Access AI Tools**: Navigate to AI section
+2. **Ask Questions**: Get intelligent responses
+3. **Content Analysis**: Analyze uploaded materials
+4. **Learning Recommendations**: Receive personalized suggestions
+
+### Best Practices
+
+#### Content Organization
+- Use descriptive titles and descriptions
+- Categorize resources properly
+- Set appropriate visibility settings
+- Tag content with relevant keywords
+
+#### Meeting Etiquette
+- Test audio/video before joining
+- Use headphones in shared spaces
+- Mute when not speaking
+- Respect meeting schedules
+
+#### Resource Sharing
+- Verify file permissions before sharing
+- Use appropriate file formats
+- Include context with shared materials
+- Respect intellectual property rights
+
+## Administrator Guide
+
+### System Administration
+
+#### User Management
+1. **Access Admin Panel**: Login with admin credentials
+2. **View Users**: Monitor all registered users
+3. **Manage Roles**: Assign user permissions
+4. **User Actions**: Enable/disable accounts, reset passwords
+
+#### Content Oversight
+1. **Review Uploads**: Monitor new content
+2. **Content Moderation**: Approve or reject materials
+3. **Quality Control**: Ensure content standards
+4. **Storage Management**: Monitor disk usage
+
+#### System Configuration
+1. **Degree Programs**: Manage academic structures
+2. **Module Configuration**: Set up course modules
+3. **System Settings**: Configure platform parameters
+4. **Backup & Recovery**: System maintenance
+
+### Monitoring & Analytics
+
+#### Usage Statistics
+- **User Activity**: Login patterns and usage
+- **Content Metrics**: Popular resources and downloads
+- **Meeting Statistics**: Participation and duration
+- **System Performance**: Response times and errors
+
+#### Performance Monitoring
+- **Server Health**: CPU, memory, and disk usage
+- **Database Performance**: Query times and connections
+- **Network Status**: API response times
+- **Error Tracking**: Log analysis and alerts
+
+## API Documentation
+
+### Authentication
+All API requests require authentication via JWT tokens.
+
+```javascript
+// Example API call
+const response = await fetch('/api/resources', {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
   }
-};
-```
-
-Lecturer Review workflow highlights:
-- Student requests review (with optional note): stores `reviewLecturer`, sets `reviewStatus='pending'`, saves `reviewNote`.
-- Lecturer queue returns enriched items: `studentName`, `degreeDisplay` (always a readable name), `year`, `semester`, `module`, `publishDate/addDate`, `aiFeatures`.
-- Lecturer updates decision: sets `recommended`/`rejected`; confirmation dialog on UI; success toast.
-
-Degree name resolution
-- On queue API, backend returns `degreeDisplay` resolving in order: object.name → lookup by code → lookup by _id → raw string. Frontend uses `degreeDisplay` and hides ObjectIds.
-
-## 4.4. AI Model Integration
-Python microservice handles video intelligence: transcription (Whisper), summaries, timestamps, descriptions, and scene detection. Independent venv with `requirements.txt`, start scripts for Windows/Linux.
-
-```python
-# api.py (simplified)
-from flask import Flask, request, jsonify
-app = Flask(__name__)
-
-@app.route('/summary', methods=['POST'])
-def create_summary():
-    # receive video or id, run pipeline, return JSON
-    return jsonify({'summary': '...generated...'})
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
-```
-
-Backend → AI flow: health check, file mapping by video ID, stream multipart data, parse structured results; isolates heavy compute for scalability.
-
-## 4.5. Real-time Communication (Meetings)
-WebSocket server initializes with HTTP server; rooms and signaling support P2P WebRTC sessions.
-
-```js
-// meetingSocket.js (simplified)
-io.on('connection', (socket) => {
-  socket.on('join-room', (roomId, userId) => {
-    socket.join(roomId);
-    socket.to(roomId).emit('user-connected', userId);
-  });
-  socket.on('disconnect', () => socket.broadcast.emit('user-disconnected', socket.userId));
 });
 ```
 
-Frontend consumes this channel to render participant joins/leaves and render media streams.
+### Key Endpoints
 
-## 4.6. Report, Help, and Guidance
-- Resources: public/mine lists, secure downloads, visibility controls.
-- Tutoring guidance: upload flow, AI processing, review requests with notes.
-- Lecturer recommendations: prominent tags, consistent degree name, aligned actions, and confirmation feedback.
-- Admin: degrees, lecturers, students, announcements, and content oversight.
-- Help docs can be added using existing layout and routing for structured user guidance.
+#### User Management
+- `POST /api/login` - User authentication
+- `POST /api/register` - User registration
+- `GET /api/profile` - User profile
+- `PUT /api/profile` - Update profile
 
-# SLIIT-HUB – Full Project Documentation
+#### Content Management
+- `GET /api/content/modules` - List modules
+- `GET /api/content/videos` - List videos
+- `POST /api/content/upload` - Upload content
 
-SLIIT-HUB is a full-stack learning and collaboration platform featuring secure authentication, content and video management, resources, tutoring, lecturer recommendations, real-time meetings, and AI-assisted video intelligence. The stack includes a React frontend, Node.js/Express backend with MongoDB, a Python AI microservice, and WebSocket-based real-time communication.
+#### Resources
+- `GET /api/resources` - List resources
+- `POST /api/resources/upload` - Upload resource
+- `PUT /api/resources/:id` - Update resource
+- `DELETE /api/resources/:id` - Delete resource
 
-## Table of Contents
-- Project Overview
-- Features
-- Architecture
-- Getting Started (Setup & Run)
-- Environment Configuration
-- Chapter 04 – System Development
-  - 4.1. Frontend Development
-  - 4.2. Database Development
-  - 4.3. Backend Development
-  - 4.4. AI Model Integration
-  - 4.5. Real-time Communication (Meetings)
-  - 4.6. Report, Help, and Guidance
-- Appendices
-  - Appendix A: Frontend UI Mapping (React)
-  - Appendix B: Backend API Endpoints (Express)
-  - Appendix C: Database and Storage
-  - Appendix D: Real-time Communication and WebRTC
-  - Appendix E: AI Service Integration (Python)
-  - Appendix F: Admin Module
-  - Appendix G: Suggested Screenshot List
-  - Appendix H: Endpoint-to-UI Crosswalk
+#### Meetings
+- `GET /api/meetings` - List meetings
+- `POST /api/meetings/create` - Create meeting
+- `GET /api/websocket/status` - WebSocket status
 
----
+### WebSocket Events
 
-## Project Overview
-SLIIT-HUB streamlines student learning with a modular content system, integrated meetings, resource sharing, tutoring support, AI-enhanced video processing, and an administration console. It enforces authenticated access to core features and offers a consistent UX for both students and admins.
+#### Meeting Events
+- `join-room` - Join meeting room
+- `leave-room` - Leave meeting room
+- `user-joined` - User joined notification
+- `user-left` - User left notification
+- `message` - Chat message
 
-## Features
-- Authentication and profile management
-- Modular content & videos with comments
-- Resource repository (upload, download)
-- Calendar with reminders
-- Tutoring flows and lecturer reviews
-- Real-time meetings (WebSocket + WebRTC)
-- AI tool for video summaries, timestamps, descriptions, and scene detection
-- Admin dashboard (degrees, lecturers, students, videos, announcements, admins)
+## Troubleshooting
 
-## Architecture
-- Frontend: React SPA with React Router and protected routes
-- Backend: Node.js + Express REST APIs
-- Database: MongoDB with Mongoose
-- Real-time: WebSocket server for meetings
-- AI: Python microservice for model-heavy tasks (Whisper, scene detection, GPT-based summarization)
+### Common Issues
 
-Directory layout (key parts):
-- `client/` – React application (pages by feature)
-- `server/` – Express server, routes per module, WebSocket server
-- `python_services/` – Python AI microservice and utilities
-- `shared/` – shared constants and types
+#### Frontend Issues
+1. **Page Not Loading**
+   - Check browser console for errors
+   - Verify API server is running
+   - Clear browser cache and cookies
 
----
+2. **Authentication Problems**
+   - Verify login credentials
+   - Check JWT token expiration
+   - Clear stored authentication data
 
-## Getting Started (Setup & Run)
+3. **Video Playback Issues**
+   - Check internet connection
+   - Verify video file format
+   - Update browser to latest version
 
-### Prerequisites
-- Node.js LTS and npm
-- Python 3.10+ and virtualenv (or venv)
-- MongoDB running locally or a cloud URI
+#### Backend Issues
+1. **Server Not Starting**
+   - Check MongoDB connection
+   - Verify environment variables
+   - Check port availability
 
-### Backend (server)
-1. `cd server`
-2. `npm install`
-3. Create `.env` with:
-   - `PORT=5000`
-   - `MONGO_URI=mongodb://localhost:27017/sliithub_db`
-4. `npm start`
+2. **Database Connection Errors**
+   - Verify MongoDB service status
+   - Check connection string
+   - Verify database permissions
 
-### Frontend (client)
-1. `cd client`
-2. `npm install`
-3. `npm start`
+3. **File Upload Failures**
+   - Check disk space
+   - Verify file permissions
+   - Check file size limits
 
-### AI Service (python_services)
-1. `cd python_services`
-2. Create and activate virtual environment:
-   - Windows PowerShell: `python -m venv venv && .\venv\Scripts\Activate.ps1`
-   - macOS/Linux: `python3 -m venv venv && source venv/bin/activate`
-3. `pip install -r requirements.txt`
-4. Start service:
-   - Windows: `start_service.bat`
-   - macOS/Linux: `./start_service.sh`
+#### Python Services Issues
+1. **AI Services Not Responding**
+   - Check Python environment
+   - Verify API keys
+   - Check service logs
 
-Ensure the AI service health endpoint responds (default `http://localhost:5001/health`).
+2. **Video Processing Failures**
+   - Verify FFmpeg installation
+   - Check file formats
+   - Monitor system resources
 
----
+### Error Codes
 
-## Environment Configuration
-- Backend: `MONGO_URI`, `PORT`, any AI service base URL if configurable
-- Client: API base URL configuration (if applicable)
-- Python service: model paths and optional environment variables referenced in `api.py`
+#### HTTP Status Codes
+- `200` - Success
+- `400` - Bad Request
+- `401` - Unauthorized
+- `403` - Forbidden
+- `404` - Not Found
+- `500` - Internal Server Error
 
----
+#### Common Error Messages
+- `"Authentication failed"` - Invalid credentials
+- `"File too large"` - Exceeds size limit
+- `"Invalid file type"` - Unsupported format
+- `"Database connection failed"` - MongoDB issue
 
-## Chapter 04 – System Development
+### Performance Optimization
 
-This chapter documents the technical development of the SLIIT-HUB application. It covers frontend implementation in React, backend development with Node.js/Express, database setup using MongoDB/Mongoose, real-time meeting infrastructure, and AI service integration via a Python microservice. It also describes user-facing features such as authentication, calendar, content and resources, tutoring, lecturer recommendations, and an AI tool for video intelligence.
+#### Frontend
+- Enable code splitting
+- Optimize bundle size
+- Use lazy loading for routes
+- Implement caching strategies
 
-### 4.1. Frontend Development
-The frontend is a single-page application built with React (React Router, protected routes, modular feature pages). The UI emphasizes clarity and quick access to learning resources, meetings, and AI tools. Routes are secured using a `ProtectedRoute` wrapper to ensure authenticated access to core features.
+#### Backend
+- Database indexing
+- Query optimization
+- Connection pooling
+- Rate limiting
 
-Implemented pages and features:
-1) Sign Up and Login functionalities
-- Users can register and sign in via Register and Login pages. Basic recovery via Forgot Password.
-- Post-login navigation lands on the dashboard. Route protection redirects unauthenticated users to the login screen.
+#### Database
+- Regular maintenance
+- Index optimization
+- Query analysis
+- Backup strategies
 
-2) Dashboard function
-- The dashboard acts as the hub for key modules: modules/content, videos, calendar, meetings, AI tool, tutoring, resources, and lecturer recommendations.
+## Development Guide
 
-3) Content and Video features
-- Organize learning units, list videos per module, and provide a detailed video page with comments.
+### Development Environment Setup
 
-4) Calendar with reminders feature
-- Calendar view for academic scheduling and reminders.
+#### Prerequisites
+- Node.js development tools
+- Python development environment
+- MongoDB development instance
+- Git workflow setup
 
-5) Tutoring feature
-- Session discovery and interaction with tutoring content.
+#### Development Scripts
+```bash
+# Frontend development
+cd client
+npm run start
 
-6) Real-time Meetings feature
-- Pages to join, manage, and participate in meetings; integrates with WebSocket for live session signaling.
+# Backend development
+cd server
+npm run dev
 
-7) Resources repository
-- Browse and download shared materials uploaded via backend.
+# Python services
+cd python_services
+python api.py
 
-8) AI Tool feature
-- Run AI-assisted operations on videos (summary, timestamps, descriptions). Orchestrates requests to backend AI endpoints.
+# Testing
+npm test
+python -m pytest
+```
 
-9) Lecturer Recommendations
-- View lecturer-provided recommendations tied to user’s profile and modules.
+### Code Structure
 
-10) Profile and Admin
-- User profile details; admin pages for management of degrees, lecturers, students, videos, announcements, admins.
+#### Frontend Architecture
+```
+src/
+├── modules/          # Feature modules
+├── shared/           # Common components
+├── services/         # API services
+├── styles/           # Global styles
+└── utils/            # Utility functions
+```
 
-### 4.2. Database Development
-The application uses MongoDB with Mongoose. The connection is configured via `MONGO_URI` with a local default for development. The backend initializes the database connection during server startup and logs health. Models define collections for users, content/videos, meetings, resources, tutoring, and admin domains.
+#### Backend Architecture
+```
+server/
+├── modules/          # Feature modules
+├── middleware/       # Custom middleware
+├── config/           # Configuration files
+├── websocket/        # WebSocket handlers
+└── utils/            # Utility functions
+```
 
-### 4.3. Backend Development
-The backend is an Express server that exposes REST APIs for users, content, meetings, resources, tutoring, admin, and AI processing. It also establishes a WebSocket server for real-time meeting functionality. Middleware manages CORS, cookies, JSON parsing, and authentication.
+#### Python Services
+```
+python_services/
+├── gpt/              # AI services
+├── whisper_service/  # Audio processing
+├── scene_detection/  # Video analysis
+└── tests/            # Test suite
+```
 
-- Server initialization, middleware, and WebSocket bootstrapping connect to MongoDB, start the HTTP server, and initialize the meeting socket server.
-- Modules:
-  - Users/auth: login, register, profile, admin management
-  - Content: videos CRUD, comments
-  - Meetings: creation/join, state, recording files, stats; real-time signaling via WS
-  - Resources: upload/list/download/delete
-  - Tutoring: video publishing, reactions, edit/delete
-  - Admin: degrees, lecturers, students, videos, announcements, admins
-  - AI: generation endpoints that proxy to the Python AI service
+### Testing
 
-### 4.4. AI Model Integration
-AI features are implemented as a Python microservice invoked by the Node backend via HTTP. Responsibilities include scene detection, transcription (Whisper), summarization, timestamps, and description generation. The Express AI controller verifies Python service health, maps Mongo video IDs to files, streams as multipart form-data, and returns structured results to the frontend.
+#### Frontend Testing
+```bash
+cd client
+npm test              # Run all tests
+npm run test:coverage # Coverage report
+npm run test:watch    # Watch mode
+```
 
-- Python service: `python_services/` (api.py, gpt_service.py, scene_detector.py, whisper_service.py)
-- Start scripts for Windows and POSIX systems
-- Decoupled design allows independent scaling and updates
+#### Backend Testing
+```bash
+cd server
+npm test              # Run tests
+npm run test:watch    # Watch mode
+```
 
-### 4.5. Real-time Communication (Meetings)
-The WebSocket server supports meeting sessions with real-time signaling. The socket server is initialized alongside the HTTP server and integrates with meeting routes to synchronize join/leave, start/end, and recording events. The frontend `MeetingPage` interacts with this channel, supported by `WebRTCService.js` for peer connection orchestration.
+#### Python Testing
+```bash
+cd python_services
+python -m pytest      # Run all tests
+python -m pytest -v   # Verbose output
+python -m pytest --cov # Coverage report
+```
 
-### 4.6. Report, Help, and Guidance
-The platform provides resource downloads, lecturer recommendations, and tutoring guidance, with clear navigation and protected routing. Admin tooling offers oversight and content management. A dedicated “Help” page can be added under client routes to centralize usage guidance.
+### Deployment
 
----
+#### Production Build
+```bash
+# Frontend
+cd client
+npm run build
 
-## Appendices
+# Backend
+cd server
+npm run build
+```
 
-### Appendix A: Frontend UI Mapping (React)
-- Auth
-  - `client/src/modules/user/components/LoginPage.jsx`
-  - `client/src/modules/user/components/RegisterPage.jsx`
-  - `client/src/modules/user/components/ForgotPasswordPage.jsx`
-  - `client/src/shared/components/ProtectedRoute.jsx`
-- Dashboard
-  - `client/src/modules/user/components/LandingPage.jsx`
-  - Routes: `client/src/routes.js`
-- Profile
-  - `client/src/modules/user/components/ProfilePage.jsx`
-- Content & Videos
-  - `client/src/modules/content/components/ModuleListPage.jsx`
-  - `client/src/modules/content/components/ModulePage.jsx`
-  - `client/src/modules/content/components/VideoListPage.jsx`
-  - `client/src/modules/content/components/VideoDetailsPage.jsx`
-- Calendar
-  - `client/src/modules/calendar/components/CalendarPage.jsx`
-- Meetings
-  - `client/src/modules/meetings/components/JoinMeetingPage.jsx`
-  - `client/src/modules/meetings/components/MyMeetingsPage.jsx`
-  - `client/src/modules/communication/components/MeetingPage.jsx`
-  - WebRTC helper: `client/src/services/WebRTCService.js`
-- Resources
-  - `client/src/modules/resources/components/ResourcesPage.jsx`
-- Tutoring
-  - `client/src/modules/tutoring/components/TutoringPage.jsx`
-  - `client/src/modules/tutoring/components/VideoEditPage.jsx`
-  - `client/src/modules/tutoring/components/LecturerReviewDialog.jsx`
-- AI Tool
-  - `client/src/modules/ai/components/AIToolPage.jsx`
-  - `client/src/modules/ai/components/AISummaryGenerator.jsx`
-  - `client/src/modules/ai/components/AITimestampsGenerator.jsx`
-  - `client/src/modules/ai/components/AIDescriptionGenerator.jsx`
-  - Hook: `client/src/modules/ai/hooks/useAIModel.js`
-- Lecturer
-  - `client/src/modules/lecturer/components/MyRecommendationsPage.jsx`
-- Admin
-  - Layout & Navigation: `AdminLayout.jsx`, `AdminSidebar.jsx`
-  - Pages: `AdminDashboardHome.jsx`, `AdminDegreesPage.jsx`, `AdminLecturersPage.jsx`, `AdminStudentsPage.jsx`, `AdminVideosPage.jsx`, `AdminAnnouncementsPage.jsx`, `AdminAdminsPage.jsx`
-  - Login: `AdminLoginPage.jsx`
+#### Environment Configuration
+- Set production environment variables
+- Configure production database
+- Set up SSL certificates
+- Configure reverse proxy
 
-### Appendix B: Backend API Endpoints (Express)
-- Users & Auth (`server/modules/user/routes.js`)
-  - POST `/api/user/login`
-  - POST `/api/user/register`
-  - GET `/api/user/protected` (JWT)
-  - PUT `/api/user/profile`
-  - Admin: GET/POST/PUT/DELETE `/api/user/admins`
-  - Admin login: POST `/api/user/admin/login`
-- Content – Videos (`server/modules/content/video.routes.js`)
-  - `POST /api/content/videos`
-  - `GET /api/content/videos`
-  - `GET /api/content/videos/:id`
-  - `PUT /api/content/videos/:id`
-  - `DELETE /api/content/videos/:id`
-- Content – Comments (`server/modules/content/comment.routes.js`)
-  - `GET /api/content/:videoId/comments`
-  - `POST /api/content/:videoId/comments`
-  - `POST /api/content/comments/:commentId/replies`
-  - `PUT /api/content/comments/:commentId`
-  - `DELETE /api/content/comments/:commentId`
-- Resources (`server/modules/resources/routes.js`)
-  - `POST /api/resources/upload`
-  - `GET /api/resources`
-  - `GET /api/resources/download/:id`
-  - `DELETE /api/resources/:id`
-- Meetings (`server/modules/meeting/routes.js`)
-  - `POST /api/meeting/`
-  - `GET /api/meeting/`
-  - `GET /api/meeting/public`
-  - `GET /api/meeting/my-meetings`
-  - `GET /api/meeting/:id`
-  - `PUT /api/meeting/:id`
-  - `DELETE /api/meeting/:id`
-  - `POST /api/meeting/:meetingId/join`
-  - `POST /api/meeting/:meetingId/leave`
-  - `POST /api/meeting/:meetingId/start`
-  - `POST /api/meeting/:meetingId/participate`
-  - `POST /api/meeting/:meetingId/leave-participation`
-  - `POST /api/meeting/:meetingId/end`
-  - `POST /api/meeting/:meetingId/recording/start`
-  - `POST /api/meeting/:meetingId/recording/stop`
-  - `POST /api/meeting/:meetingId/recordings`
-  - `GET /api/meeting/:meetingId/recordings`
-  - `GET /api/meeting/:meetingId/stats`
-- Tutoring (`server/modules/tutoring/routes.js`)
-  - `GET /api/tutoring/videos/published`
-  - `POST /api/tutoring/upload`
-  - `GET /api/tutoring/videos`
-  - `GET /api/tutoring/videos/:videoId`
-  - `GET /api/tutoring/video/:videoId`
-  - `GET /api/tutoring/thumbnail/:videoId`
-  - `PUT /api/tutoring/videos/:videoId`
-  - `DELETE /api/tutoring/videos/:videoId`
-  - `POST /api/tutoring/videos/:videoId/like`
-- Lecturer (`server/modules/lecturer/routes.js`)
-  - `POST /api/lecturer/admin/lecturers`
-- Admin – Degrees (`server/modules/admin/degree.routes.js`)
-  - `POST /api/admin/degrees`
-  - `GET /api/admin/degrees`
-  - `GET /api/admin/degrees/:id`
-  - `PUT /api/admin/degrees/:id`
-  - `DELETE /api/admin/degrees/:id`
-- AI (`server/modules/ai/routes.js`)
-  - `POST /api/ai/generate-summary`
-  - `POST /api/ai/generate-description`
-  - `POST /api/ai/generate-timestamps`
-  - `POST /api/ai/detect-scenes`
-  - `POST /api/ai/process-video`
-  - `GET /api/ai/test-video/:videoId`
-  - `GET /api/ai/comprehensive-test/:videoId`
-  - `GET /api/ai/health`
+#### Monitoring & Logging
+- Application performance monitoring
+- Error tracking and alerting
+- Log aggregation and analysis
+- Health check endpoints
 
-### Appendix C: Database and Storage
-- Database: MongoDB + Mongoose
-  - Connection: `server/config/db.js`, `server/server.js`
-  - Representative models under `server/modules/*/model.js`
+## Contributing
 
-### Appendix D: Real-time Communication and WebRTC
-- WebSocket server: `server/websocket/meetingSocket.js`
-- HTTP+WS bootstrap: `server/server.js`
-- Client signaling & peer management: `client/src/services/WebRTCService.js`
-- Meeting UI: `JoinMeetingPage.jsx`, `MyMeetingsPage.jsx`, `MeetingPage.jsx`
+### Development Workflow
+1. **Fork the repository**
+2. **Create feature branch**: `git checkout -b feature-name`
+3. **Make changes**: Follow coding standards
+4. **Test thoroughly**: Ensure all tests pass
+5. **Submit pull request**: Include detailed description
 
-### Appendix E: AI Service Integration (Python)
-- Python microservice: `python_services/`
-  - Entrypoint: `api.py`
-  - GPT: `gpt/gpt_service.py`
-  - Scene detection: `scene_detection/scene_detector.py`
-  - Whisper/transcription: `whisper_service/`
-  - Utilities: `common/video_processor.py`
-  - Requirements: `requirements.txt`; launchers: `start_service.sh`, `start_service.bat`
-- Backend integration: `server/modules/ai/controller.js`
-- Frontend integration: `AIToolPage.jsx`, AI generator components, `useAIModel.js`
+### Coding Standards
+- **JavaScript**: ESLint configuration
+- **Python**: PEP 8 compliance
+- **CSS**: BEM methodology
+- **Git**: Conventional commit messages
 
-### Appendix F: Admin Module
-- UI: `client/src/modules/admin/components/*`
-- APIs: degrees (`/api/admin/degrees`), users/admins (`/api/user/*`), content/tutoring
+### Documentation
+- Update README for new features
+- Document API changes
+- Include usage examples
+- Maintain changelog
 
-### Appendix G: Suggested Screenshot List
-- Auth: Login, Register, Forgot Password
-- Dashboard: LandingPage
-- Profile: ProfilePage
-- Content & Videos: ModuleList, Module, VideoList, VideoDetails (with comments)
-- Calendar: CalendarPage with add note dialog
-- Meetings: JoinMeeting, MyMeetings, Meeting (join flow)
-- Resources: ResourcesPage upload/download
-- Tutoring: TutoringPage, VideoEditPage, LecturerReviewDialog
-- AI Tool: AIToolPage (summary, timestamps, description)
-- Lecturer: MyRecommendationsPage
-- Admin: AdminDashboardHome, AdminDegrees, AdminLecturers, AdminStudents, AdminVideos, AdminAnnouncements, AdminAdmins
-- Health: AI /health response, server status route
-
-### Appendix H: Endpoint-to-UI Crosswalk
-- `/api/user/login`, `/api/user/register` → LoginPage, RegisterPage
-- `/api/content/videos`, `/api/content/videos/:id` → VideoListPage, VideoDetailsPage
-- `/api/content/:videoId/comments` → VideoDetailsPage
-- `/api/resources/*` → ResourcesPage
-- `/api/meeting/*` → JoinMeetingPage, MyMeetingsPage, MeetingPage
-- `/api/ai/*` → AIToolPage + AI generators
-- `/api/admin/degrees` → AdminDegreesPage
-- `/api/user/admins` → AdminAdminsPage
-- `/api/user/admin/login` → AdminLoginPage
+### Testing Requirements
+- Unit tests for new features
+- Integration tests for API changes
+- UI tests for frontend components
+- Performance testing for critical paths
 
 ---
 
-## License
-This repository is intended for academic and internal development use. Add your chosen license here.
+## Support & Contact
+
+### Getting Help
+- **Documentation**: Check this README first
+- **Issues**: Use GitHub issue tracker
+- **Discussions**: GitHub discussions for questions
+- **Email**: Contact development team
+
+### Reporting Bugs
+1. Check existing issues
+2. Create new issue with:
+   - Clear description
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Environment details
+   - Screenshots/logs if applicable
+
+### Feature Requests
+- Use GitHub discussions
+- Provide use case details
+- Consider implementation complexity
+- Prioritize based on user needs
+
+---
+
+**Last Updated**: December 2024  
+**Version**: 1.0.0  
+**Maintainers**: SLIIT Development Team
