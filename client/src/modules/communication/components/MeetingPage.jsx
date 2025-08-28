@@ -747,58 +747,6 @@ const MeetingPage = () => {
     );
   }
 
-  const handleAudioDeviceChange = (deviceId) => {
-    if (currentUser) {
-      webrtcService.current.setAudioDevice(deviceId);
-      setCurrentUser(prev => ({ ...prev, audioDeviceId: deviceId }));
-    }
-  };
-
-  const handleVideoDeviceChange = (deviceId) => {
-    if (currentUser) {
-      webrtcService.current.setVideoDevice(deviceId);
-      setCurrentUser(prev => ({ ...prev, videoDeviceId: deviceId }));
-    }
-  };
-
-  const handleAudioOutputDeviceChange = (deviceId) => {
-    if (currentUser) {
-      webrtcService.current.setAudioOutputDevice(deviceId);
-      setCurrentUser(prev => ({ ...prev, outputDeviceId: deviceId }));
-    }
-  };
-
-  const troubleshootCamera = () => {
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null; // Stop current stream
-      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        .then(stream => {
-          console.log('Troubleshooting: Camera stream obtained:', stream);
-          localVideoRef.current.srcObject = stream;
-          alert('Camera stream restarted successfully.');
-        })
-        .catch(error => {
-          console.error('Troubleshooting: Camera access failed:', error);
-          alert('Failed to restart camera. Please check your camera settings and permissions.');
-        });
-    } else {
-      alert('Camera preview is not available.');
-    }
-  };
-
-  const refreshDeviceList = () => {
-    navigator.mediaDevices.enumerateDevices().then(devices => {
-      setAudioDevices(devices.filter(d => d.kind === 'audioinput'));
-      setVideoDevices(devices.filter(d => d.kind === 'videoinput'));
-      setOutputDevices(devices.filter(d => d.kind === 'audiooutput'));
-      setCurrentUser(prev => ({ ...prev, audioDeviceId: '', videoDeviceId: '', outputDeviceId: '' }));
-      alert('Device list refreshed.');
-    }).catch(error => {
-      console.error('Error refreshing device list:', error);
-      alert('Failed to refresh device list. Please check browser console for details.');
-    });
-  };
-
   return (
     <div className="meeting-page">
       {/* Connection Status */}
@@ -1164,60 +1112,15 @@ const MeetingPage = () => {
               <h4>Audio & Video</h4>
               <div className="setting-item">
                 <label>Microphone</label>
-                <select 
-                  value={currentUser?.audioDeviceId || ''} 
-                  onChange={(e) => handleAudioDeviceChange(e.target.value)}
-                >
-                  {audioDevices.map(d => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Microphone ${d.deviceId.slice(0, 8)}...`}
-                    </option>
-                  ))}
+                <select>
+                  <option>Default Microphone</option>
                 </select>
               </div>
               <div className="setting-item">
                 <label>Camera</label>
-                <select 
-                  value={currentUser?.videoDeviceId || ''} 
-                  onChange={(e) => handleVideoDeviceChange(e.target.value)}
-                >
-                  {videoDevices.map(d => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Camera ${d.deviceId.slice(0, 8)}...`}
-                    </option>
-                  ))}
+                <select>
+                  <option>Default Camera</option>
                 </select>
-              </div>
-              <div className="setting-item">
-                <label>Speaker/Headset</label>
-                <select 
-                  value={currentUser?.outputDeviceId || ''} 
-                  onChange={(e) => handleAudioOutputDeviceChange(e.target.value)}
-                >
-                  {outputDevices.map(d => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Speaker ${d.deviceId.slice(0, 8)}...`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Camera Troubleshooting */}
-              <div className="setting-item">
-                <button 
-                  className="troubleshoot-btn"
-                  onClick={troubleshootCamera}
-                  title="Troubleshoot camera issues"
-                >
-                  🔧 Troubleshoot Camera
-                </button>
-                <button 
-                  className="refresh-devices-btn"
-                  onClick={refreshDeviceList}
-                  title="Refresh device list"
-                >
-                  🔄 Refresh Devices
-                </button>
               </div>
             </div>
             
@@ -1242,25 +1145,6 @@ const MeetingPage = () => {
               <div className="connection-info">
                 <p>Status: {connectionStatus}</p>
                 <p>Participants: {participants.length + 1}</p>
-                <p>WebRTC Connections: {webrtcService.current?.peerConnections?.size || 0}</p>
-              </div>
-            </div>
-
-            {/* Camera Status */}
-            <div className="setting-group">
-              <h4>Camera Status</h4>
-              <div className="camera-status">
-                <p>Camera: {isVideoOff ? '❌ Off' : '✅ On'}</p>
-                <p>Microphone: {isMuted ? '❌ Muted' : '✅ Active'}</p>
-                {localVideoRef.current?.srcObject && (
-                  <p>Stream: ✅ Active</p>
-                )}
-                {error && (
-                  <div className="error-message">
-                    <p>⚠️ Error: {error}</p>
-                    <button onClick={() => setError(null)}>Clear Error</button>
-                  </div>
-                )}
               </div>
             </div>
           </div>

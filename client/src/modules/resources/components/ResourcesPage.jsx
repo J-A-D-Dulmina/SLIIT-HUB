@@ -102,7 +102,6 @@ const ResourcesPage = ({ mode = 'all', embedded = false, openUploadTrigger = 0 }
     const selectedDegree = degreeOptions.find(d => d._id === uploadFormData.degree);
     if (selectedDegree) {
       setYearOptions(selectedDegree.years || []);
-      // Reset year/semester/module if degree changes
       if (!selectedDegree.years.some(y => String(y.yearNumber) === String(uploadFormData.year))) {
         setUploadFormData(prev => ({ ...prev, year: '', semester: '', module: '' }));
       }

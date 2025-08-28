@@ -8,15 +8,6 @@ class WebRTCService {
     this.userId = null;
     this.userName = null;
     
-    // Camera and device management
-    this.currentVideoDeviceId = null;
-    this.currentAudioDeviceId = null;
-    this.availableDevices = {
-      video: [],
-      audio: [],
-      audioOutput: []
-    };
-    
     // Recording functionality
     this.mediaRecorder = null;
     this.recordedChunks = [];
@@ -50,7 +41,6 @@ class WebRTCService {
     this.onMeetingEnded = null;
     this.onHostTransferred = null;
     this.onHostRestored = null;
-    this.onDevicesChanged = null;
   }
 
   // Initialize WebRTC service
