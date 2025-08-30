@@ -15,6 +15,7 @@ import tempfile
 import subprocess
 import json
 import time
+import gc
 from datetime import datetime
 from common.video_processor import VideoProcessor
 from gpt.gpt_service import GPTService
@@ -96,7 +97,11 @@ def get_video_directly(video_id):
         
         # Try to find a file that might match the video ID
         for video_file in video_files:
-            if video_id in video_file or 'videoFile' in video_file:
+            # Check if video ID is in filename or if filename contains 'videoFile'
+            if (video_id in video_file or 
+                'videoFile' in video_file or 
+                video_file.startswith(video_id) or
+                video_file.endswith(f'{video_id}.mp4')):
                 video_path = os.path.join(uploads_dir, video_file)
                 logger.info(f"Found matching video file: {video_file}")
                 return {
@@ -105,15 +110,12 @@ def get_video_directly(video_id):
                     'id': video_id
                 }
         
-        # Use the first available video file as fallback
-        video_file = video_files[0]
-        video_path = os.path.join(uploads_dir, video_file)
-        logger.info(f"Using first available video file: {video_file}")
-        return {
-            'videoFile': f'uploads/videos/{video_file}',
-            'title': f'Video {video_id}',
-            'id': video_id
-        }
+        # If no match found, log error and return None instead of using wrong file
+        logger.error(f"NO MATCHING VIDEO FILE FOUND for video ID: {video_id}")
+        logger.error(f"Available files: {video_files}")
+        logger.error("This indicates a video file naming or storage issue")
+        logger.error("Expected filename format: {video_id}.mp4")
+        return None
         
     except Exception as e:
         logger.error(f"Error getting video directly: {str(e)}")

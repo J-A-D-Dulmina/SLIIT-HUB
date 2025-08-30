@@ -142,10 +142,7 @@ exports.uploadVideo = async (req, res) => {
         return res.status(400).json({ message: 'Student not found.' });
       }
 
-      // Save relative paths instead of absolute paths
-      const videoFileName = path.basename(req.file.path);
-      const relativeVideoPath = `uploads/videos/${videoFileName}`;
-
+      // Create the video record first to get the MongoDB _id
       const video = new Video({
         uniqueId,
         title,
@@ -154,15 +151,45 @@ exports.uploadVideo = async (req, res) => {
         degree,
         year,
         semester,
-        videoFile: relativeVideoPath,
+        videoFile: '', // Will be updated after saving
         thumbnail: thumbnail,
         fileSize: req.file.size,
-        duration: duration, // Add duration
+        duration: duration,
         uploadedBy: req.user.id,
         studentId: student.studentId,
         addDate: new Date(),
         updateDate: new Date()
       });
+
+      // Save the video record to get the MongoDB _id
+      await video.save();
+      
+      // Now rename the uploaded file to use the video ID
+      const videoId = video._id.toString();
+      const videoExtension = path.extname(req.file.originalname);
+      const newVideoFileName = `${videoId}${videoExtension}`;
+      const newVideoPath = path.join(__dirname, '../../uploads/videos', newVideoFileName);
+      
+      // Rename the file
+      try {
+        fs.renameSync(req.file.path, newVideoPath);
+        console.log(`Renamed video file to: ${newVideoFileName}`);
+      } catch (renameError) {
+        console.error('Error renaming video file:', renameError);
+        // If rename fails, try to copy and delete
+        try {
+          fs.copyFileSync(req.file.path, newVideoPath);
+          fs.unlinkSync(req.file.path);
+          console.log(`Copied video file to: ${newVideoFileName}`);
+        } catch (copyError) {
+          console.error('Error copying video file:', copyError);
+          // Keep the original file if all else fails
+        }
+      }
+      
+      // Update the video record with the correct filename
+      video.videoFile = `uploads/videos/${newVideoFileName}`;
+      await video.save();
 
       // Always update summary if provided
       if (summary !== undefined) video.summary = summary;

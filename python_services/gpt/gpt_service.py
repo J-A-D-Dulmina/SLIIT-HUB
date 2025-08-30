@@ -12,8 +12,19 @@ class GPTService:
         self.api_key = os.getenv('OPENAI_API_KEY')
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
-        import openai
-        self.client = openai.OpenAI(api_key=self.api_key)
+        
+        # Check OpenAI library version and initialize accordingly
+        try:
+            # Try new version (1.0.0+)
+            self.client = openai.OpenAI(api_key=self.api_key)
+            self.is_new_version = True
+            logger.info("Using OpenAI library version 1.0.0+")
+        except AttributeError:
+            # Fallback to old version (< 1.0.0)
+            openai.api_key = self.api_key
+            self.is_new_version = False
+            logger.info("Using OpenAI library version < 1.0.0")
+        
         # Use faster model for better performance
         self.model = "gpt-3.5-turbo"
         self.system_prompt = os.getenv(
@@ -29,14 +40,29 @@ class GPTService:
         for attempt in range(retries):
             try:
                 logger.info(f"Making OpenAI API call (attempt {attempt + 1}/{retries})")
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    max_tokens=max_tokens,
-                    temperature=temperature
-                )
+                
+                if self.is_new_version:
+                    # New version syntax
+                    response = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=messages,
+                        max_tokens=max_tokens,
+                        temperature=temperature
+                    )
+                    result = response.choices[0].message.content.strip()
+                else:
+                    # Old version syntax
+                    response = openai.ChatCompletion.create(
+                        model=self.model,
+                        messages=messages,
+                        max_tokens=max_tokens,
+                        temperature=temperature
+                    )
+                    result = response.choices[0].message.content.strip()
+                
                 logger.info(f"API call successful on attempt {attempt + 1}")
-                return response.choices[0].message.content.strip()
+                return result
+                
             except Exception as e:
                 logger.error(f"API call failed on attempt {attempt + 1}: {str(e)}")
                 if attempt == retries - 1:

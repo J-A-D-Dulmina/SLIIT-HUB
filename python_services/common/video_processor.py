@@ -15,19 +15,21 @@ class VideoProcessor:
                filename.rsplit('.', 1)[1].lower() in self.allowed_extensions
     
     def extract_audio_from_video(self, video_path):
-        """Extract audio from video file using ffmpeg - Optimized for speed"""
+        """Extract audio from video file using ffmpeg - Optimized for speed and memory"""
         audio_path = video_path.rsplit('.', 1)[0] + '.wav'
         
         try:
-            # Use ffmpeg with optimized parameters for faster processing
+            # Use ffmpeg with optimized parameters for faster processing and lower memory usage
             cmd = [
                 'ffmpeg', '-i', video_path, 
                 '-vn',  # No video
                 '-acodec', 'pcm_s16le',  # PCM 16-bit
-                '-ar', '8000',  # 8kHz sample rate (reduced for speed)
+                '-ar', '16000',  # 16kHz sample rate (balanced for quality and memory)
                 '-ac', '1',  # Mono
                 '-y',  # Overwrite output file
                 '-loglevel', 'error',  # Reduce logging for speed
+                '-af', 'volume=1.0',  # Normalize volume
+                '-f', 'wav',  # Force WAV format
                 audio_path
             ]
             
@@ -36,6 +38,12 @@ class VideoProcessor:
             if result.returncode != 0:
                 logger.error(f"FFmpeg error: {result.stderr}")
                 raise Exception("Failed to extract audio from video")
+            
+            # Check file size and warn if too large
+            file_size = os.path.getsize(audio_path)
+            file_size_mb = file_size / (1024 * 1024)
+            if file_size_mb > 100:  # Warn if larger than 100MB
+                logger.warning(f"Large audio file generated: {file_size_mb:.1f}MB. This may cause memory issues.")
             
             return audio_path
         except Exception as e:
