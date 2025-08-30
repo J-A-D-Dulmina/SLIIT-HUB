@@ -8,9 +8,9 @@
  */
 
 const mongoose = require('mongoose');
-const Meeting = require('./modules/meeting/model');
-const Student = require('./modules/user/model');
-const Lecturer = require('./modules/lecturer/model');
+const Meeting = require('../modules/meeting/model');
+const Student = require('../modules/user/model');
+const Lecturer = require('../modules/lecturer/model');
 
 // Connect to database
 const connectDB = async () => {
