@@ -67,7 +67,7 @@ class GPTService:
                 logger.error(f"API call failed on attempt {attempt + 1}: {str(e)}")
                 if attempt == retries - 1:
                     raise e
-                time.sleep(1)  # Reduced backoff for faster retry
+                time.sleep(1)  
         return None
 
     def generate_description(self, transcript, video_title=""):
