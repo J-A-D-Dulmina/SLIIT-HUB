@@ -501,4 +501,4 @@ For support and questions:
 
 **SLIIT-HUB** - Empowering Education Through Technology 🚀
 
-*Built with ❤️ by the SLIIT-HUB Development Team*
+*Built by J A D Dulmina*
