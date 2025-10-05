@@ -1,0 +1,63 @@
+[{
+  "_id": {
+    "$oid": "68601ed05bd8eaae4854a30a"
+  },
+  "studentId": "IT5222360",
+  "name": "R W G Ariyasighe",
+  "email": "randiwasana02@gmail.com",
+  "password": "$2b$10$IoPLCZwwuaHru1sQtCvqy.3KnEpssL1vm/gv3gUgjtNNKCpnYQwN2",
+  "mobile": "0713618272",
+  "enrolYear": 2020,
+  "degree": "BSc (Hons) in Information Technology",
+  "createdAt": {
+    "$date": "2025-06-28T16:56:48.931Z"
+  },
+  "updatedAt": {
+    "$date": "2025-06-28T16:56:48.931Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68adeea6453f10242743ec33"
+  },
+  "studentId": "IT707",
+  "name": "Deshan",
+  "email": "test@sillhub.com",
+  "password": "$2b$10$BFSQ5OiLVh9NRbnJWDFjpehvzYQjImaFvOrK7wKiLRd3LHjGEPT2m",
+  "mobile": "0713618282",
+  "enrolYear": 2021,
+  "degree": {
+    "$oid": "6880b007e79e73b302c80b67"
+  },
+  "degreeLegacy": "6880b007e79e73b302c80b67",
+  "createdAt": {
+    "$date": "2025-08-26T17:28:06.055Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-26T17:28:06.055Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d0e09e6318e19c4bd01450"
+  },
+  "studentId": "IT211324",
+  "name": "J A D Dulmina",
+  "email": "jaddulmina@gmail.com",
+  "password": "$2b$10$AbzyCplEFTgm4J31efyQaeokOECghye0ExE4bdIg.cQqlP59sn4KS",
+  "mobile": "0713618282",
+  "enrolYear": 2022,
+  "degree": {
+    "$oid": "6880b007e79e73b302c80b67"
+  },
+  "degreeLegacy": "6880b007e79e73b302c80b67",
+  "createdAt": {
+    "$date": "2025-09-22T05:37:34.938Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-22T05:37:34.938Z"
+  },
+  "__v": 0
+}]

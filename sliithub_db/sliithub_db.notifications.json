@@ -1,0 +1,241 @@
+[{
+  "_id": {
+    "$oid": "68b25fff54d8f68ac08496c8"
+  },
+  "userId": {
+    "$oid": "68b24a9426f414ade28ee6f8"
+  },
+  "type": "meeting",
+  "content": "Your meeting \"Teset\" has been scheduled.",
+  "read": false,
+  "meta": {
+    "meetingId": {
+      "$oid": "68b25fff54d8f68ac08496c4"
+    },
+    "startTime": {
+      "$date": "2025-08-30T02:35:00.000Z"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-08-30T02:20:47.041Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68b2685954d8f68ac0849894"
+  },
+  "userId": {
+    "$oid": "68b24a9426f414ade28ee6f8"
+  },
+  "type": "meeting",
+  "content": "Your meeting \"Teset\" has been scheduled.",
+  "read": false,
+  "meta": {
+    "meetingId": {
+      "$oid": "68b2685954d8f68ac0849890"
+    },
+    "startTime": {
+      "$date": "2025-08-30T03:02:00.000Z"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-08-30T02:56:25.710Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d0d3a424bf5e49844832f4"
+  },
+  "userId": {
+    "$oid": "68d0d22924bf5e4984483246"
+  },
+  "type": "meeting",
+  "content": "Your meeting \"Research Progress Review\" has been scheduled.",
+  "read": false,
+  "meta": {
+    "meetingId": {
+      "$oid": "68d0d3a424bf5e49844832f0"
+    },
+    "startTime": {
+      "$date": "2025-09-22T04:45:00.000Z"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-09-22T04:42:12.837Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d0d72324bf5e4984483537"
+  },
+  "userId": {
+    "$oid": "68d0d61024bf5e49844834c7"
+  },
+  "type": "meeting",
+  "content": "Your meeting \"Research Progress Review\" has been scheduled.",
+  "read": false,
+  "meta": {
+    "meetingId": {
+      "$oid": "68d0d72324bf5e4984483533"
+    },
+    "startTime": {
+      "$date": "2025-09-22T05:00:00.000Z"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-09-22T04:57:07.224Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d0dbb524bf5e4984483851"
+  },
+  "userId": {
+    "$oid": "68d0daac24bf5e49844837bf"
+  },
+  "type": "meeting",
+  "content": "Your meeting \"Research Progress Review\" has been scheduled.",
+  "read": false,
+  "meta": {
+    "meetingId": {
+      "$oid": "68d0dbb524bf5e498448384d"
+    },
+    "startTime": {
+      "$date": "2025-09-22T05:18:00.000Z"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-09-22T05:16:37.320Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d0e1a96318e19c4bd014ee"
+  },
+  "userId": {
+    "$oid": "68d0e09e6318e19c4bd01450"
+  },
+  "type": "meeting",
+  "content": "Your meeting \"Research Progress Review\" has been scheduled.",
+  "read": false,
+  "meta": {
+    "meetingId": {
+      "$oid": "68d0e1a96318e19c4bd014ea"
+    },
+    "startTime": {
+      "$date": "2025-09-22T05:43:00.000Z"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-09-22T05:42:01.524Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d0e22e6318e19c4bd015f9"
+  },
+  "userId": {
+    "$oid": "68601ed05bd8eaae4854a30a"
+  },
+  "type": "announcement",
+  "content": "Test",
+  "read": false,
+  "meta": {
+    "announcementId": {
+      "$oid": "68d0e22e6318e19c4bd015f5"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-09-22T05:44:14.327Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d0e22e6318e19c4bd015fc"
+  },
+  "userId": {
+    "$oid": "68aee0c2010a5bae013c32cc"
+  },
+  "type": "announcement",
+  "content": "Test",
+  "read": false,
+  "meta": {
+    "announcementId": {
+      "$oid": "68d0e22e6318e19c4bd015f5"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-09-22T05:44:14.328Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d0e22e6318e19c4bd015fa"
+  },
+  "userId": {
+    "$oid": "68adeea6453f10242743ec33"
+  },
+  "type": "announcement",
+  "content": "Test",
+  "read": false,
+  "meta": {
+    "announcementId": {
+      "$oid": "68d0e22e6318e19c4bd015f5"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-09-22T05:44:14.327Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d0e22e6318e19c4bd015fb"
+  },
+  "userId": {
+    "$oid": "68d0e09e6318e19c4bd01450"
+  },
+  "type": "announcement",
+  "content": "Test",
+  "read": false,
+  "meta": {
+    "announcementId": {
+      "$oid": "68d0e22e6318e19c4bd015f5"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-09-22T05:44:14.328Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d122116318e19c4bd01861"
+  },
+  "userId": {
+    "$oid": "68d0e09e6318e19c4bd01450"
+  },
+  "type": "meeting",
+  "content": "Your meeting \"Research Progress Review\" has been scheduled.",
+  "read": false,
+  "meta": {
+    "meetingId": {
+      "$oid": "68d122116318e19c4bd0185d"
+    },
+    "startTime": {
+      "$date": "2025-09-22T10:18:00.000Z"
+    }
+  },
+  "createdAt": {
+    "$date": "2025-09-22T10:16:49.570Z"
+  },
+  "__v": 0
+}]

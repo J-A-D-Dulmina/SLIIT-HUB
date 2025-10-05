@@ -1,0 +1,127 @@
+[{
+  "_id": {
+    "$oid": "68d0ce3024bf5e498448321c"
+  },
+  "uniqueId": "68b24a",
+  "title": "C++ Introduction | C ++ Tutorial ",
+  "description": "Learn the basics of C++ programming in this introductory tutorial, covering its general purpose and object-oriented n...",
+  "module": "IT0214",
+  "degree": "6880b007e79e73b302c80b67",
+  "year": "1",
+  "semester": "1",
+  "videoFile": "uploads/videos/68d0ce3024bf5e498448321c.mp4",
+  "thumbnail": "uploads/thumbnails/thumb_68b24a.jpg",
+  "fileSize": 54793809,
+  "duration": 1576,
+  "views": 0,
+  "likes": 0,
+  "likedBy": [],
+  "savedBy": [],
+  "uploadedBy": {
+    "$oid": "68b24a9426f414ade28ee6f8"
+  },
+  "studentId": "IT21133265",
+  "status": "draft",
+  "addDate": {
+    "$date": "2025-09-22T04:18:56.288Z"
+  },
+  "updateDate": {
+    "$date": "2025-09-22T04:30:38.655Z"
+  },
+  "timestamps": [
+    {
+      "time_start": "00:00",
+      "description": "C++ Introduction Overview by Kishore"
+    },
+    {
+      "time_start": "00:09",
+      "description": "C++ Introduction: C++ Software Applications Overview"
+    },
+    {
+      "time_start": "26:06",
+      "description": "Upcoming topics preview"
+    }
+  ],
+  "__v": 1,
+  "aiFeatures": {
+    "summary": true,
+    "timestamps": true,
+    "lecturerRecommended": false
+  },
+  "summary": "Summary:\nThe educational video provides an introduction to C++, emphasizing its general-purpose, high-level, compiler-based, and object-oriented nature. It explains that C++ allows for the creation of various types of software, making it a versatile and multi-purpose programming language. The video discusses examples of software that can be designed using C++, such as operating systems and editors like Notepad and MS Word.\n\nKey points:\n- C++ is a general-purpose, high-level, compiler-based, and object-oriented programming language.\n- It is referred to as a multi-purpose programming language due to its ability to design different types of software.\n- Examples of software that can be created using C++ include operating systems like DOS, Windows, and Linux, as well as editors like Notepad and MS Word.\n\nMain topics:\n1. Introduction to C++ and its characteristics\n2. C++ as a general-purpose programming language\n3. Examples of software that can be designed using C++",
+  "reviewLecturer": "lec002",
+  "reviewStatus": "rejected"
+},
+{
+  "_id": {
+    "$oid": "68d0e0b66318e19c4bd01488"
+  },
+  "uniqueId": "68d0e0",
+  "title": "What is Algorithm and Need of Algorithm  Properties of Algorithm  Algorithm vs Program",
+  "description": "Discover the essence of algorithms and their significance in our daily lives, exploring their properties and distingu...",
+  "module": "IT0214",
+  "degree": "6880b007e79e73b302c80b67",
+  "year": "1",
+  "semester": "1",
+  "videoFile": "uploads/videos/68d0e0b66318e19c4bd01488.mp4",
+  "thumbnail": "uploads/thumbnails/thumb_68d0e0.jpg",
+  "fileSize": 60906678,
+  "duration": 498,
+  "views": 0,
+  "likes": 0,
+  "likedBy": [],
+  "savedBy": [],
+  "uploadedBy": {
+    "$oid": "68d0e09e6318e19c4bd01450"
+  },
+  "studentId": "IT211324",
+  "status": "published",
+  "addDate": {
+    "$date": "2025-09-22T05:37:58.152Z"
+  },
+  "updateDate": {
+    "$date": "2025-09-22T10:14:49.475Z"
+  },
+  "timestamps": [
+    {
+      "time_start": "00:00",
+      "description": "Introduction to Algorithm Concepts"
+    },
+    {
+      "time_start": "02:03",
+      "description": "Algorithm Definition and Importance"
+    },
+    {
+      "time_start": "04:46",
+      "description": "Programmers writing code in implementation phase."
+    },
+    {
+      "time_start": "04:58",
+      "description": "Software development through algorithms"
+    },
+    {
+      "time_start": "05:25",
+      "description": "Algorithm design importance explained."
+    },
+    {
+      "time_start": "06:14",
+      "description": "Writing algorithms in natural language."
+    },
+    {
+      "time_start": "07:18",
+      "description": "Domain knowledge for algorithm writing."
+    }
+  ],
+  "__v": 2,
+  "aiFeatures": {
+    "summary": true,
+    "timestamps": true,
+    "lecturerRecommended": true
+  },
+  "summary": "Summary:\nThe educational video discusses the concept of algorithms, emphasizing their importance in various aspects of life, not just in computer science. Algorithms are defined as a set of steps to accomplish a task, with examples like making tea or a phone call. The video also highlights the difference between an algorithm and a program, stating that an algorithm is a finite set of instructions used to solve a problem.\n\nKey Points:\n1. Algorithms are sets of steps used to accomplish tasks, found in everyday activities like making tea or a phone call.\n2. The formal definition of an algorithm is a finite number of steps or instructions used to solve a problem.\n3. Algorithms are not limited to computer science but are utilized in various fields to streamline processes and achieve desired outcomes.\n\nMain Topics:\n- Definition and importance of algorithms\n- Everyday examples of algorithms in action\n- Formal definition of algorithms as a finite set of instructions for problem-solving",
+  "publishDate": {
+    "$date": "2025-09-22T05:41:27.705Z"
+  },
+  "reviewLecturer": "lec002",
+  "reviewStatus": "recommended"
+}]

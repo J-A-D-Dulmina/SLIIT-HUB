@@ -1,0 +1,20 @@
+[{
+  "_id": {
+    "$oid": "68aee0c2010a5bae013c32cc"
+  },
+  "lecturerId": "lec002",
+  "name": "Susantha saas",
+  "email": "lec@gmail.com",
+  "password": "$2b$10$M9.UiqLAgcsDhTAhkSSYvOw.UgRtXvOliZpTL87u6XYqR2WN83RPC",
+  "mobile": "0713618282",
+  "modules": [],
+  "degrees": [],
+  "createdAt": {
+    "$date": "2025-08-27T10:41:06.870Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-27T11:29:31.810Z"
+  },
+  "__v": 0,
+  "profileImageUrl": "uploads/profile/68aee0c2010a5bae013c32cc_1756294169594.png"
+}]

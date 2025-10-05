@@ -1,0 +1,159 @@
+[{
+  "_id": {
+    "$oid": "68880c69461ecf02258d8aee"
+  },
+  "videoId": {
+    "$oid": "6887ff9147084d937fbf1fa2"
+  },
+  "user": {
+    "id": "IT21133268",
+    "name": "J A D Dulmina",
+    "type": "student"
+  },
+  "content": "ddd",
+  "isPinned": false,
+  "createdAt": {
+    "$date": "2025-07-28T23:48:57.365Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-28T23:52:01.651Z"
+  },
+  "replies": [
+    {
+      "user": {
+        "id": "IT21133268",
+        "name": "J A D Dulmina",
+        "type": "student"
+      },
+      "content": "test",
+      "_id": {
+        "$oid": "68880d1b9239fb1fd0418422"
+      },
+      "createdAt": {
+        "$date": "2025-07-28T23:51:55.703Z"
+      }
+    },
+    {
+      "user": {
+        "id": "IT21133268",
+        "name": "J A D Dulmina",
+        "type": "student"
+      },
+      "content": "dukai",
+      "_id": {
+        "$oid": "68880d219239fb1fd0418428"
+      },
+      "createdAt": {
+        "$date": "2025-07-28T23:52:01.650Z"
+      }
+    }
+  ],
+  "__v": 2
+},
+{
+  "_id": {
+    "$oid": "68880d2e9239fb1fd041843b"
+  },
+  "videoId": {
+    "$oid": "6887ff9147084d937fbf1fa2"
+  },
+  "user": {
+    "id": "IT21133268",
+    "name": "J A D Dulmina",
+    "type": "student"
+  },
+  "content": "sathutui",
+  "isPinned": false,
+  "createdAt": {
+    "$date": "2025-07-28T23:52:14.644Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-28T23:52:14.645Z"
+  },
+  "replies": [],
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68880dee12210a4424e39b46"
+  },
+  "videoId": {
+    "$oid": "6887ff9147084d937fbf1fa2"
+  },
+  "user": {
+    "id": "IT21133268",
+    "name": "J A D Dulmina",
+    "type": "student"
+  },
+  "content": "dddd",
+  "isPinned": false,
+  "createdAt": {
+    "$date": "2025-07-28T23:55:26.957Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-28T23:55:26.961Z"
+  },
+  "replies": [],
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68b2783b54d8f68ac0849c10"
+  },
+  "videoId": {
+    "$oid": "68b24e5e26f414ade28ee728"
+  },
+  "user": {
+    "id": "lec002",
+    "name": "Susantha saas",
+    "type": "lecturer"
+  },
+  "content": "Test comment",
+  "isPinned": false,
+  "createdAt": {
+    "$date": "2025-08-30T04:04:11.898Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-30T04:04:30.342Z"
+  },
+  "replies": [
+    {
+      "user": {
+        "id": "lec002",
+        "name": "Susantha saas",
+        "type": "lecturer"
+      },
+      "content": "test comment",
+      "_id": {
+        "$oid": "68b2784e54d8f68ac0849c15"
+      },
+      "createdAt": {
+        "$date": "2025-08-30T04:04:30.340Z"
+      }
+    }
+  ],
+  "__v": 1
+},
+{
+  "_id": {
+    "$oid": "68d0e2116318e19c4bd015bc"
+  },
+  "videoId": {
+    "$oid": "68d0e0b66318e19c4bd01488"
+  },
+  "user": {
+    "id": "lec002",
+    "name": "Susantha saas",
+    "type": "lecturer"
+  },
+  "content": "comment",
+  "isPinned": false,
+  "createdAt": {
+    "$date": "2025-09-22T05:43:45.532Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-22T05:43:45.533Z"
+  },
+  "replies": [],
+  "__v": 0
+}]

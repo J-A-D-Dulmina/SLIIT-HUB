@@ -1,0 +1,45 @@
+[{
+  "_id": {
+    "$oid": "6880b007e79e73b302c80b67"
+  },
+  "name": "BSc (Hons) Information Technology",
+  "code": "IT1020",
+  "yearCount": 2,
+  "years": [
+    {
+      "yearNumber": 1,
+      "semesterCount": 1,
+      "semesters": [
+        {
+          "semesterNumber": 1,
+          "modules": [
+            {
+              "code": "IT0214",
+              "name": "Object Oriented Programming",
+              "credit": 3,
+              "description": "fafafafaf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "yearNumber": 2,
+      "semesterCount": 1,
+      "semesters": [
+        {
+          "semesterNumber": 1,
+          "modules": []
+        }
+      ]
+    }
+  ],
+  "icon": "FaCode",
+  "createdAt": {
+    "$date": "2025-07-23T09:48:55.252Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-23T09:54:35.884Z"
+  },
+  "__v": 0
+}]

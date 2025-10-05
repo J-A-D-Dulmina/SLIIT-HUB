@@ -1,0 +1,50 @@
+[{
+  "_id": {
+    "$oid": "68d0cc40f70b9263c0f4167b"
+  },
+  "title": "rr",
+  "description": "rr",
+  "type": "Documents",
+  "visibility": "public",
+  "degree": "6880b007e79e73b302c80b67",
+  "year": "1",
+  "semester": "1",
+  "module": "IT0214",
+  "filePath": "uploads/resources/file-1758514240299-278140973.pdf",
+  "fileType": "application/pdf",
+  "fileSize": 4122884,
+  "uploader": {
+    "$oid": "68b24a9426f414ade28ee6f8"
+  },
+  "uploaderModel": "Student",
+  "downloadCount": 0,
+  "uploadDate": {
+    "$date": "2025-09-22T04:10:40.343Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d0e1e56318e19c4bd01578"
+  },
+  "title": "SLIITHUB Test",
+  "description": "Test",
+  "type": "Documents",
+  "visibility": "public",
+  "degree": "6880b007e79e73b302c80b67",
+  "year": "1",
+  "semester": "1",
+  "module": "IT0214",
+  "filePath": "uploads/resources/file-1758519781988-774855729.pdf",
+  "fileType": "application/pdf",
+  "fileSize": 225655,
+  "uploader": {
+    "$oid": "68d0e09e6318e19c4bd01450"
+  },
+  "uploaderModel": "Student",
+  "downloadCount": 0,
+  "uploadDate": {
+    "$date": "2025-09-22T05:43:01.991Z"
+  },
+  "__v": 0
+}]

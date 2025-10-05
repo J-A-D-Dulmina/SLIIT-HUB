@@ -1,0 +1,161 @@
+[{
+  "_id": {
+    "$oid": "68d0e1a96318e19c4bd014ea"
+  },
+  "title": "Research Progress Review",
+  "description": "",
+  "host": {
+    "$oid": "68d0e09e6318e19c4bd01450"
+  },
+  "hostEmail": "jaddulmina@gmail.com",
+  "hostName": "J A D Dulmina",
+  "hostStudentId": "IT211324",
+  "startTime": {
+    "$date": "2025-09-22T05:43:00.000Z"
+  },
+  "endTime": {
+    "$date": "2025-09-22T06:43:00.000Z"
+  },
+  "duration": 60,
+  "degree": "BSc (Hons) Information Technology",
+  "year": "Year 1",
+  "semester": "Semester 1",
+  "module": "IT0214",
+  "meetingLink": "http://localhost:3000/meeting/68d0e1a96318e19c4bd014ea",
+  "status": "completed",
+  "participants": [
+    {
+      "userId": {
+        "$oid": "68d0e09e6318e19c4bd01450"
+      },
+      "email": "jaddulmina@gmail.com",
+      "name": "J A D Dulmina",
+      "role": "host",
+      "joinedAt": {
+        "$date": "2025-09-22T05:42:01.513Z"
+      },
+      "_id": {
+        "$oid": "68d0e1a96318e19c4bd014eb"
+      },
+      "leftAt": {
+        "$date": "2025-09-22T05:42:32.217Z"
+      }
+    }
+  ],
+  "maxParticipants": 50,
+  "isPublic": true,
+  "recordingUrl": "",
+  "chatHistory": [],
+  "settings": {
+    "allowChat": true,
+    "allowScreenShare": true,
+    "allowRecording": true,
+    "muteOnEntry": false,
+    "videoOnEntry": true,
+    "waitingRoom": false
+  },
+  "recordings": [],
+  "recordingStatus": {
+    "isRecording": false,
+    "duration": 0
+  },
+  "notes": "",
+  "tags": [
+    "BSc (Hons) Information Technology",
+    "Year 1",
+    "Semester 1",
+    "IT0214"
+  ],
+  "createdAt": {
+    "$date": "2025-09-22T05:42:01.516Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-22T05:42:32.218Z"
+  },
+  "__v": 0,
+  "startedAt": {
+    "$date": "2025-09-22T05:42:10.522Z"
+  },
+  "endedAt": {
+    "$date": "2025-09-22T05:42:32.217Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "68d122116318e19c4bd0185d"
+  },
+  "title": "Research Progress Review",
+  "description": "",
+  "host": {
+    "$oid": "68d0e09e6318e19c4bd01450"
+  },
+  "hostEmail": "jaddulmina@gmail.com",
+  "hostName": "J A D Dulmina",
+  "hostStudentId": "IT211324",
+  "startTime": {
+    "$date": "2025-09-22T10:18:00.000Z"
+  },
+  "endTime": {
+    "$date": "2025-09-22T10:33:00.000Z"
+  },
+  "duration": 15,
+  "degree": "BSc (Hons) Information Technology",
+  "year": "Year 1",
+  "semester": "Semester 1",
+  "module": "IT0214",
+  "meetingLink": "http://localhost:3000/meeting/68d122116318e19c4bd0185d",
+  "status": "completed",
+  "participants": [
+    {
+      "userId": {
+        "$oid": "68d0e09e6318e19c4bd01450"
+      },
+      "email": "jaddulmina@gmail.com",
+      "name": "J A D Dulmina",
+      "role": "host",
+      "joinedAt": {
+        "$date": "2025-09-22T10:16:49.562Z"
+      },
+      "_id": {
+        "$oid": "68d122116318e19c4bd0185e"
+      }
+    }
+  ],
+  "maxParticipants": 50,
+  "isPublic": true,
+  "recordingUrl": "",
+  "chatHistory": [],
+  "settings": {
+    "allowChat": true,
+    "allowScreenShare": true,
+    "allowRecording": true,
+    "muteOnEntry": false,
+    "videoOnEntry": true,
+    "waitingRoom": false
+  },
+  "recordings": [],
+  "recordingStatus": {
+    "isRecording": false,
+    "duration": 0
+  },
+  "notes": "",
+  "tags": [
+    "BSc (Hons) Information Technology",
+    "Year 1",
+    "Semester 1",
+    "IT0214"
+  ],
+  "createdAt": {
+    "$date": "2025-09-22T10:16:49.564Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-22T10:17:14.656Z"
+  },
+  "__v": 0,
+  "startedAt": {
+    "$date": "2025-09-22T10:16:54.976Z"
+  },
+  "endedAt": {
+    "$date": "2025-09-22T10:17:14.655Z"
+  }
+}]
